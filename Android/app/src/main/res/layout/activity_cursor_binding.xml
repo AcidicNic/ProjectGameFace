@@ -447,6 +447,65 @@
                 app:layout_constraintTop_toBottomOf="@+id/dragTxt" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+<!--        <androidx.constraintlayout.widget.ConstraintLayout-->
+<!--            android:id="@+id/swipeToggleLayout"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginStart="10dp"-->
+<!--            android:layout_marginTop="24dp"-->
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            app:layout_constraintTop_toBottomOf="@+id/dragLayout">-->
+
+<!--            <TextView-->
+<!--                android:id="@id/swipeToggleTxt"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Swipe Toggle"-->
+<!--                android:textColor="#3C4043"-->
+<!--                android:textSize="16sp"-->
+<!--                app:layout_constraintStart_toStartOf="parent"-->
+<!--                app:layout_constraintTop_toTopOf="parent" />-->
+
+<!--            <LinearLayout-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:background="@drawable/custom_binding_linear"-->
+<!--                android:orientation="horizontal"-->
+<!--                android:paddingStart="17dp"-->
+<!--                android:paddingTop="5dp"-->
+<!--                android:paddingEnd="17dp"-->
+<!--                android:paddingBottom="9dp"-->
+<!--                app:layout_constraintEnd_toEndOf="parent"-->
+<!--                app:layout_constraintTop_toTopOf="parent">-->
+
+<!--                <ImageView-->
+<!--                    android:id="@+id/swipeToggleIcon"-->
+<!--                    android:layout_width="21dp"-->
+<!--                    android:layout_height="22dp"-->
+<!--                    android:layout_marginTop="3dp" />-->
+
+<!--                <TextView-->
+<!--                    android:id="@+id/swipeToggleLinear"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_marginStart="10dp"-->
+<!--                    android:layout_marginTop="4dp"-->
+<!--                    android:text="Add"-->
+<!--                    android:textSize="13sp"-->
+<!--                    android:textStyle="bold" />-->
+<!--            </LinearLayout>-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/swipeToggleBinding"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="No binding"-->
+<!--                android:textColor="#5F6368"-->
+<!--                android:textSize="14sp"-->
+<!--                app:layout_constraintStart_toStartOf="@id/swipeToggleTxt"-->
+<!--                app:layout_constraintTop_toBottomOf="@+id/swipeToggleTxt" />-->
+<!--        </androidx.constraintlayout.widget.ConstraintLayout>-->
+
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/allAppLayout"
             android:layout_width="match_parent"
@@ -455,6 +514,7 @@
             android:layout_marginTop="24dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/dragLayout">
+
             <TextView
                 android:id="@id/allAppTxt"
                 android:layout_width="wrap_content"

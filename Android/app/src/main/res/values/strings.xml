@@ -28,6 +28,7 @@
         <item>CURSOR_RESET</item>
         <item>DRAG_TOGGLE</item>
         <item>SHOW_APPS</item>
+        <item>SWIPE_TOGGLE</item>
     </string-array>
 
 
@@ -41,6 +42,7 @@
         <item>Choose a facial gesture that will reset your cursor position</item>
         <item>Choose a facial gesture that will touch \&amp; hold, otherwise known as a long press, on your phone</item>
         <item>Choose a facial gesture that will open your all apps</item>
+        <item>Choose a facial gesture that will toggle a swipe</item>
 
     </string-array>
 

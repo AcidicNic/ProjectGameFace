@@ -16,7 +16,7 @@
 -->
 
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:packageNames=""
+    android:packageNames="com.google.projectgameface"
     android:accessibilityEventTypes="typeAllMask"
     android:accessibilityFlags="flagRequestFilterKeyEvents|flagRetrieveInteractiveWindows|flagReportViewIds|flagIncludeNotImportantViews"
     android:accessibilityFeedbackType="feedbackAllMask"
@@ -24,4 +24,6 @@
     android:canPerformGestures="true"
     android:isAccessibilityTool="true"
     android:settingsActivity="com.example.android.accessibility.ServiceSettingsActivity"
+    android:canRetrieveWindowContent="true"
+    android:canRequestFilterKeyEvents="true"
     />

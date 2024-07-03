@@ -36,7 +36,7 @@ public class ServiceUiManagerTest {
     Context context = ApplicationProvider.getApplicationContext();
     WindowManager windowManager = ContextCompat.getSystemService(context, WindowManager.class);
 
-    ServiceUiManager testUiServiceManager = new ServiceUiManager(context, windowManager);
+    ServiceUiManager testUiServiceManager = new ServiceUiManager(context, windowManager, new CursorController(context));
 
     // 1. Camera box should be maximized when first started.
     Assert.assertEquals(testUiServiceManager.cameraBoxState, ServiceUiManager.CameraBoxState.MAXIMIZE);

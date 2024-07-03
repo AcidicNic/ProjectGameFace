@@ -124,19 +124,21 @@
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/Description_Cursor" />
+
         <SeekBar
             android:id="@+id/seekBarMU"
             style="@style/Widget.AppCompat.SeekBar.Discrete"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
+            android:max="10"
             android:maxHeight="3dp"
+            android:min="0"
             android:progressDrawable="@drawable/custom_seekbar"
             android:thumbTint="#1a73e8"
-            android:max="10"
-            android:min="0"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textView" />
 
         <TextView

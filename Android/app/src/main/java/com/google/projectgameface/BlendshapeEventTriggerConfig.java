@@ -53,6 +53,8 @@ public class BlendshapeEventTriggerConfig {
     HOME,
     BACK,
     SHOW_NOTIFICATION,
+    SWIPE_START,
+    SWIPE_STOP,
     SHOW_APPS
   }
 
@@ -95,6 +97,8 @@ public class BlendshapeEventTriggerConfig {
 
   /** Allowed blendshape that our app can use and its array index (from MediaPipe's). */
   public enum Blendshape {
+//    ENTER_KEY(-62),
+//    SPACE_KEY(-66),
     NONE(-1),
     OPEN_MOUTH(25),
     MOUTH_LEFT(39),

@@ -18,6 +18,8 @@ package com.google.projectgameface;
 
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -26,24 +28,32 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.splashscreen.SplashScreen;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERMISSION_CODE = 200;
+    private static final int BLUETOOTH_PERMISSION_CODE = 201;
+    private static final int BLUETOOTH_ADMIN_PERMISSION_CODE = 202;
+    private static final int BLUETOOTH_CONNECT_PERMISSION_CODE = 203;
     private static final String KEY_FIRST_RUN = "GameFaceFirstRun";
 
     private final String TAG = "MainActivity";
@@ -53,8 +63,6 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences preferences;
     private boolean isServiceBound = false;
     private boolean keep = true;
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,8 +84,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (NameNotFoundException e) {
             throw new RuntimeException(e);
         }
-
-
 
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
@@ -169,10 +175,6 @@ public class MainActivity extends AppCompatActivity {
             // Goto tutorial page.
             Intent intent = new Intent(this, TutorialActivity.class);
             startActivity(intent);
-
-
-
-
         }
 
     }
@@ -389,22 +391,9 @@ public class MainActivity extends AppCompatActivity {
     // Request camera permission using basic requestPermissions method
     public void RequestCameraPermission()
     {
-
         ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.CAMERA
-        },CAMERA_PERMISSION_CODE);
+            Manifest.permission.CAMERA
+        }, CAMERA_PERMISSION_CODE);
     }
 
-
-
-
-
-
-
-
-
 }
-
-
-
-

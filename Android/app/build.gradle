@@ -15,6 +15,7 @@
  */
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
 }
 
 
@@ -27,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId 'com.google.projectgameface'
-        minSdk 27
+        minSdk 28
         targetSdk 34
         versionCode 31
         versionName "0.0.31"
@@ -42,6 +43,7 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -51,6 +53,9 @@ android {
         unitTests {
             includeAndroidResources = true
         }
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
     }
 }
 
@@ -63,6 +68,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.auto.value:auto-value:latest.release'
+    implementation 'androidx.core:core-ktx:1.13.1'
     annotationProcessor 'com.google.auto.value:auto-value:latest.release'
     implementation 'com.google.mediapipe:tasks-vision:0.10.8'
 

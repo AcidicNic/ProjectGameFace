@@ -19,11 +19,15 @@ package com.google.projectgameface;
 
 import static androidx.core.math.MathUtils.clamp;
 
+import android.accessibilityservice.GestureDescription;
 import android.content.Context;
 import android.util.Log;
 
+import android.graphics.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 public class CursorController {
@@ -92,6 +96,10 @@ public class CursorController {
 
     /** Keep tracking if any event is triggered. */
     private final HashMap<BlendshapeEventTriggerConfig.EventType, Boolean> blendshapeEventTriggeredTracker = new HashMap<>();
+    private boolean isSwiping = false;
+    private Path swipePath;
+    private static final int TRAIL_MAX_POINTS = 100;
+    private List<float[]> cursorTrail = new LinkedList<>();
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -119,16 +127,24 @@ public class CursorController {
     /** Scale cursor velocity X, Y with different multiplier in each axis. */
     private float[] asymmetryScaleXy(float velX, float velY) {
         // Speed multiplier in X axis.
+        double speedScale = 0.2;
+        float rightSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED) * speedScale) + speedScale);
+        float leftSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED) * speedScale) + speedScale);
+        float downSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) * speedScale) + speedScale);
+        float upSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) + speedScale);
+
+//        Log.d(TAG, "rightSpeed: " + rightSpeed + " leftSpeed: " + leftSpeed + " downSpeed: " + downSpeed + " upSpeed: " + upSpeed);
+
         float multiplierX =
-            (velX > 0)
-                ? cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED)
-                : cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED);
+                (velX > 0)
+                    ? rightSpeed
+                    : leftSpeed;
 
         // Speed multiplier in Y axis.
         float multiplierY =
             (velY > 0)
-                ? cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED)
-                : cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED);
+                ? downSpeed
+                : upSpeed;
 
         return new float[] {velX * multiplierX, velY * multiplierY};
     }
@@ -415,8 +431,11 @@ public class CursorController {
                 0,
                 screenHeight);
 
+        if (isSwiping) {
+            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
+        }
+        updateTrail((float) cursorPositionX, (float) cursorPositionY);
     }
-
 
 
     public int[] getCursorPositionXY()
@@ -433,5 +452,45 @@ public class CursorController {
 
     }
 
+    public void startSwipe(float x, float y) {
+        cursorTrail.clear();
+        isSwiping = true;
+        swipePath = new Path();
+        swipePath.moveTo(x, y);
+    }
+
+    public void updateSwipe(float x, float y) {
+        if (isSwiping) {
+            swipePath.lineTo(x, y);
+        }
+    }
+
+    public void stopSwipe() {
+        cursorTrail.clear();
+        isSwiping = false;
+    }
+
+    public Path getSwipePath() {
+        return swipePath;
+    }
+
+    public boolean isSwiping() {
+        return isSwiping;
+    }
+
+    public void updateTrail(float x, float y) {
+        if (isSwiping) {
+            cursorTrail.add(new float[]{x, y});
+            if (cursorTrail.size() > TRAIL_MAX_POINTS) {
+                cursorTrail.remove(0);
+            }
+        } else {
+            cursorTrail.clear();
+        }
+    }
+
+    public List<float[]> getCursorTrail() {
+        return cursorTrail;
+    }
 
 }

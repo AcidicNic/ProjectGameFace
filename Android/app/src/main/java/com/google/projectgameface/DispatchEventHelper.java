@@ -18,6 +18,8 @@ package com.google.projectgameface;
 
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
+import android.util.Log;
 
 
 public class DispatchEventHelper {
@@ -118,6 +120,24 @@ public class DispatchEventHelper {
       case DRAG_TOGGLE:
         dispatchDragOrHold(parentService, cursorController, serviceUiManager,
             eventOffsetX, eventOffsetY);
+        break;
+
+      case SWIPE_START:
+        cursorController.startSwipe(cursorPosition[0], cursorPosition[1]);
+        break;
+
+      case SWIPE_STOP:
+        if (cursorController.isSwiping()) {
+          parentService.dispatchGesture(
+                  new GestureDescription.Builder()
+                          .addStroke(new GestureDescription.StrokeDescription(
+                                  cursorController.getSwipePath(), 0, 500))
+                          .build(),
+                  null,
+                  null
+          );
+          cursorController.stopSwipe();
+        }
         break;
 
       case HOME:

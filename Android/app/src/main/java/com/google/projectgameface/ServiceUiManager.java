@@ -114,6 +114,7 @@ public class ServiceUiManager {
 
   private final int floatWindowFlags;
   private boolean cameraBoxDraggable = true;
+  private CursorController cursorController;
 
 
   /** Icon that notify the state of the app. */
@@ -131,9 +132,10 @@ public class ServiceUiManager {
    *
    * @param context parent context.
    */
-  public ServiceUiManager(Context context, WindowManager windowManager) {
+  public ServiceUiManager(Context context, WindowManager windowManager, CursorController cursorController) {
     this.parentContext = context;
     this.windowManager = windowManager;
+    this.cursorController = cursorController;
 
     screenSize = new Point();
     float density = parentContext.getResources().getDisplayMetrics().density;
@@ -509,7 +511,7 @@ public class ServiceUiManager {
   private void createFullScreenCanvas() {
     fullScreenCanvasView = View.inflate(parentContext, R.layout.fullscreen_canvas, null);
     fullScreenCanvas = fullScreenCanvasView.findViewById(R.id.fullscreenCanvasInner);
-
+    fullScreenCanvas.initialize(cursorController);
 
 
     fullScreenCanvasParams =

@@ -21,7 +21,10 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
+
+import java.util.List;
 
 /** The drag cursor of cursor service. */
 public class FullScreenCanvas extends View {
@@ -33,6 +36,7 @@ public class FullScreenCanvas extends View {
     private final Paint touchCirclePaint;
     private final Paint dragLinePaint;
     private final Paint holdCirclePaint;
+    private final Paint trailPaint;
 
     private boolean isShowingDrag = false;
     private float dragStartX = 0;
@@ -40,11 +44,12 @@ public class FullScreenCanvas extends View {
     private float dragEndX = 0;
     private float dragEndY = 0;
 
-
     private boolean isShowingTouch = false;
+    private CursorController cursorController;
 
     public FullScreenCanvas(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
+
         touchCirclePaint = new Paint();
         touchCirclePaint.setStyle(Paint.Style.FILL);
         touchCirclePaint.setColor(Color.parseColor("#04DE71"));
@@ -57,8 +62,15 @@ public class FullScreenCanvas extends View {
         holdCirclePaint.setStyle(Paint.Style.STROKE);
         holdCirclePaint.setColor(Color.parseColor("#4285f4"));
         holdCirclePaint.setStrokeWidth(10);
+
+        trailPaint = new Paint();
+        trailPaint.setStrokeWidth(15);
+        trailPaint.setColor(Color.parseColor("#04DE71"));
     }
 
+    public void initialize(CursorController cursorController) {
+        this.cursorController = cursorController;
+    }
 
     @Override
     protected void onDraw(Canvas canvas) {
@@ -69,16 +81,20 @@ public class FullScreenCanvas extends View {
             isShowingTouch = false;
             postInvalidateDelayed(30);
         }
+
         if (isShowingDrag) {
             canvas.drawLine(dragStartX, dragStartY, dragEndX, dragEndY, dragLinePaint);
             canvas.drawCircle(dragStartX, dragStartY, holdRadius, holdCirclePaint);
+        }
+
+        if (cursorController != null && cursorController.isSwiping()) {
+            drawCursorTrail(canvas);
         }
     }
 
     public void drawTouchCircle(float x, float y) {
         drawX = x;
         drawY = y;
-
         invalidate();
         isShowingTouch = true;
     }
@@ -90,9 +106,8 @@ public class FullScreenCanvas extends View {
     }
 
     public void updateDragLine(float x, float y) {
-        dragEndX = x ;
-        dragEndY = y ;
-
+        dragEndX = x;
+        dragEndY = y;
         invalidate();
     }
 
@@ -101,6 +116,18 @@ public class FullScreenCanvas extends View {
         invalidate();
     }
 
+    private void drawCursorTrail(Canvas canvas) {
+        List<float[]> cursorTrail = cursorController.getCursorTrail();
+        if (cursorTrail.size() < 2) return;
+
+        for (int i = 0; i < cursorTrail.size() - 1; i++) {
+            float[] point1 = cursorTrail.get(i);
+            float[] point2 = cursorTrail.get(i + 1);
+            canvas.drawLine(point1[0], point1[1], point2[0], point2[1], trailPaint);
+        }
+        canvas.drawCircle(cursorTrail.get(cursorTrail.size() - 1)[0], cursorTrail.get(cursorTrail.size() - 1)[1], holdRadius, holdCirclePaint);
+        invalidate();
+    }
 
     /**
      * Set draw radius size for hold action.

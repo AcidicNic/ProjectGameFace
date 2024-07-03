@@ -65,7 +65,7 @@ public class CursorBinding extends AppCompatActivity {
     TextView textPause ;
     TextView pauseLinear ;
     TextView textReset;
-    TextView resetLinear ;
+    TextView resetLinear;
     TextView textDrag;
     TextView dragLinear;
 
@@ -162,10 +162,17 @@ public class CursorBinding extends AppCompatActivity {
 
 
         setUpActionList(
-            String.valueOf(BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE),
-            textDrag,
-            dragLinear,
-            (ImageView) findViewById(R.id.dragIcon));
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE),
+                textDrag,
+                dragLinear,
+                (ImageView) findViewById(R.id.dragIcon));
+
+
+//        setUpActionList(
+//                String.valueOf(BlendshapeEventTriggerConfig.EventType.SWIPE_TOGGLE),
+//                textSwipe,
+//                swipeLinear,
+//                (ImageView) findViewById(R.id.swipeToggleIcon));
 
     }
 
@@ -196,6 +203,8 @@ public class CursorBinding extends AppCompatActivity {
         resetLinear = findViewById(R.id.resetLinear);
         textDrag = findViewById(R.id.dragBinding);
         dragLinear = findViewById(R.id.dragLinear);
+//        textSwipe = findViewById(R.id.swipeToggleBinding);
+//        swipeLinear = findViewById(R.id.swipeToggleLinear);
 
         refreshUI();
 
@@ -232,6 +241,9 @@ public class CursorBinding extends AppCompatActivity {
 
                         } else if (v.getId() == R.id.dragLayout) {
                             intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+
+//                        } else if (v.getId() == R.id.swipeToggleLayout) {
+//                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SWIPE_TOGGLE);
                         }
                         startActivity(intent);
 

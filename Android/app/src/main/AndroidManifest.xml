@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
  Copyright 2024 Google LLC
 
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,20 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    >
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-sdk
-        android:minSdkVersion="27"
+        android:minSdkVersion="28"
         android:targetSdkVersion="34" />
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" android:required="false" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
+
+
 
     <uses-feature
         android:name="android.hardware.camera2.full"
@@ -30,6 +34,7 @@
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -38,50 +43,51 @@
         android:supportsRtl="true"
         android:taskAffinity=""
         android:theme="@style/AppTheme">
+
         <activity
             android:name=".GestureSizeActivity"
             android:exported="false"
-            android:parentActivityName=".ChooseGestureActivity"
-            />
+            android:parentActivityName=".ChooseGestureActivity" />
+
         <activity
             android:name=".ChooseGestureActivity"
             android:exported="false"
-            android:parentActivityName=".CursorBinding"
-            />
+            android:parentActivityName=".CursorBinding" />
 
         <activity
             android:name=".CursorBinding"
             android:exported="false"
-            android:parentActivityName=".MainActivity"
-            />
+            android:parentActivityName=".MainActivity" />
+
         <activity
             android:name=".CursorSpeed"
             android:exported="false"
-            android:parentActivityName=".MainActivity"
-            />
+            android:parentActivityName=".MainActivity" />
+
         <activity
             android:name=".GrantPermissionActivity"
-            android:exported="false"
-            />
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true"
             android:taskAffinity=""
             android:theme="@style/Theme.App.Starting">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-            </activity>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".TutorialActivity"
-            android:exported="true"
-            />
+            android:exported="true" />
+
         <activity
             android:name=".TutorialPhoneStandActivity"
-            android:exported="true"
-            />
+            android:exported="true" />
+
         <service
             android:name=".CursorAccessibilityService"
             android:enabled="true"
@@ -95,6 +101,7 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/mouse_accessibility_service_config" />
         </service>
+
     </application>
 
 </manifest>
