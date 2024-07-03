@@ -53,7 +53,7 @@
             android:text="0"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/Description_Cursor" />
+            app:layout_constraintTop_toBottomOf="@+id/realtimeSwipeSwitch" />
 
         <TextView
             android:id="@+id/progressMD"
@@ -116,14 +116,33 @@
             app:layout_constraintTop_toBottomOf="@+id/fasterBlendshapes" />
 
         <TextView
+            android:id="@+id/FaceSwypeTxt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FaceSwype Settings"
+            android:textStyle="bold"
+            android:layout_marginTop="25dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/Description_Cursor" />
+
+        <Switch
+            android:id="@+id/realtimeSwipeSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Realtime Swipe"
+            android:layout_marginTop="10dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/FaceSwypeTxt" />
+
+        <TextView
             android:id="@+id/textView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="25dp"
             android:text="Move up"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/Description_Cursor" />
+            app:layout_constraintTop_toBottomOf="@+id/realtimeSwipeSwitch" />
 
         <SeekBar
             android:id="@+id/seekBarMU"

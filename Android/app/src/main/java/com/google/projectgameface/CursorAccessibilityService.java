@@ -93,6 +93,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver changeServiceStateReceiver;
     private BroadcastReceiver requestServiceStateReceiver;
     private BroadcastReceiver loadSharedConfigBasicReceiver;
+    private BroadcastReceiver loadFaceSwypeConfigReceiver;
     private BroadcastReceiver loadSharedConfigGestureReceiver;
     private BroadcastReceiver enableScorePreviewReceiver;
     private Instrumentation instrumentation;
@@ -102,7 +103,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Point currentPoint;
     private Point lastPoint;
     private static final long GESTURE_DURATION = 50;
-    private static final long GESTURE_DELAY = 50;
+    private static final long GESTURE_DELAY = 100;
+    public boolean realtimeSwype;
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -128,6 +130,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void defineAndRegisterBroadcastMessageReceivers() {
 
         // Initialize the broadcast receiver
+        loadFaceSwypeConfigReceiver =
+            new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    String configName = intent.getStringExtra("configName");
+                    if (configName.equals("realtimeSwipe")) {
+                        realtimeSwype = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE).getBoolean("realtimeSwipe", true);
+                    }
+                }
+            };
+
         loadSharedConfigBasicReceiver =
             new BroadcastReceiver() {
                 @Override
@@ -196,6 +209,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             registerReceiver(
                 requestServiceStateReceiver,
                 new IntentFilter("REQUEST_SERVICE_STATE"),
+                RECEIVER_EXPORTED);
+            registerReceiver(
+                loadFaceSwypeConfigReceiver,
+                new IntentFilter("LOAD_FACESWYPE_CONFIG"),
                 RECEIVER_EXPORTED);
             registerReceiver(
                 loadSharedConfigBasicReceiver,
@@ -282,6 +299,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         // Initialize the Handler
         tickFunctionHandler = new Handler();
         tickFunctionHandler.postDelayed(tick, 0);
+
+        realtimeSwype = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE).getBoolean("realtimeSwipe", true);
     }
 
     /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
@@ -738,19 +757,25 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             case KeyEvent.KEYCODE_ENTER:
                 Log.d(TAG, eventType + ": ENTER");
                 if (eventType.equals("KeyDown")) {
-                    startSwipe();
-//                    DispatchEventHelper.checkAndDispatchEvent(
-//                            this,
-//                            cursorController,
-//                            serviceUiManager,
-//                            BlendshapeEventTriggerConfig.EventType.SWIPE_START);
+                    if (realtimeSwype) {
+                        startSwipe();
+                    } else {
+                        DispatchEventHelper.checkAndDispatchEvent(
+                                this,
+                                cursorController,
+                                serviceUiManager,
+                                BlendshapeEventTriggerConfig.EventType.SWIPE_START);
+                    }
                 } else if (eventType.equals("KeyUp")) {
-                    stopSwipe();
-//                    DispatchEventHelper.checkAndDispatchEvent(
-//                            this,
-//                            cursorController,
-//                            serviceUiManager,
-//                            BlendshapeEventTriggerConfig.EventType.SWIPE_STOP);
+                    if (realtimeSwype) {
+                        stopSwipe();
+                    } else {
+                        DispatchEventHelper.checkAndDispatchEvent(
+                                this,
+                                cursorController,
+                                serviceUiManager,
+                                BlendshapeEventTriggerConfig.EventType.SWIPE_STOP);
+                    }
                 }
                 return true;
             case KeyEvent.KEYCODE_1:
@@ -818,7 +843,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 Path path = new Path();
                 int[] cursorPosition = cursorController.getCursorPositionXY();
                 path.moveTo(cursorPosition[0], cursorPosition[1]);
-
 
                 GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
                         path, 0, down ? GESTURE_DURATION : 1, down);

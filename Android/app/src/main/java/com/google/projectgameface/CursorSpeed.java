@@ -20,11 +20,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.WindowManager.LayoutParams;
 import androidx.appcompat.app.AppCompatActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.SeekBar;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.google.projectgameface.R;
@@ -54,6 +56,8 @@ public class CursorSpeed extends AppCompatActivity {
     private SeekBar seekBarBlendshapes; // The flickering of the a trigger.
     private SeekBar seekBarDelay; // Controls how long the user should hold a gesture.
 
+    private Switch realtimeSwipeSwitch; // Switch for enabling realtime swipe.
+
     private final int[] viewIds = {
         R.id.fasterUp,
         R.id.slowerUp,
@@ -80,6 +84,20 @@ public class CursorSpeed extends AppCompatActivity {
         // setting actionbar
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Adjust cursor speed");
+
+        // FaceSwype
+        realtimeSwipeSwitch = findViewById(R.id.realtimeSwipeSwitch);
+        realtimeSwipeSwitch.setChecked(
+            getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE).getBoolean("realtimeSwipe", true));
+        realtimeSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("realtimeSwipe", isChecked);
+            editor.apply();
+            Intent intent = new Intent("LOAD_FACESWYPE_CONFIG");
+            intent.putExtra("configName", "realtimeSwipe");
+            sendBroadcast(intent);
+        });
 
         // SeekBar Binding and Textview Progress
         seekBarMu = (SeekBar) findViewById(R.id.seekBarMU);

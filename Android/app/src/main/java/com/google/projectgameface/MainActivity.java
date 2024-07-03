@@ -164,13 +164,13 @@ public class MainActivity extends AppCompatActivity {
         if(isFirstLaunch()){
             // Assign some default binding so user can navigate around.
             Log.i(TAG, "First launch, assign default binding");
-            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.OPEN_MOUTH,
-                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH, 20);
-            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_LEFT,
-                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, 20);
-            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_RIGHT,
-                    BlendshapeEventTriggerConfig.EventType.CURSOR_RESET, 20);
-            preferences.edit().putBoolean(KEY_FIRST_RUN, false).apply();
+//            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.OPEN_MOUTH,
+//                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH, 20);
+//            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_LEFT,
+//                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, 20);
+//            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_RIGHT,
+//                    BlendshapeEventTriggerConfig.EventType.CURSOR_RESET, 20);
+            preferences.edit().putBoolean(KEY_FIRST_RUN, false).putBoolean("realtimeSwipe", true).apply();
 
             // Goto tutorial page.
             Intent intent = new Intent(this, TutorialActivity.class);
