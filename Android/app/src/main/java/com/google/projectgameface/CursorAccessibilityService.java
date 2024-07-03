@@ -30,6 +30,7 @@ import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Path;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Handler;
@@ -43,6 +44,9 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
+
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.resolutionselector.ResolutionSelector;
@@ -55,6 +59,7 @@ import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -102,9 +107,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isSwipingNew = false;
     private Point currentPoint;
     private Point lastPoint;
-    private static final long GESTURE_DURATION = 50;
+    private static final long GESTURE_DURATION = 100;
     private static final long GESTURE_DELAY = 100;
     public boolean realtimeSwype;
+    private Rect keyboardBounds = new Rect();
+    private boolean isKeyboardOpen = false;
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -705,7 +712,42 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {}
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            checkForKeyboard(event);
+        }
+    }
+
+    private void checkForKeyboard(AccessibilityEvent event) {
+        boolean keyboardFound = false;
+        List<AccessibilityWindowInfo> windows = getWindows();
+        for (AccessibilityWindowInfo window : windows) {
+            if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                keyboardFound = true;
+                window.getBoundsInScreen(keyboardBounds);
+//                Log.d(TAG, "window.getBoundsInScreen: " + keyboardBounds);
+//                Log.d(TAG, "Window title: " + window.getTitle());
+            }
+        }
+
+        if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
+            return;
+        }
+        isKeyboardOpen = keyboardFound;
+
+        if (isKeyboardOpen) {
+            cursorController.setTemporaryBounds(keyboardBounds);
+            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
+        } else {
+            cursorController.clearTemporaryBounds();
+            serviceUiManager.fullScreenCanvas.setRect(null);
+        }
+        serviceUiManager.fullScreenCanvas.invalidate();
+
+        Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
+    }
+
 
     @Override
     public void onInterrupt() {}
@@ -725,13 +767,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int deviceId = event.getDeviceId();
         InputDevice device = InputDevice.getDevice(deviceId);
 
-        if (device != null) {
-            Log.d(TAG, "Key event from device: " + device.getName());
-            Log.d(TAG, "Device ID: " + deviceId);
-            Log.d(TAG, "Device Type: " + getDeviceType(device));
-        } else {
-            Log.d(TAG, "Device not found for deviceId: " + deviceId);
-        }
+//        if (device != null) {
+//            Log.d(TAG, "Key event from device: " + device.getName());
+//            Log.d(TAG, "Device ID: " + deviceId);
+//            Log.d(TAG, "Device Type: " + getDeviceType(device));
+//        } else {
+//            Log.d(TAG, "Device not found for deviceId: " + deviceId);
+//        }
 
         switch (event.getAction()) {
             case KeyEvent.ACTION_DOWN:
@@ -745,7 +787,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean handleKeyEvent(String eventType, int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_SPACE:
-                Log.d(TAG, eventType + ": SPACE");
+//                Log.d(TAG, eventType + ": SPACE");
                 if (eventType.equals("KeyDown")) {
                     DispatchEventHelper.checkAndDispatchEvent(
                         this,
@@ -755,7 +797,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 }
                 return true;
             case KeyEvent.KEYCODE_ENTER:
-                Log.d(TAG, eventType + ": ENTER");
+//                Log.d(TAG, eventType + ": ENTER");
                 if (eventType.equals("KeyDown")) {
                     if (realtimeSwype) {
                         startSwipe();
@@ -842,10 +884,18 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             public void run() {
                 Path path = new Path();
                 int[] cursorPosition = cursorController.getCursorPositionXY();
-                path.moveTo(cursorPosition[0], cursorPosition[1]);
+
+                if (down) {
+                    path.moveTo(cursorPosition[0], cursorPosition[1]);
+                } else {
+                    path.moveTo(lastPoint.x, lastPoint.y);
+                    path.lineTo(cursorPosition[0], cursorPosition[1]);
+                }
 
                 GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
                         path, 0, down ? GESTURE_DURATION : 1, down);
+
+
                 GestureDescription gestureDescription = new GestureDescription.Builder()
                         .addStroke(stroke)
                         .build();
@@ -870,7 +920,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 path.lineTo(cursorPosition[0], cursorPosition[1]);
 
                 GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-                        path, 0, GESTURE_DURATION, true);
+                        path, 0, GESTURE_DURATION, false);
                 GestureDescription gestureDescription = new GestureDescription.Builder()
                         .addStroke(stroke)
                         .build();
@@ -880,5 +930,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
             }
         });
+
     }
 }

@@ -17,6 +17,9 @@
 <resources>
     <string name="app_name">GameFace</string>
 
+    <string name="service_description">Service Description</string>
+    <string name="service_summary">Service Summary</string>
+
 
 
     <string-array name="event_type_description_keys">

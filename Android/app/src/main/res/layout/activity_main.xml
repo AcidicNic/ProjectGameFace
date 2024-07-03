@@ -177,7 +177,7 @@
                 android:id="@id/cursorTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Adjust cursor speed"
+                android:text="Adjust cursor"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
@@ -202,6 +202,45 @@
                 app:layout_constraintTop_toBottomOf="@+id/cursorTxt" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/faceSwypeRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginEnd="24dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/speedRow">
+
+            <TextView
+                android:id="@id/faceSwypeTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FaceSwype Settings"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@id/faceSwypeCog"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="24dp"
+                android:src="@drawable/setting"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Swiping"
+                app:layout_constraintEnd_toStartOf="@+id/faceSwypeCog"
+                app:layout_constraintStart_toStartOf="@+id/faceSwypeTxt"
+                app:layout_constraintTop_toBottomOf="@+id/faceSwypeTxt" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/tutorialRow"
@@ -210,7 +249,7 @@
             android:layout_marginStart="24dp"
             android:layout_marginTop="24dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/speedRow">
+            app:layout_constraintTop_toBottomOf="@+id/faceSwypeRow">
 
             <ImageView
                 android:id="@+id/questionMark"

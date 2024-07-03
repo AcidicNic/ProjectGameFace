@@ -66,7 +66,7 @@ public class DispatchEventHelper {
         break;
 
       case CURSOR_RESET:
-        cursorController.resetCursorToCenter();
+        cursorController.resetCursorToCenter(false);
         break;
 
       case SWIPE_LEFT:

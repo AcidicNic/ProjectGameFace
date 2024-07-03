@@ -21,6 +21,7 @@ import static androidx.core.math.MathUtils.clamp;
 
 import android.accessibilityservice.GestureDescription;
 import android.content.Context;
+import android.graphics.Rect;
 import android.util.Log;
 
 import android.graphics.Path;
@@ -88,6 +89,23 @@ public class CursorController {
 
     private int screenWidth = 0;
     private int screenHeight = 0;
+
+    private int tempMinX = 0;
+    private int tempMaxX = 0;
+    private int tempMinY = 0;
+    private int tempMaxY = 0;
+
+    private boolean tempBoundsSet = false;
+    private static final int POP_OUT_THRESHOLD_DISTANCE = 200;
+    private static final int POP_OUT_THRESHOLD_VELOCITY = 50;
+    private static final int POP_OUT_MAX_DISTANCE = 300;
+    private long lastBoundaryHitTime = 0;
+    private long boundaryHitCooldown = 1000; // milliseconds
+    private boolean isCursorOutsideBounds = false;
+    private boolean isCursorBoosted = false;
+    private long cursorBoostStartTime = 0;
+    private static final int BOOST_DURATION = 300; // milliseconds
+    private static final float BOOST_FACTOR = 1.5f; // Boost factor
 
     public CursorMovementConfig cursorMovementConfig;
 
@@ -221,8 +239,13 @@ public class CursorController {
                 if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET)
                 {
                     isTeleportMode = true;
-                    teleportShadowX = (double) this.screenWidth / 2;
-                    teleportShadowY = (double) this.screenHeight / 2;
+                    if (tempBoundsSet && !isCursorOutsideBounds) {
+                        teleportShadowX = (double) (tempMinX + tempMaxX) / 2;
+                        teleportShadowY = (double) (tempMinY + tempMaxY) / 2;
+                    } else {
+                        teleportShadowX = (double) this.screenWidth / 2;
+                        teleportShadowY = (double) this.screenHeight / 2;
+                    }
                 }
 
                 return eventType;
@@ -294,8 +317,16 @@ public class CursorController {
     private double[] getTeleportLocation()
     {
         double teleportDegrees;
+
         double screenCenterX = (double) this.screenWidth / 2;
         double screenCenterY = (double) this.screenHeight /2;
+
+        if (tempBoundsSet && !isCursorOutsideBounds) {
+            screenCenterX = (tempMinX + tempMaxX) / 2;
+            screenCenterY = (tempMinY + tempMaxY) / 2;
+        }
+
+
 
         double distanceFromCenter = euclideanDistance(
             screenCenterX,
@@ -327,6 +358,7 @@ public class CursorController {
         int edgeMinX = TELEPORT_MARGIN_LEFT;
         int edgeCenterX = (int) screenCenterX;
         int edgeMaxX = this.screenWidth - TELEPORT_MARGIN_RIGHT;
+
 
         int edgeMinY = TELEPORT_MARGIN_TOP;
         int edgeCenterY = (int) screenCenterY;
@@ -394,42 +426,99 @@ public class CursorController {
         this.screenHeight = screenHeight;
 
         // How far we should move this frame.
-        float[] offsetXY =  this.getCursorTranslateXY(
-            headCoordXY,
-            gapFrames);
+        float[] offsetXY =  this.getCursorTranslateXY(headCoordXY, gapFrames);
 
 
         // In teleport mode, apply offset to shadow cursor
         // but teleport the real cursor.
-        if (isTeleportMode) {
-            teleportShadowX += offsetXY[0];
-            teleportShadowY += offsetXY[1];
-
-            // Clamp x, y to screen.
-            teleportShadowX = clamp(teleportShadowX, 0, screenWidth);
-            teleportShadowY = clamp(teleportShadowY, 0, screenHeight);
-
-            double[] teleportLocation = getTeleportLocation();
-            cursorPositionX = cursorPositionX * (1 - TELEPORT_LERP_SPEED) + teleportLocation[0] * TELEPORT_LERP_SPEED;
-            cursorPositionY = cursorPositionY * (1 - TELEPORT_LERP_SPEED) + teleportLocation[1] * TELEPORT_LERP_SPEED;
-
-            return;
-        }
+//        if (isTeleportMode) {
+//            Log.d(TAG, "Teleport mode");
+//            teleportShadowX += offsetXY[0];
+//            teleportShadowY += offsetXY[1];
+//
+//            // Clamp x, y to screen.
+//            teleportShadowX = clamp(teleportShadowX, 0, screenWidth);
+//            teleportShadowY = clamp(teleportShadowY, 0, screenHeight);
+//
+//            if (tempBoundsSet && !isCursorOutsideBounds) {
+//                teleportShadowX = clamp(teleportShadowX, tempMinX, tempMaxX);
+//                teleportShadowY = clamp(teleportShadowY, tempMinY, tempMaxY);
+//            }
+//
+//            double[] teleportLocation = getTeleportLocation();
+//            cursorPositionX = cursorPositionX * (1 - TELEPORT_LERP_SPEED) + teleportLocation[0] * TELEPORT_LERP_SPEED;
+//            cursorPositionY = cursorPositionY * (1 - TELEPORT_LERP_SPEED) + teleportLocation[1] * TELEPORT_LERP_SPEED;
+//
+//            return;
+//        }
+//        Log.d(TAG, "***\nVelocity: (" + Math.abs(velocityX) + ", " + Math.abs(velocityY) + ") | Threshold: " + Math.abs(dynamicVelocityThreshold));
+//        Log.d(TAG, "Distance: (" + Math.abs(distanceX) + ", " + Math.abs(distanceY) + ") | " + "Threshold: " + Math.abs(dynamicPopOutThresholdDistance));
 
         cursorPositionX += offsetXY[0];
         cursorPositionY += offsetXY[1];
 
-        // Clamp x, y to screen.
-        cursorPositionX =
-            clamp(cursorPositionX,
-                0,
-                screenWidth);
+        long currentTime = System.currentTimeMillis();
 
-        cursorPositionY =
-            clamp(
-                cursorPositionY,
-                0,
-                screenHeight);
+        float dynamicVelocityThreshold = getDynamicVelocityThreshold(velX, velY);
+
+        if (tempBoundsSet && !isCursorOutsideBounds) {
+            boolean movingLeft = velX < 0;
+            boolean movingRight = velX > 0;
+            boolean movingUp = velY < 0;
+            boolean movingDown = velY > 0;
+
+            float dynamicPopOutThresholdDistanceX = Float.MAX_VALUE;
+            float dynamicPopOutThresholdDistanceY = Float.MAX_VALUE;
+
+            if (movingLeft || movingRight) {
+                dynamicPopOutThresholdDistanceX = getDynamicPopOutThresholdDistance(cursorPositionX, tempMinX, tempMaxX, screenWidth, movingLeft);
+            }
+            if (movingUp || movingDown) {
+                dynamicPopOutThresholdDistanceY = getDynamicPopOutThresholdDistance(cursorPositionY, tempMinY, tempMaxY, screenHeight, movingUp);
+            }
+
+            if ((cursorPositionX < tempMinX || cursorPositionX > tempMaxX || cursorPositionY < tempMinY || cursorPositionY > tempMaxY)) {
+                if (currentTime - lastBoundaryHitTime > boundaryHitCooldown) {
+                    float distanceX = (float) Math.abs(cursorPositionX - (cursorPositionX < tempMinX ? tempMinX : tempMaxX));
+                    float distanceY = (float) Math.abs(cursorPositionY - (cursorPositionY < tempMinY ? tempMinY : tempMaxY));
+                    float velocityX = Math.abs(velX);
+                    float velocityY = Math.abs(velY);
+
+                    Log.d(TAG, "***\nVelocity: (" + Math.floor(velocityX) + ", " + Math.floor(velocityY) + ") | Threshold: " + Math.floor(dynamicVelocityThreshold));
+                    Log.d(TAG, "Distance: (" + Math.floor(distanceX) + ", " + Math.floor(distanceY) + ") | " + "Threshold: (" + Math.floor(dynamicPopOutThresholdDistanceX) + ", " + Math.floor(dynamicPopOutThresholdDistanceY) + ")");
+                    if ((distanceX > dynamicPopOutThresholdDistanceX && velocityX > dynamicVelocityThreshold) ||
+                            (distanceY > dynamicPopOutThresholdDistanceY && velocityY > dynamicVelocityThreshold)) {
+                        isCursorOutsideBounds = true;
+                        isCursorBoosted = true;
+                        cursorBoostStartTime = currentTime;
+                        lastBoundaryHitTime = currentTime;
+                    } else {
+                        cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
+                        cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
+                    }
+                } else {
+                    cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
+                    cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
+                }
+            }
+        } else if (tempBoundsSet && isCursorOutsideBounds) {
+            if (cursorPositionX >= tempMinX && cursorPositionX <= tempMaxX && cursorPositionY >= tempMinY && cursorPositionY <= tempMaxY) {
+                isCursorOutsideBounds = false;
+            }
+        }
+
+        if (isCursorBoosted) {
+            long elapsedTime = currentTime - cursorBoostStartTime;
+            if (elapsedTime < BOOST_DURATION) {
+                cursorPositionX += offsetXY[0] * BOOST_FACTOR;
+                cursorPositionY += offsetXY[1] * BOOST_FACTOR;
+            } else {
+                isCursorBoosted = false;
+            }
+        }
+
+        cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
+        cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
 
         if (isSwiping) {
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
@@ -437,18 +526,70 @@ public class CursorController {
         updateTrail((float) cursorPositionX, (float) cursorPositionY);
     }
 
+    public void setTemporaryBounds(Rect bounds) {
+        this.tempMinX = bounds.left;
+        this.tempMinY = bounds.top;
+        this.tempMaxX = bounds.right;
+        this.tempMaxY = bounds.bottom;
+        this.tempBoundsSet = true;
+        resetCursorToCenter(true);
+        Log.d(TAG, "Set temporary bounds: " + bounds);
+    }private float getDynamicPopOutThresholdDistance() {
+        return Math.min(screenHeight, screenWidth) * 0.18f; // Adjust the factor as needed
+    }
+
+    private float getDynamicPopOutThresholdDistance(double cursorPosition, int boundMin, int boundMax, int screenSize, boolean isMovingTowardsMin) {
+        float thresholdDistance = Math.min(screenHeight, screenWidth) * 0.18f; // Adjust the factor as needed
+
+        // Check if the bound is flush against the edge of the screen
+        if ((isMovingTowardsMin && boundMin <= 0) || (!isMovingTowardsMin && boundMax >= screenSize)) {
+            // Ignore attempts to escape if the bound is flush against the edge of the screen
+            return Float.MAX_VALUE;
+        }
+
+        return thresholdDistance;
+    }
+
+    private float getDynamicVelocityThreshold(float velX, float velY) {
+        double speedScale = 0.2;
+        float rightSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED) * speedScale) + speedScale);
+        float leftSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED) * speedScale) + speedScale);
+        float downSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) * speedScale) + speedScale);
+        float upSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) + speedScale);
+
+        if (velX > 0) {
+            return rightSpeed;
+        } else if (velX < 0) {
+            return leftSpeed;
+        } else if (velY > 0) {
+            return downSpeed;
+        } else {
+            return upSpeed;
+        }
+    }
+
+    public Rect getTemporaryBounds() {
+        return new Rect(this.tempMinX, this.tempMinY, this.tempMaxX, this.tempMaxY);
+    }
+
+    public void clearTemporaryBounds() {
+        this.tempBoundsSet = false;
+    }
 
     public int[] getCursorPositionXY()
     {
-
         return new int[]{(int) cursorPositionX, (int)cursorPositionY};
     }
 
-
-    public void resetCursorToCenter()
+    public void resetCursorToCenter(boolean bound)
     {
-        cursorPositionX = (double) this.screenWidth / 2;
-        cursorPositionY = (double) this.screenHeight / 2;
+        if (bound || tempBoundsSet && !isCursorOutsideBounds) {
+            cursorPositionX = (double) (tempMinX + tempMaxX) / 2;
+            cursorPositionY = (double) (tempMinY + tempMaxY) / 2;
+        } else {
+            cursorPositionX = (double) this.screenWidth / 2;
+            cursorPositionY = (double) this.screenHeight / 2;
+        }
 
     }
 

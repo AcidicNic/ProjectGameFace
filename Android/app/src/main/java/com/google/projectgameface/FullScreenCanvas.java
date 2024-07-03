@@ -20,6 +20,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -46,6 +47,9 @@ public class FullScreenCanvas extends View {
 
     private boolean isShowingTouch = false;
     private CursorController cursorController;
+
+    private boolean showRect = false;
+    private Rect rectCoords;
 
     public FullScreenCanvas(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -89,6 +93,10 @@ public class FullScreenCanvas extends View {
 
         if (cursorController != null && cursorController.isSwiping()) {
             drawCursorTrail(canvas);
+        }
+
+        if (showRect) {
+            canvas.drawRect(rectCoords.left, rectCoords.top, rectCoords.right, rectCoords.bottom, holdCirclePaint);
         }
     }
 
@@ -135,5 +143,15 @@ public class FullScreenCanvas extends View {
      */
     public void setHoldRadius(float holdRadius) {
         this.holdRadius = (int) holdRadius;
+    }
+
+    public void setRect(Rect rect) {
+        if (rect == null) {
+            rectCoords = null;
+            showRect = false;
+            return;
+        }
+        rectCoords = rect;
+        showRect = true;
     }
 }

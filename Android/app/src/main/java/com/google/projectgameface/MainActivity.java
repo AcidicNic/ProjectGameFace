@@ -111,6 +111,11 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+//        findViewById(R.id.calibrationRow).setOnClickListener(v -> {
+//            Intent intent = new Intent(this, CalibrationActivity.class);
+//            startActivity(intent);
+//        });
+
 
         Switch gameFaceToggleSwitch = findViewById(R.id.gameFaceToggleSwitch);
 
