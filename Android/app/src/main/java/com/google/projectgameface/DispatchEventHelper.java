@@ -131,7 +131,7 @@ public class DispatchEventHelper {
           parentService.dispatchGesture(
                   new GestureDescription.Builder()
                           .addStroke(new GestureDescription.StrokeDescription(
-                                  cursorController.getSwipePath(), 0, 500))
+                                  cursorController.getSwipePath(), 0, 250))
                           .build(),
                   null,
                   null

@@ -100,9 +100,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private HandlerThread handlerThread;
     private boolean isSwipingNew = false;
     private Point currentPoint;
-    private static final long GESTURE_DURATION = 1;
+    private Point lastPoint;
+    private static final long GESTURE_DURATION = 50;
     private static final long GESTURE_DELAY = 50;
-    private Point lastPoint = new Point(0, 0);
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -355,10 +355,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             serviceUiManager.fullScreenCanvas.invalidate();
                         }
 
-                        if (isSwipingNew) {
-                            int[] cursorPosition = cursorController.getCursorPositionXY();
-                            updateSwipe(new Point(cursorPosition[0], cursorPosition[1]));
-                        }
                         break;
 
                     case PAUSE:
@@ -741,17 +737,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 return true;
             case KeyEvent.KEYCODE_ENTER:
                 Log.d(TAG, eventType + ": ENTER");
-                int[] cursorPosition = cursorController.getCursorPositionXY();
-                Point cursorPoint = new Point(cursorPosition[0], cursorPosition[1]);
                 if (eventType.equals("KeyDown")) {
-                    startSwipe(cursorPoint);
+                    startSwipe();
 //                    DispatchEventHelper.checkAndDispatchEvent(
 //                            this,
 //                            cursorController,
 //                            serviceUiManager,
 //                            BlendshapeEventTriggerConfig.EventType.SWIPE_START);
                 } else if (eventType.equals("KeyUp")) {
-                    stopSwipe(cursorPoint);
+                    stopSwipe();
 //                    DispatchEventHelper.checkAndDispatchEvent(
 //                            this,
 //                            cursorController,
@@ -793,39 +787,38 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Log.i(TAG,"Service connected");
     }
 
-    public void startSwipe(Point startPoint) {
-        currentPoint = startPoint;
+    public void startSwipe() {
+        if (isSwipingNew) {
+            return;
+        }
         isSwipingNew = true;
-        simulateTouch(startPoint, true);
+        simulateTouch(true);
         handler.post(updateGestureRunnable);
     }
 
-    public void updateSwipe(Point newPoint) {
-        currentPoint = newPoint;
-    }
-
-    public void stopSwipe(Point endPoint) {
+    public void stopSwipe() {
         isSwipingNew = false;
-        simulateTouch(endPoint, false);
+        simulateTouch(false);
     }
 
     private Runnable updateGestureRunnable = new Runnable() {
         @Override
         public void run() {
             if (isSwipingNew) {
-                simulateMove(currentPoint);
+                simulateMove();
                 handler.postDelayed(this, GESTURE_DELAY);
             }
         }
     };
 
-    private void simulateTouch(final Point point, final boolean down) {
+    private void simulateTouch(final boolean down) {
         handler.post(new Runnable() {
             @Override
             public void run() {
                 Path path = new Path();
-                path.moveTo(point.x, point.y);
-                lastPoint = point;
+                int[] cursorPosition = cursorController.getCursorPositionXY();
+                path.moveTo(cursorPosition[0], cursorPosition[1]);
+
 
                 GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
                         path, 0, down ? GESTURE_DURATION : 1, down);
@@ -834,20 +827,23 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         .build();
 
                 dispatchGesture(gestureDescription, null, null);
+                lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
             }
         });
     }
 
-    private void simulateMove(final Point point) {
+    private void simulateMove() {
         handler.post(new Runnable() {
             @Override
             public void run() {
+                int[] cursorPosition = cursorController.getCursorPositionXY();
+                if (lastPoint.x == cursorPosition[0] && lastPoint.y == cursorPosition[1]) {
+                    return;
+                }
+
                 Path path = new Path();
                 path.moveTo(lastPoint.x, lastPoint.y);
-                int[] cursorPosition = cursorController.getCursorPositionXY();
-                Point cursorPoint = new Point(cursorPosition[0], cursorPosition[1]);
-                path.lineTo(cursorPoint.x, cursorPoint.y);
-                lastPoint = cursorPoint;
+                path.lineTo(cursorPosition[0], cursorPosition[1]);
 
                 GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
                         path, 0, GESTURE_DURATION, true);
@@ -855,9 +851,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         .addStroke(stroke)
                         .build();
 
-
                 dispatchGesture(gestureDescription, null, null);
-                Log.d("CursorAccessibilityService", "simulateMove: " + lastPoint.x + ", " + lastPoint.y + " -> " + cursorPoint.x + ", " + cursorPoint.y);
+                Log.d("CursorAccessibilityService", "simulateMove: " + lastPoint.x + ", " + lastPoint.y + " -> " + cursorPosition[0] + ", " + cursorPosition[1]);
+                lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
             }
         });
     }
