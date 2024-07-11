@@ -44,12 +44,14 @@ class CursorMovementConfig {
     SMOOTH_BLENDSHAPES,
     HOLD_TIME_MS,
     HOLD_RADIUS,
-    EDGE_HOLD_DURATION
+    EDGE_HOLD_DURATION,
+    HEAD_COORD_SCALE_FACTOR
   }
 
   public enum CursorMovementBooleanConfigType {
     REALTIME_SWIPE,
     DURATION_POP_OUT,
+    DIRECT_MAPPING
   }
 
   private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
@@ -69,6 +71,9 @@ class CursorMovementConfig {
   /** Raw int value, same as the UI's slider. */
   private final Map<CursorMovementConfigType, Integer> rawValueMap;
 
+  /** Raw float value, same as the UI's slider. */
+  private final Map<CursorMovementConfigType, Float> rawFloatValueMap;
+
   /** Raw boolean value, same as the UI's toggle. */
   private final Map<CursorMovementBooleanConfigType, Boolean> rawBooleanValueMap;
 
@@ -79,8 +84,10 @@ class CursorMovementConfig {
     public static final int HOLD_RADIUS = 2;
     public static final boolean DEFAULT_REALTIME_SWIPE = false;
     public static final boolean DEFAULT_DURATION_POP_OUT = true;
+    public static final boolean DEFAULT_DIRECT_MAPPING = false;
     public static final boolean DEFAULT_ENABLE_FEATURE = false;
     public static final int EDGE_HOLD_DURATION = 1000;
+    public static final float HEAD_COORD_SCALE_FACTOR = 1.0f;
 
     private InitialRawValue() {}
   }
@@ -96,6 +103,7 @@ class CursorMovementConfig {
     public static final float HOLD_TIME_MS = 200.f;
     public static final float HOLD_RADIUS = 50;
     public static final float EDGE_HOLD_DURATION = 1.0f;
+    public static final float HEAD_COORD_SCALE_FACTOR = 1.0f;
 
     private RawConfigMultiplier() {}
   }
@@ -125,10 +133,15 @@ class CursorMovementConfig {
     rawValueMap.put(CursorMovementConfigType.HOLD_RADIUS, InitialRawValue.HOLD_RADIUS);
     rawValueMap.put(CursorMovementConfigType.EDGE_HOLD_DURATION, InitialRawValue.EDGE_HOLD_DURATION);
 
+    // Initialize default float values.
+    rawFloatValueMap = new HashMap<>();
+    rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR, InitialRawValue.HEAD_COORD_SCALE_FACTOR);
+
     // Initialize default boolean values.
     rawBooleanValueMap = new HashMap<>();
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.DEFAULT_REALTIME_SWIPE);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DEFAULT_DURATION_POP_OUT);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DIRECT_MAPPING, InitialRawValue.DEFAULT_DIRECT_MAPPING);
 
     // Register the receiver
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -164,6 +177,21 @@ class CursorMovementConfig {
   }
 
   /**
+   * Set config with the raw float value from UI or SharedPreference.
+   *
+   * @param configName Name of the target config such as "HEAD_COORD_SCALE_FACTOR"
+   * @param rawValueFromUi Slider value.
+   */
+  public void setRawFloatValueFromUi(String configName, float rawValueFromUi) {
+    try {
+      CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
+      rawFloatValueMap.put(targetConfig, rawValueFromUi);
+    } catch (IllegalArgumentException e) {
+      Log.w(TAG, configName + " does not exist in CursorMovementConfigType enum.");
+    }
+  }
+
+  /**
    * Set boolean config with the raw value from UI or SharedPreference.
    *
    * @param configName Name of the target config such as "ENABLE_FEATURE_X" or "ENABLE_FEATURE_Y"
@@ -185,40 +213,45 @@ class CursorMovementConfig {
    * @return Action value of cursor.
    */
   public float get(CursorMovementConfigType targetConfig) {
-    int rawValue = (rawValueMap.get(targetConfig) != null) ? rawValueMap.get(targetConfig) : 0;
-    float multiplier;
-    switch (targetConfig) {
-      case UP_SPEED:
-        multiplier = RawConfigMultiplier.UP_SPEED;
-        break;
-      case DOWN_SPEED:
-        multiplier = RawConfigMultiplier.DOWN_SPEED;
-        break;
-      case RIGHT_SPEED:
-        multiplier = RawConfigMultiplier.RIGHT_SPEED;
-        break;
-      case LEFT_SPEED:
-        multiplier = RawConfigMultiplier.LEFT_SPEED;
-        break;
-      case SMOOTH_POINTER:
-        multiplier = RawConfigMultiplier.SMOOTH_POINTER;
-        break;
-      case SMOOTH_BLENDSHAPES:
-        multiplier = RawConfigMultiplier.SMOOTH_BLENDSHAPES;
-        break;
-      case HOLD_TIME_MS:
-        multiplier = RawConfigMultiplier.HOLD_TIME_MS;
-        break;
-      case HOLD_RADIUS:
-        multiplier = RawConfigMultiplier.HOLD_RADIUS;
-        break;
-      case EDGE_HOLD_DURATION:
-        multiplier = RawConfigMultiplier.EDGE_HOLD_DURATION;
-        break;
-      default:
-        multiplier = 0.f;
+    if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR) {
+      float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : 1.0f;
+      return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR;
+    } else {
+      int rawValue = (rawValueMap.get(targetConfig) != null) ? rawValueMap.get(targetConfig) : 0;
+      float multiplier;
+      switch (targetConfig) {
+        case UP_SPEED:
+          multiplier = RawConfigMultiplier.UP_SPEED;
+          break;
+        case DOWN_SPEED:
+          multiplier = RawConfigMultiplier.DOWN_SPEED;
+          break;
+        case RIGHT_SPEED:
+          multiplier = RawConfigMultiplier.RIGHT_SPEED;
+          break;
+        case LEFT_SPEED:
+          multiplier = RawConfigMultiplier.LEFT_SPEED;
+          break;
+        case SMOOTH_POINTER:
+          multiplier = RawConfigMultiplier.SMOOTH_POINTER;
+          break;
+        case SMOOTH_BLENDSHAPES:
+          multiplier = RawConfigMultiplier.SMOOTH_BLENDSHAPES;
+          break;
+        case HOLD_TIME_MS:
+          multiplier = RawConfigMultiplier.HOLD_TIME_MS;
+          break;
+        case HOLD_RADIUS:
+          multiplier = RawConfigMultiplier.HOLD_RADIUS;
+          break;
+        case EDGE_HOLD_DURATION:
+          multiplier = RawConfigMultiplier.EDGE_HOLD_DURATION;
+          break;
+        default:
+          multiplier = 0.f;
+      }
+      return (float) rawValue * multiplier;
     }
-    return (float) rawValue * multiplier;
   }
 
   /**
@@ -255,13 +288,24 @@ class CursorMovementConfig {
       return;
     }
 
-    int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);
-    if (configValueInUi == PREFERENCE_INT_NOT_FOUND) {
-      Log.i(TAG, "Key " + configName + " not found in SharedPreference, keep using default value.");
-      return;
+    try {
+      CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
+      if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else {
+        int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);
+        if (configValueInUi == PREFERENCE_INT_NOT_FOUND) {
+          Log.i(TAG, "Key " + configName + " not found in SharedPreference, keep using default value.");
+          return;
+        }
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw value to: " + configValueInUi);
+      }
+    } catch (IllegalArgumentException e) {
+      Log.w(TAG, configName + " does not exist in CursorMovementConfigType enum.");
     }
-    setRawValueFromUi(configName, configValueInUi);
-    Log.i(TAG, "Set raw value to: " + configValueInUi);
   }
 
   /**
@@ -292,6 +336,9 @@ class CursorMovementConfig {
         break;
       case DURATION_POP_OUT:
         defaultValue = InitialRawValue.DEFAULT_DURATION_POP_OUT;
+        break;
+      case DIRECT_MAPPING:
+        defaultValue = InitialRawValue.DEFAULT_DIRECT_MAPPING;
         break;
       default:
         defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;

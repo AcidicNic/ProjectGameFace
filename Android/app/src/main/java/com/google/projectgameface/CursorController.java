@@ -124,9 +124,8 @@ public class CursorController {
     private static final int TRAIL_MAX_POINTS = 100;
     private List<float[]> cursorTrail = new LinkedList<>();
     private long edgeHoldStartTime = 0;
-    private boolean realtimeSwype = true;
-    private List<Point> swipePathPoints = new ArrayList<>(); // For tracking points in realtimeSwype
-
+    private boolean isRealtimeSwipe = true;
+    private List<Point> swipePathPoints = new ArrayList<>();
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
 
@@ -182,18 +181,16 @@ public class CursorController {
         float downSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) * speedScale) + speedScale);
         float upSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) + speedScale);
 
-//        Log.d(TAG, "rightSpeed: " + rightSpeed + " leftSpeed: " + leftSpeed + " downSpeed: " + downSpeed + " upSpeed: " + upSpeed);
-
         float multiplierX =
                 (velX > 0)
-                    ? rightSpeed
-                    : leftSpeed;
+                        ? rightSpeed
+                        : leftSpeed;
 
         // Speed multiplier in Y axis.
         float multiplierY =
-            (velY > 0)
-                ? downSpeed
-                : upSpeed;
+                (velY > 0)
+                        ? downSpeed
+                        : upSpeed;
 
         return new float[] {velX * multiplierX, velY * multiplierY};
     }
@@ -237,7 +234,7 @@ public class CursorController {
     public BlendshapeEventTriggerConfig.EventType createCursorEvent(float[] blendshapes) {
         // Loop over registered event-blendshape-threshold pairs.
         for (Map.Entry<BlendshapeEventTriggerConfig.EventType, BlendshapeEventTriggerConfig.BlendshapeAndThreshold> entry :
-            blendshapeEventTriggerConfig.getAllConfig().entrySet()) {
+                blendshapeEventTriggerConfig.getAllConfig().entrySet()) {
             BlendshapeEventTriggerConfig.EventType eventType = entry.getKey();
             BlendshapeEventTriggerConfig.BlendshapeAndThreshold blendshapeAndThreshold = entry.getValue();
 
@@ -255,14 +252,14 @@ public class CursorController {
                 blendshapeEventTriggeredTracker.put(eventType, true);
                 if (eventType == BlendshapeEventTriggerConfig.EventType.SHOW_APPS) {
                     Log.i(
-                        TAG,
-                        eventType
-                            + " "
-                            + blendshapeAndThreshold.shape()
-                            + " "
-                            + score
-                            + " "
-                            + blendshapeAndThreshold.threshold());
+                            TAG,
+                            eventType
+                                    + " "
+                                    + blendshapeAndThreshold.shape()
+                                    + " "
+                                    + score
+                                    + " "
+                                    + blendshapeAndThreshold.threshold());
                 }
 
                 // Return the correspond event (te be trigger in Accessibility service).
@@ -343,59 +340,51 @@ public class CursorController {
         isDragging = false;
     }
 
-
-
-    private double[] getTeleportLocation()
-    {
+    private double[] getTeleportLocation() {
         double teleportDegrees;
 
         double screenCenterX = (double) this.screenWidth / 2;
-        double screenCenterY = (double) this.screenHeight /2;
+        double screenCenterY = (double) this.screenHeight / 2;
 
         if (tempBoundsSet && !isCursorOutsideBounds) {
             screenCenterX = (tempMinX + tempMaxX) / 2;
             screenCenterY = (tempMinY + tempMaxY) / 2;
         }
 
-
-
         double distanceFromCenter = euclideanDistance(
-            screenCenterX,
-            screenCenterY,
-            teleportShadowX,
-            teleportShadowY);
+                screenCenterX,
+                screenCenterY,
+                teleportShadowX,
+                teleportShadowY);
 
         // Reject, go to screen center.
-        if (distanceFromCenter < TELEPORT_TRIGGER_THRESHOLD)
-        {
+        if (distanceFromCenter < TELEPORT_TRIGGER_THRESHOLD) {
             return new double[]{screenCenterX, screenCenterY};
         }
 
         // Calculate teleport location.
         double angle1 = Math.atan2(0, 1);
         double angle2 = Math.atan2(
-            teleportShadowY - screenCenterY,
-            teleportShadowX - screenCenterX
+                teleportShadowY - screenCenterY,
+                teleportShadowX - screenCenterX
         );
 
-        teleportDegrees =  Math.toDegrees(angle1 - angle2);
+        teleportDegrees = Math.toDegrees(angle1 - angle2);
 
         teleportDegrees = (teleportDegrees + 360) % 360;
         double segmentSize = 360.0 / 8;
-        int segmentIndex = (int) Math.floor((teleportDegrees + segmentSize / 2 )/ segmentSize);
-
+        int segmentIndex = (int) Math.floor((teleportDegrees + segmentSize / 2) / segmentSize);
 
         // Teleport edges.
         int edgeMinX = TELEPORT_MARGIN_LEFT;
         int edgeCenterX = (int) screenCenterX;
         int edgeMaxX = this.screenWidth - TELEPORT_MARGIN_RIGHT;
 
-
         int edgeMinY = TELEPORT_MARGIN_TOP;
         int edgeCenterY = (int) screenCenterY;
         int edgeMaxY = this.screenHeight - TELEPORT_MARGIN_BOTTOM;
 
-        switch (segmentIndex){
+        switch (segmentIndex) {
             case 0:
             case 8:
                 // East.
@@ -424,14 +413,13 @@ public class CursorController {
                 return new double[]{edgeCenterX, edgeMaxY};
             default:
                 // Should never be reached.
-                return new double[]{edgeCenterX,edgeCenterY};
+                return new double[]{edgeCenterX, edgeCenterY};
 
         }
     }
 
 
-    private static double euclideanDistance(double vecAX, double vecAY, double vecBX, double vecBY)
-    {
+    private static double euclideanDistance(double vecAX, double vecAY, double vecBX, double vecBY) {
         double dx = vecBX - vecAX;
         double dy = vecBY - vecAY;
 
@@ -441,6 +429,34 @@ public class CursorController {
         return Math.sqrt(dxSquared + dySquared);
     }
 
+    private float maxHeadCoordX = -1;
+    private float minHeadCoordY = -1;
+    private float maxHeadCoordY = -1;
+    private float minHeadCoordX = -1;
+
+    public void resetHeadCoord() {
+        maxHeadCoordX = -1;
+        minHeadCoordY = -1;
+        maxHeadCoordY = -1;
+        minHeadCoordX = -1;
+    }
+
+    public void updateHeadCoordMinMax(float[] headCoordXY) {
+        if (maxHeadCoordX == -1 || headCoordXY[0] > maxHeadCoordX) {
+            maxHeadCoordX = headCoordXY[0];
+        }
+        if (minHeadCoordX == -1 || headCoordXY[0] < minHeadCoordX) {
+            minHeadCoordX = headCoordXY[0];
+        }
+        if (maxHeadCoordY == -1 || headCoordXY[1] > maxHeadCoordY) {
+            maxHeadCoordY = headCoordXY[1];
+        }
+        if (minHeadCoordY == -1 || headCoordXY[1] < minHeadCoordY) {
+            minHeadCoordY = headCoordXY[1];
+            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
+        }
+    }
 
     /**
      * Update internal cursor position.
@@ -453,22 +469,70 @@ public class CursorController {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
 
-        // How far we should move this frame.
-        float[] offsetXY = this.getCursorTranslateXY(headCoordXY, gapFrames);
+        updateHeadCoordMinMax(headCoordXY);
 
+        if (isDirectMappingEnabled()) {
+            // Normalize head coordinates
+            float normalizedX = (headCoordXY[0] - minHeadCoordX) / (maxHeadCoordX - minHeadCoordX);
+            float normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
+
+            float headCoordScaleFactor = getHeadCoordScaleFactor();
+
+            // Scale to screen dimensions with scaling factor
+            float scaledScreenWidth = screenWidth * headCoordScaleFactor;
+            float scaledScreenHeight = screenHeight * headCoordScaleFactor;
+
+            float offsetX = (scaledScreenWidth - screenWidth) / 2;
+            float offsetY = (scaledScreenHeight - screenHeight) / 2;
+
+            cursorPositionX = (normalizedX * scaledScreenWidth) - offsetX;
+            cursorPositionY = (normalizedY * scaledScreenHeight) - offsetY;
+
+            // Handle bounding logic
+            if (tempBoundsSet) {
+                handleBoundingLogic();
+            }
+
+            // Clamp cursor position to screen bounds
+            cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
+            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        } else {
+            // How far we should move this frame.
+            float[] offsetXY = this.getCursorTranslateXY(headCoordXY, gapFrames);
+
+            // Update cursor position with clamping to screen bounds
+            cursorPositionX += offsetXY[0];
+            cursorPositionY += offsetXY[1];
+
+            // Handle bounding logic
+            if (tempBoundsSet) {
+                handleBoundingLogic();
+            }
+
+            // Clamp cursor position to screen bounds
+            cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
+            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        }
+
+        if (isRealtimeSwipe) {
+            updateRealtimeSwipe((float) cursorPositionX, (float) cursorPositionY);
+        }
+        if (isSwiping) {
+            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
+        }
+        updateTrail((float) cursorPositionX, (float) cursorPositionY);
+    }
+
+    private void handleBoundingLogic() {
         long currentTime = System.currentTimeMillis();
         boolean durationPopOut = isDurationPopOutEnabled();
 
-        // Update cursor position with clamping to screen bounds
-        cursorPositionX += offsetXY[0];
-        cursorPositionY += offsetXY[1];
+        boolean touchingLeftEdge = cursorPositionX <= tempMinX;
+        boolean touchingRightEdge = cursorPositionX >= tempMaxX;
+        boolean touchingTopEdge = cursorPositionY <= tempMinY;
+        boolean touchingBottomEdge = cursorPositionY >= tempMaxY;
 
-        if (tempBoundsSet && !isCursorOutsideBounds) {
-            boolean touchingLeftEdge = cursorPositionX <= tempMinX;
-            boolean touchingRightEdge = cursorPositionX >= tempMaxX;
-            boolean touchingTopEdge = cursorPositionY <= tempMinY;
-            boolean touchingBottomEdge = cursorPositionY >= tempMaxY;
-
+        if (!isCursorOutsideBounds) {
             if (durationPopOut) {
                 if ((touchingLeftEdge || touchingRightEdge || touchingTopEdge || touchingBottomEdge) &&
                         (cursorPositionX > 0 && cursorPositionX < screenWidth && cursorPositionY > 0 && cursorPositionY < screenHeight)) {
@@ -522,7 +586,7 @@ public class CursorController {
                     }
                 }
             }
-        } else if (tempBoundsSet && isCursorOutsideBounds) {
+        } else {
             if (cursorPositionX >= tempMinX && cursorPositionX <= tempMaxX && cursorPositionY >= tempMinY && cursorPositionY <= tempMaxY) {
                 isCursorOutsideBounds = false;
             }
@@ -531,25 +595,12 @@ public class CursorController {
         if (isCursorBoosted) {
             long elapsedTime = currentTime - cursorBoostStartTime;
             if (elapsedTime < BOOST_DURATION) {
-                cursorPositionX += offsetXY[0] * BOOST_FACTOR;
-                cursorPositionY += offsetXY[1] * BOOST_FACTOR;
+                cursorPositionX += velX * BOOST_FACTOR;
+                cursorPositionY += velY * BOOST_FACTOR;
             } else {
                 isCursorBoosted = false;
             }
         }
-
-        if (!tempBoundsSet || !isCursorOutsideBounds) {
-            cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
-            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
-        }
-
-        if (realtimeSwype) {
-            updateRealtimeSwipe((float) cursorPositionX, (float) cursorPositionY);
-        }
-        if (isSwiping) {
-            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
-        }
-        updateTrail((float) cursorPositionX, (float) cursorPositionY);
     }
 
     public void setTemporaryBounds(Rect bounds) {
@@ -558,9 +609,11 @@ public class CursorController {
         this.tempMaxX = bounds.right;
         this.tempMaxY = bounds.bottom;
         this.tempBoundsSet = true;
-        resetCursorToCenter(true);
+//        resetCursorToCenter(true);
         Log.d(TAG, "Set temporary bounds: " + bounds);
-    }private float getDynamicPopOutThresholdDistance() {
+    }
+
+    private float getDynamicPopOutThresholdDistance() {
         return Math.min(screenHeight, screenWidth) * 0.18f; // Adjust the factor as needed
     }
 
@@ -594,13 +647,11 @@ public class CursorController {
         this.tempBoundsSet = false;
     }
 
-    public int[] getCursorPositionXY()
-    {
-        return new int[]{(int) cursorPositionX, (int)cursorPositionY};
+    public int[] getCursorPositionXY() {
+        return new int[]{(int) cursorPositionX, (int) cursorPositionY};
     }
 
-    public void resetCursorToCenter(boolean bound)
-    {
+    public void resetCursorToCenter(boolean bound) {
         if (bound || tempBoundsSet && !isCursorOutsideBounds) {
             cursorPositionX = (double) (tempMinX + tempMaxX) / 2;
             cursorPositionY = (double) (tempMinY + tempMaxY) / 2;
@@ -608,7 +659,6 @@ public class CursorController {
             cursorPositionX = (double) this.screenWidth / 2;
             cursorPositionY = (double) this.screenHeight / 2;
         }
-
     }
 
     public void startSwipe(float x, float y) {
@@ -616,10 +666,6 @@ public class CursorController {
         isSwiping = true;
         swipePath = new Path();
         swipePath.moveTo(x, y);
-        if (realtimeSwype) {
-            swipePathPoints.clear();
-            swipePathPoints.add(new Point((int) x, (int) y));
-        }
     }
 
     public void updateSwipe(float x, float y) {
@@ -631,9 +677,6 @@ public class CursorController {
     public void stopSwipe() {
         cursorTrail.clear();
         isSwiping = false;
-        if (realtimeSwype) {
-            clearSwipePathPoints();
-        }
     }
 
     public Path getSwipePath() {
@@ -659,29 +702,23 @@ public class CursorController {
         return cursorTrail;
     }
 
-    public void setRealtimeSwype(boolean enabled) {
-        this.realtimeSwype = enabled;
-    }
-
-    public List<Point> getSwipePathPoints() {
-        return new ArrayList<>(swipePathPoints);
-    }
-
     public void clearSwipePathPoints() {
         swipePathPoints.clear();
     }
-    public void startRealtimeSwipe(float x, float y) {
+
+    public void startRealtimeSwipe() {
         swipePathPoints.clear();
-        swipePathPoints.add(new Point((int) x, (int) y));
+        isRealtimeSwipe = true;
+    }
+
+    public void stopRealtimeSwipe() {
+        isRealtimeSwipe = false;
     }
 
     public void updateRealtimeSwipe(float x, float y) {
         swipePathPoints.add(new Point((int) x, (int) y));
     }
 
-    public void stopRealtimeSwipe() {
-        swipePathPoints.clear();
-    }
 
     public List<Point> getRealtimeSwipePathPoints() {
         return new ArrayList<>(swipePathPoints);
@@ -694,4 +731,13 @@ public class CursorController {
     public int getHoldDuration() {
         return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION);
     }
+
+    public boolean isDirectMappingEnabled() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DIRECT_MAPPING);
+    }
+
+    public float getHeadCoordScaleFactor() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR);
+    }
+
 }
