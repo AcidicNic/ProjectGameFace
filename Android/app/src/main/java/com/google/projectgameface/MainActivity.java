@@ -100,8 +100,8 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        findViewById(R.id.bindingRow).setOnClickListener(v -> {
-            Intent intent = new Intent(this, CursorBinding.class);
+        findViewById(R.id.faceSwypeRow).setOnClickListener(v -> {
+            Intent intent = new Intent(this, FaceSwypeSettings.class);
             startActivity(intent);
         });
 
@@ -110,11 +110,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, TutorialActivity.class);
             startActivity(intent);
         });
-
-//        findViewById(R.id.calibrationRow).setOnClickListener(v -> {
-//            Intent intent = new Intent(this, CalibrationActivity.class);
-//            startActivity(intent);
-//        });
 
 
         Switch gameFaceToggleSwitch = findViewById(R.id.gameFaceToggleSwitch);
@@ -175,7 +170,6 @@ public class MainActivity extends AppCompatActivity {
 //                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, 20);
 //            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_RIGHT,
 //                    BlendshapeEventTriggerConfig.EventType.CURSOR_RESET, 20);
-            preferences.edit().putBoolean(KEY_FIRST_RUN, false).putBoolean("realtimeSwipe", true).apply();
 
             // Goto tutorial page.
             Intent intent = new Intent(this, TutorialActivity.class);

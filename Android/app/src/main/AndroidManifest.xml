@@ -65,6 +65,11 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
+            android:name=".FaceSwypeSettings"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
             android:name=".GrantPermissionActivity"
             android:exported="false" />
 

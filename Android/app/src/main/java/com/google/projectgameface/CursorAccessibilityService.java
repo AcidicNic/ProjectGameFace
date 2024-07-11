@@ -41,10 +41,8 @@ import android.util.Log;
 import android.util.Size;
 import android.view.InputDevice;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
 import androidx.annotation.NonNull;
@@ -98,18 +96,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver changeServiceStateReceiver;
     private BroadcastReceiver requestServiceStateReceiver;
     private BroadcastReceiver loadSharedConfigBasicReceiver;
-    private BroadcastReceiver loadFaceSwypeConfigReceiver;
     private BroadcastReceiver loadSharedConfigGestureReceiver;
     private BroadcastReceiver enableScorePreviewReceiver;
     private Instrumentation instrumentation;
     private Handler handler;
     private HandlerThread handlerThread;
-    private boolean isSwipingNew = false;
+    private boolean isRealTimeSwiping = false;
     private Point currentPoint;
     private Point lastPoint;
-    private static final long GESTURE_DURATION = 100;
-    private static final long GESTURE_DELAY = 100;
-    public boolean realtimeSwype;
+    private static final long GESTURE_DURATION = 200;
+    private static final long GESTURE_DELAY = 200;
+    public boolean durationPopOut;
     private Rect keyboardBounds = new Rect();
     private boolean isKeyboardOpen = false;
 
@@ -136,26 +133,18 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     @SuppressLint({"UnspecifiedRegisterReceiverFlag", "ObsoleteSdkInt"})
     private void defineAndRegisterBroadcastMessageReceivers() {
 
-        // Initialize the broadcast receiver
-        loadFaceSwypeConfigReceiver =
-            new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    String configName = intent.getStringExtra("configName");
-                    if (configName.equals("realtimeSwipe")) {
-                        realtimeSwype = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE).getBoolean("realtimeSwipe", true);
-                    }
-                }
-            };
-
         loadSharedConfigBasicReceiver =
-            new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    String configName = intent.getStringExtra("configName");
-                    cursorController.cursorMovementConfig.updateOneConfigFromSharedPreference(configName);
-                }
-            };
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        String configName = intent.getStringExtra("configName");
+                        if (CursorMovementConfig.isBooleanConfig(configName)) {
+                            cursorController.cursorMovementConfig.updateOneBooleanConfigFromSharedPreference(configName);
+                        } else {
+                            cursorController.cursorMovementConfig.updateOneConfigFromSharedPreference(configName);
+                        }
+                    }
+                };
 
         loadSharedConfigGestureReceiver =
             new BroadcastReceiver() {
@@ -216,10 +205,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             registerReceiver(
                 requestServiceStateReceiver,
                 new IntentFilter("REQUEST_SERVICE_STATE"),
-                RECEIVER_EXPORTED);
-            registerReceiver(
-                loadFaceSwypeConfigReceiver,
-                new IntentFilter("LOAD_FACESWYPE_CONFIG"),
                 RECEIVER_EXPORTED);
             registerReceiver(
                 loadSharedConfigBasicReceiver,
@@ -306,8 +291,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         // Initialize the Handler
         tickFunctionHandler = new Handler();
         tickFunctionHandler.postDelayed(tick, 0);
-
-        realtimeSwype = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE).getBoolean("realtimeSwipe", true);
+    }
+    public boolean isRealtimeSwipeEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE);
     }
 
     /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
@@ -797,10 +783,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 }
                 return true;
             case KeyEvent.KEYCODE_ENTER:
-//                Log.d(TAG, eventType + ": ENTER");
                 if (eventType.equals("KeyDown")) {
-                    if (realtimeSwype) {
-                        startSwipe();
+                    if (isRealtimeSwipeEnabled()) {
+                        startRealtimeSwipe();
                     } else {
                         DispatchEventHelper.checkAndDispatchEvent(
                                 this,
@@ -809,8 +794,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 BlendshapeEventTriggerConfig.EventType.SWIPE_START);
                     }
                 } else if (eventType.equals("KeyUp")) {
-                    if (realtimeSwype) {
-                        stopSwipe();
+                    if (isRealtimeSwipeEnabled()) {
+                        stopRealtimeSwipe();
                     } else {
                         DispatchEventHelper.checkAndDispatchEvent(
                                 this,
@@ -854,57 +839,32 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Log.i(TAG,"Service connected");
     }
 
-    public void startSwipe() {
-        if (isSwipingNew) {
+    public void startRealtimeSwipe() {
+        if (isRealTimeSwiping) {
             return;
         }
-        isSwipingNew = true;
+        isRealTimeSwiping = true;
+        cursorController.clearSwipePathPoints();  // Clear previous path
         simulateTouch(true);
         handler.post(updateGestureRunnable);
     }
 
-    public void stopSwipe() {
-        isSwipingNew = false;
+    public void stopRealtimeSwipe() {
+        isRealTimeSwiping = false;
         simulateTouch(false);
+        cursorController.clearSwipePathPoints();  // Ensure path is cleared after stopping
     }
 
     private Runnable updateGestureRunnable = new Runnable() {
         @Override
         public void run() {
-            if (isSwipingNew) {
+            if (isRealTimeSwiping) {
                 simulateMove();
                 handler.postDelayed(this, GESTURE_DELAY);
+//                cursorController.clearSwipePathPoints();
             }
         }
     };
-
-    private void simulateTouch(final boolean down) {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                Path path = new Path();
-                int[] cursorPosition = cursorController.getCursorPositionXY();
-
-                if (down) {
-                    path.moveTo(cursorPosition[0], cursorPosition[1]);
-                } else {
-                    path.moveTo(lastPoint.x, lastPoint.y);
-                    path.lineTo(cursorPosition[0], cursorPosition[1]);
-                }
-
-                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-                        path, 0, down ? GESTURE_DURATION : 1, down);
-
-
-                GestureDescription gestureDescription = new GestureDescription.Builder()
-                        .addStroke(stroke)
-                        .build();
-
-                dispatchGesture(gestureDescription, null, null);
-                lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-            }
-        });
-    }
 
     private void simulateMove() {
         handler.post(new Runnable() {
@@ -915,9 +875,18 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     return;
                 }
 
+                cursorController.updateRealtimeSwipe(cursorPosition[0], cursorPosition[1]);
+
                 Path path = new Path();
-                path.moveTo(lastPoint.x, lastPoint.y);
-                path.lineTo(cursorPosition[0], cursorPosition[1]);
+                List<Point> points = cursorController.getRealtimeSwipePathPoints();
+                if (!points.isEmpty()) {
+                    Point start = points.get(0);
+                    path.moveTo(start.x, start.y);
+                    for (Point point : points) {
+                        Log.d("CursorAccessibilityService", "simulateMove: " + point.x + ", " + point.y);
+                        path.lineTo(point.x, point.y);
+                    }
+                }
 
                 GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
                         path, 0, GESTURE_DURATION, false);
@@ -930,6 +899,42 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
             }
         });
+    }
 
+    private void simulateTouch(final boolean down) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Path path = new Path();
+                int[] cursorPosition = cursorController.getCursorPositionXY();
+
+                if (down) {
+                    cursorController.startRealtimeSwipe(cursorPosition[0], cursorPosition[1]);
+                    path.moveTo(cursorPosition[0], cursorPosition[1]);
+                } else {
+                    List<Point> points = cursorController.getRealtimeSwipePathPoints();
+                    if (!points.isEmpty()) {
+                        Point start = points.get(0);
+                        path.moveTo(start.x, start.y);
+                        for (Point point : points) {
+                            path.lineTo(point.x, point.y);
+                        }
+                    } else {
+                        path.moveTo(lastPoint.x, lastPoint.y);
+                        path.lineTo(cursorPosition[0], cursorPosition[1]);
+                    }
+                }
+
+                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
+                        path, 0, down ? GESTURE_DURATION : 1, down);
+
+                GestureDescription gestureDescription = new GestureDescription.Builder()
+                        .addStroke(stroke)
+                        .build();
+
+                dispatchGesture(gestureDescription, null, null);
+                lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
+            }
+        });
     }
 }

@@ -19,8 +19,8 @@ package com.google.projectgameface;
 
 import static androidx.core.math.MathUtils.clamp;
 
-import android.accessibilityservice.GestureDescription;
 import android.content.Context;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.util.Log;
 
@@ -118,6 +118,10 @@ public class CursorController {
     private Path swipePath;
     private static final int TRAIL_MAX_POINTS = 100;
     private List<float[]> cursorTrail = new LinkedList<>();
+    private long edgeHoldStartTime = 0;
+    private boolean realtimeSwype = true;
+    private List<Point> swipePathPoints = new ArrayList<>(); // For tracking points in realtimeSwype
+
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -418,87 +422,77 @@ public class CursorController {
      * @param screenWidth Screen size for prevent cursor move out of of the screen.
      * @param screenHeight Screen size for prevent cursor move out of of the screen.
      */
-    public void updateInternalCursorPosition(float[] headCoordXY,int gapFrames,
-        int screenWidth, int screenHeight
-    ){
-
+    public void updateInternalCursorPosition(float[] headCoordXY, int gapFrames, int screenWidth, int screenHeight) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
 
         // How far we should move this frame.
-        float[] offsetXY =  this.getCursorTranslateXY(headCoordXY, gapFrames);
+        float[] offsetXY = this.getCursorTranslateXY(headCoordXY, gapFrames);
 
+        long currentTime = System.currentTimeMillis();
+        boolean durationPopOut = isDurationPopOutEnabled();
 
-        // In teleport mode, apply offset to shadow cursor
-        // but teleport the real cursor.
-//        if (isTeleportMode) {
-//            Log.d(TAG, "Teleport mode");
-//            teleportShadowX += offsetXY[0];
-//            teleportShadowY += offsetXY[1];
-//
-//            // Clamp x, y to screen.
-//            teleportShadowX = clamp(teleportShadowX, 0, screenWidth);
-//            teleportShadowY = clamp(teleportShadowY, 0, screenHeight);
-//
-//            if (tempBoundsSet && !isCursorOutsideBounds) {
-//                teleportShadowX = clamp(teleportShadowX, tempMinX, tempMaxX);
-//                teleportShadowY = clamp(teleportShadowY, tempMinY, tempMaxY);
-//            }
-//
-//            double[] teleportLocation = getTeleportLocation();
-//            cursorPositionX = cursorPositionX * (1 - TELEPORT_LERP_SPEED) + teleportLocation[0] * TELEPORT_LERP_SPEED;
-//            cursorPositionY = cursorPositionY * (1 - TELEPORT_LERP_SPEED) + teleportLocation[1] * TELEPORT_LERP_SPEED;
-//
-//            return;
-//        }
-//        Log.d(TAG, "***\nVelocity: (" + Math.abs(velocityX) + ", " + Math.abs(velocityY) + ") | Threshold: " + Math.abs(dynamicVelocityThreshold));
-//        Log.d(TAG, "Distance: (" + Math.abs(distanceX) + ", " + Math.abs(distanceY) + ") | " + "Threshold: " + Math.abs(dynamicPopOutThresholdDistance));
-
+        // Update cursor position with clamping to screen bounds
         cursorPositionX += offsetXY[0];
         cursorPositionY += offsetXY[1];
 
-        long currentTime = System.currentTimeMillis();
-
-        float dynamicVelocityThreshold = getDynamicVelocityThreshold(velX, velY);
-
         if (tempBoundsSet && !isCursorOutsideBounds) {
-            boolean movingLeft = velX < 0;
-            boolean movingRight = velX > 0;
-            boolean movingUp = velY < 0;
-            boolean movingDown = velY > 0;
+            boolean touchingLeftEdge = cursorPositionX <= tempMinX;
+            boolean touchingRightEdge = cursorPositionX >= tempMaxX;
+            boolean touchingTopEdge = cursorPositionY <= tempMinY;
+            boolean touchingBottomEdge = cursorPositionY >= tempMaxY;
 
-            float dynamicPopOutThresholdDistanceX = Float.MAX_VALUE;
-            float dynamicPopOutThresholdDistanceY = Float.MAX_VALUE;
+            if (durationPopOut) {
+                if ((touchingLeftEdge || touchingRightEdge || touchingTopEdge || touchingBottomEdge) &&
+                        (cursorPositionX > 0 && cursorPositionX < screenWidth && cursorPositionY > 0 && cursorPositionY < screenHeight)) {
 
-            if (movingLeft || movingRight) {
-                dynamicPopOutThresholdDistanceX = getDynamicPopOutThresholdDistance(cursorPositionX, tempMinX, tempMaxX, screenWidth, movingLeft);
-            }
-            if (movingUp || movingDown) {
-                dynamicPopOutThresholdDistanceY = getDynamicPopOutThresholdDistance(cursorPositionY, tempMinY, tempMaxY, screenHeight, movingUp);
-            }
+                    if (edgeHoldStartTime == 0) {
+                        edgeHoldStartTime = currentTime;
+                    }
 
-            if ((cursorPositionX < tempMinX || cursorPositionX > tempMaxX || cursorPositionY < tempMinY || cursorPositionY > tempMaxY)) {
-                if (currentTime - lastBoundaryHitTime > boundaryHitCooldown) {
-                    float distanceX = (float) Math.abs(cursorPositionX - (cursorPositionX < tempMinX ? tempMinX : tempMaxX));
-                    float distanceY = (float) Math.abs(cursorPositionY - (cursorPositionY < tempMinY ? tempMinY : tempMaxY));
-                    float velocityX = Math.abs(velX);
-                    float velocityY = Math.abs(velY);
-
-                    Log.d(TAG, "***\nVelocity: (" + Math.floor(velocityX) + ", " + Math.floor(velocityY) + ") | Threshold: " + Math.floor(dynamicVelocityThreshold));
-                    Log.d(TAG, "Distance: (" + Math.floor(distanceX) + ", " + Math.floor(distanceY) + ") | " + "Threshold: (" + Math.floor(dynamicPopOutThresholdDistanceX) + ", " + Math.floor(dynamicPopOutThresholdDistanceY) + ")");
-                    if ((distanceX > dynamicPopOutThresholdDistanceX && velocityX > dynamicVelocityThreshold) ||
-                            (distanceY > dynamicPopOutThresholdDistanceY && velocityY > dynamicVelocityThreshold)) {
+                    if (currentTime - edgeHoldStartTime > getHoldDuration()) {
+                        Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
                         isCursorOutsideBounds = true;
                         isCursorBoosted = true;
                         cursorBoostStartTime = currentTime;
-                        lastBoundaryHitTime = currentTime;
+                        edgeHoldStartTime = 0;
                     } else {
+                        // Clamp cursor to bounds while holding against the edge
                         cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
                         cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
                     }
                 } else {
+                    edgeHoldStartTime = 0;
+                    // Clamp cursor to bounds
                     cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
                     cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
+                }
+            } else {
+                if ((cursorPositionX < tempMinX || cursorPositionX > tempMaxX || cursorPositionY < tempMinY || cursorPositionY > tempMaxY)) {
+                    if (currentTime - lastBoundaryHitTime > boundaryHitCooldown) {
+                        float distanceX = (float) Math.abs(cursorPositionX - (cursorPositionX < tempMinX ? tempMinX : tempMaxX));
+                        float distanceY = (float) Math.abs(cursorPositionY - (cursorPositionY < tempMinY ? tempMinY : tempMaxY));
+                        float velocityX = Math.abs(velX);
+                        float velocityY = Math.abs(velY);
+
+                        float dynamicVelocityThreshold = getDynamicVelocityThreshold(velX, velY);
+                        float dynamicPopOutThresholdDistanceX = getDynamicPopOutThresholdDistance(cursorPositionX, tempMinX, tempMaxX, screenWidth, velX < 0);
+                        float dynamicPopOutThresholdDistanceY = getDynamicPopOutThresholdDistance(cursorPositionY, tempMinY, tempMaxY, screenHeight, velY < 0);
+
+                        if ((distanceX > dynamicPopOutThresholdDistanceX && velocityX > dynamicVelocityThreshold) ||
+                                (distanceY > dynamicPopOutThresholdDistanceY && velocityY > dynamicVelocityThreshold)) {
+                            isCursorOutsideBounds = true;
+                            isCursorBoosted = true;
+                            cursorBoostStartTime = currentTime;
+                            lastBoundaryHitTime = currentTime;
+                        } else {
+                            cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
+                            cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
+                        }
+                    } else {
+                        cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
+                        cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
+                    }
                 }
             }
         } else if (tempBoundsSet && isCursorOutsideBounds) {
@@ -517,9 +511,14 @@ public class CursorController {
             }
         }
 
-        cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
-        cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        if (!tempBoundsSet || !isCursorOutsideBounds) {
+            cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
+            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        }
 
+        if (realtimeSwype) {
+            updateRealtimeSwipe((float) cursorPositionX, (float) cursorPositionY);
+        }
         if (isSwiping) {
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
         }
@@ -557,15 +556,7 @@ public class CursorController {
         float downSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) * speedScale) + speedScale);
         float upSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) + speedScale);
 
-        if (velX > 0) {
-            return rightSpeed;
-        } else if (velX < 0) {
-            return leftSpeed;
-        } else if (velY > 0) {
-            return downSpeed;
-        } else {
-            return upSpeed;
-        }
+        return upSpeed;
     }
 
     public Rect getTemporaryBounds() {
@@ -598,6 +589,10 @@ public class CursorController {
         isSwiping = true;
         swipePath = new Path();
         swipePath.moveTo(x, y);
+        if (realtimeSwype) {
+            swipePathPoints.clear();
+            swipePathPoints.add(new Point((int) x, (int) y));
+        }
     }
 
     public void updateSwipe(float x, float y) {
@@ -609,6 +604,9 @@ public class CursorController {
     public void stopSwipe() {
         cursorTrail.clear();
         isSwiping = false;
+        if (realtimeSwype) {
+            clearSwipePathPoints();
+        }
     }
 
     public Path getSwipePath() {
@@ -634,4 +632,39 @@ public class CursorController {
         return cursorTrail;
     }
 
+    public void setRealtimeSwype(boolean enabled) {
+        this.realtimeSwype = enabled;
+    }
+
+    public List<Point> getSwipePathPoints() {
+        return new ArrayList<>(swipePathPoints);
+    }
+
+    public void clearSwipePathPoints() {
+        swipePathPoints.clear();
+    }
+    public void startRealtimeSwipe(float x, float y) {
+        swipePathPoints.clear();
+        swipePathPoints.add(new Point((int) x, (int) y));
+    }
+
+    public void updateRealtimeSwipe(float x, float y) {
+        swipePathPoints.add(new Point((int) x, (int) y));
+    }
+
+    public void stopRealtimeSwipe() {
+        swipePathPoints.clear();
+    }
+
+    public List<Point> getRealtimeSwipePathPoints() {
+        return new ArrayList<>(swipePathPoints);
+    }
+
+    public boolean isDurationPopOutEnabled() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT);
+    }
+
+    public int getHoldDuration() {
+        return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION);
+    }
 }

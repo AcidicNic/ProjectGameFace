@@ -30,12 +30,15 @@ class CursorMovementConfig {
     RIGHT_SPEED,
     LEFT_SPEED,
     SMOOTH_POINTER,
-    /** Smooth down the blendshape value so it doesn't trigger by accident. */
     SMOOTH_BLENDSHAPES,
-
-    /** How long the hold duration will be dispatch. */
     HOLD_TIME_MS,
-    HOLD_RADIUS
+    HOLD_RADIUS,
+    EDGE_HOLD_DURATION
+  }
+
+  public enum CursorMovementBooleanConfigType {
+    REALTIME_SWIPE,
+    DURATION_POP_OUT,
   }
 
   private static final String TAG = "CursorMovementConfig";
@@ -47,11 +50,18 @@ class CursorMovementConfig {
   /** Raw int value, same as the UI's slider. */
   private final Map<CursorMovementConfigType, Integer> rawValueMap;
 
+  /** Raw boolean value, same as the UI's toggle. */
+  private final Map<CursorMovementBooleanConfigType, Boolean> rawBooleanValueMap;
+
   public static final class InitialRawValue {
     public static final int DEFAULT_SPEED = 3;
     public static final int SMOOTH_POINTER = 1;
     public static final int HOLD_TIME_MS = 5;
     public static final int HOLD_RADIUS = 2;
+    public static final boolean DEFAULT_REALTIME_SWIPE = false;
+    public static final boolean DEFAULT_DURATION_POP_OUT = true;
+    public static final boolean DEFAULT_ENABLE_FEATURE = false;
+    public static final int EDGE_HOLD_DURATION = 1000;
 
     private InitialRawValue() {}
   }
@@ -66,6 +76,7 @@ class CursorMovementConfig {
     public static final float SMOOTH_BLENDSHAPES = 30.f;
     public static final float HOLD_TIME_MS = 200.f;
     public static final float HOLD_RADIUS = 50;
+    public static final float EDGE_HOLD_DURATION = 1.0f;
 
     private RawConfigMultiplier() {}
   }
@@ -88,11 +99,16 @@ class CursorMovementConfig {
     rawValueMap.put(CursorMovementConfigType.DOWN_SPEED, InitialRawValue.DEFAULT_SPEED);
     rawValueMap.put(CursorMovementConfigType.RIGHT_SPEED, InitialRawValue.DEFAULT_SPEED);
     rawValueMap.put(CursorMovementConfigType.LEFT_SPEED, InitialRawValue.DEFAULT_SPEED);
-
     rawValueMap.put(CursorMovementConfigType.SMOOTH_POINTER, InitialRawValue.SMOOTH_POINTER);
     rawValueMap.put(CursorMovementConfigType.SMOOTH_BLENDSHAPES, InitialRawValue.DEFAULT_SPEED);
     rawValueMap.put(CursorMovementConfigType.HOLD_TIME_MS, InitialRawValue.HOLD_TIME_MS);
     rawValueMap.put(CursorMovementConfigType.HOLD_RADIUS, InitialRawValue.HOLD_RADIUS);
+    rawValueMap.put(CursorMovementConfigType.EDGE_HOLD_DURATION, InitialRawValue.EDGE_HOLD_DURATION);
+
+    // Initialize default boolean values.
+    rawBooleanValueMap = new HashMap<>();
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.DEFAULT_REALTIME_SWIPE);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DEFAULT_DURATION_POP_OUT);
   }
 
   /**
@@ -106,7 +122,22 @@ class CursorMovementConfig {
       CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
       rawValueMap.put(targetConfig, rawValueFromUi);
     } catch (IllegalArgumentException e) {
-      Log.w(TAG, configName + " is not exist in CursorMovementConfigType enum.");
+      Log.w(TAG, configName + " does not exist in CursorMovementConfigType enum.");
+    }
+  }
+
+  /**
+   * Set boolean config with the raw value from UI or SharedPreference.
+   *
+   * @param configName Name of the target config such as "ENABLE_FEATURE_X" or "ENABLE_FEATURE_Y"
+   * @param rawValueFromUi Boolean value.
+   */
+  public void setRawBooleanValueFromUi(String configName, boolean rawValueFromUi) {
+    try {
+      CursorMovementBooleanConfigType targetConfig = CursorMovementBooleanConfigType.valueOf(configName);
+      rawBooleanValueMap.put(targetConfig, rawValueFromUi);
+    } catch (IllegalArgumentException e) {
+      Log.w(TAG, configName + " does not exist in CursorMovementBooleanConfigType enum.");
     }
   }
 
@@ -144,10 +175,23 @@ class CursorMovementConfig {
       case HOLD_RADIUS:
         multiplier = RawConfigMultiplier.HOLD_RADIUS;
         break;
+      case EDGE_HOLD_DURATION:
+        multiplier = RawConfigMultiplier.EDGE_HOLD_DURATION;
+        break;
       default:
         multiplier = 0.f;
     }
     return (float) rawValue * multiplier;
+  }
+
+  /**
+   * Get the boolean config.
+   *
+   * @param targetConfig Boolean config to get.
+   * @return Boolean value of the config.
+   */
+  public boolean get(CursorMovementBooleanConfigType targetConfig) {
+    return rawBooleanValueMap.getOrDefault(targetConfig, false);
   }
 
   /** Update and overwrite value from SharedPreference. */
@@ -155,6 +199,9 @@ class CursorMovementConfig {
     Log.i(TAG, "Update all config from local SharedPreference...");
     for (CursorMovementConfigType configType : CursorMovementConfigType.values()) {
       updateOneConfigFromSharedPreference(configType.name());
+    }
+    for (CursorMovementBooleanConfigType configType : CursorMovementBooleanConfigType.values()) {
+      updateOneBooleanConfigFromSharedPreference(configType.name());
     }
   }
 
@@ -178,5 +225,53 @@ class CursorMovementConfig {
     }
     setRawValueFromUi(configName, configValueInUi);
     Log.i(TAG, "Set raw value to: " + configValueInUi);
+  }
+
+  /**
+   * Update boolean cursor movement config from SharedPreference (persistent storage on device).
+   *
+   * @param configName String of {@link CursorMovementConfig}.
+   */
+  public void updateOneBooleanConfigFromSharedPreference(String configName) {
+    Log.i(TAG, "updateOneBooleanConfigFromSharedPreference: " + configName);
+
+    if (sharedPreferences == null) {
+      Log.w(TAG, "sharedPreferences instance does not exist.");
+      return;
+    }
+
+    CursorMovementBooleanConfigType targetConfig;
+    try {
+      targetConfig = CursorMovementBooleanConfigType.valueOf(configName);
+    } catch (IllegalArgumentException e) {
+      Log.w(TAG, configName + " does not exist in CursorMovementBooleanConfigType enum.");
+      return;
+    }
+
+    boolean defaultValue;
+    switch (targetConfig) {
+      case REALTIME_SWIPE:
+        defaultValue = InitialRawValue.DEFAULT_REALTIME_SWIPE;
+        break;
+      case DURATION_POP_OUT:
+        defaultValue = InitialRawValue.DEFAULT_DURATION_POP_OUT;
+        break;
+      default:
+        defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;
+        break;
+    }
+
+    boolean configValueInUi = sharedPreferences.getBoolean(configName, defaultValue);
+    setRawBooleanValueFromUi(configName, configValueInUi);
+    Log.i(TAG, "Set raw boolean value to: " + configValueInUi);
+  }
+
+  public static boolean isBooleanConfig(String configName) {
+    for (CursorMovementBooleanConfigType type : CursorMovementBooleanConfigType.values()) {
+      if (type.name().equals(configName)) {
+        return true;
+      }
+    }
+    return false;
   }
 }
