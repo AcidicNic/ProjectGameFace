@@ -31,13 +31,21 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Html;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.view.WindowManager.LayoutParams;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -63,20 +71,57 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences preferences;
     private boolean isServiceBound = false;
     private boolean keep = true;
+    private static final String PROFILE_PREFS = "SelectedProfilePrefs";
+    private static final String SELECTED_PROFILE_KEY = "selectedProfile";
+    private static final String FIRST_LAUNCH_PREFS = "FirstLaunchPrefs";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         // Handle the splash screen transition.
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
-
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         setContentView(R.layout.activity_main);
         getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        // Spinner setup
+        Spinner profileSpinner = findViewById(R.id.profileSpinner);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, ProfileManager.getProfiles(this));
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        profileSpinner.setAdapter(adapter);
+
+        // Restore the selected profile from SharedPreferences
+        SharedPreferences profilePrefs = getSharedPreferences(PROFILE_PREFS, Context.MODE_PRIVATE);
+        String selectedProfile = profilePrefs.getString(SELECTED_PROFILE_KEY, ProfileManager.DEFAULT_PROFILE);
+        int selectedIndex = adapter.getPosition(selectedProfile);
+        if (selectedIndex != -1) {
+            profileSpinner.setSelection(selectedIndex);
+        }
+
+        profileSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                String selectedProfile = (String) parentView.getItemAtPosition(position);
+                ProfileManager.setCurrentProfile(MainActivity.this, selectedProfile);
+
+                // Save selected profile to SharedPreferences
+                SharedPreferences profilePrefs = getSharedPreferences(PROFILE_PREFS, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = profilePrefs.edit();
+                editor.putString(SELECTED_PROFILE_KEY, selectedProfile);
+                editor.apply();
+
+                // Broadcast to update all settings
+                Intent intent = new Intent("PROFILE_CHANGED");
+                sendBroadcast(intent);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+            }
+        });
+
+
         try {
             TextView versionNumber = findViewById(R.id.versionNumber);
             String versionName = getApplicationContext().getPackageManager().getPackageInfo(getApplicationContext().getPackageName(), 0 ).versionName;
@@ -161,20 +206,78 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        if(isFirstLaunch()){
+        if (isFirstLaunch()) {
             // Assign some default binding so user can navigate around.
             Log.i(TAG, "First launch, assign default binding");
-//            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.OPEN_MOUTH,
-//                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH, 20);
-//            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_LEFT,
-//                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, 20);
-//            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.MOUTH_RIGHT,
-//                    BlendshapeEventTriggerConfig.EventType.CURSOR_RESET, 20);
+            // Your default binding logic here
 
             // Goto tutorial page.
             Intent intent = new Intent(this, TutorialActivity.class);
             startActivity(intent);
+
+            // Set the first launch flag to false
+            SharedPreferences firstLaunchPrefs = getSharedPreferences(FIRST_LAUNCH_PREFS, Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = firstLaunchPrefs.edit();
+            editor.putBoolean(KEY_FIRST_RUN, false);
+            editor.apply();
         }
+
+
+        findViewById(R.id.addProfileButton).setOnClickListener(v -> {
+            LayoutInflater inflater = LayoutInflater.from(this);
+            View dialogView = inflater.inflate(R.layout.dialog_add_profile, null);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setView(dialogView);
+            AlertDialog dialog = builder.create();
+            dialog.show();
+
+            EditText profileNameEditText = dialogView.findViewById(R.id.profileNameEditText);
+            Button addButton = dialogView.findViewById(R.id.buttonAdd);
+            Button cancelButton = dialogView.findViewById(R.id.buttonCancel);
+
+            addButton.setOnClickListener(view -> {
+                String newProfileName = profileNameEditText.getText().toString().trim();
+                if (!newProfileName.isEmpty()) {
+                    ProfileManager.addProfile(this, newProfileName);
+                    adapter.add(newProfileName);
+                    adapter.notifyDataSetChanged();
+                    profileSpinner.setSelection(adapter.getPosition(newProfileName));
+                    dialog.dismiss();
+                } else {
+                    Toast.makeText(this, "Profile name cannot be empty", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            cancelButton.setOnClickListener(view -> dialog.dismiss());
+        });
+
+        // Adding the Remove Profile Dialog
+        findViewById(R.id.removeProfileButton).setOnClickListener(v -> {
+            String currentProfile = (String) profileSpinner.getSelectedItem();
+            if (!currentProfile.equals(ProfileManager.DEFAULT_PROFILE)) {
+                LayoutInflater inflater = LayoutInflater.from(this);
+                View dialogView = inflater.inflate(R.layout.dialog_remove_profile, null);
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setView(dialogView);
+                AlertDialog dialog = builder.create();
+                dialog.show();
+
+                TextView removeProfileText = dialogView.findViewById(R.id.removeProfileText);
+                removeProfileText.setText(Html.fromHtml("Are you sure you want to delete <b>" + currentProfile + "</b>?"));
+
+                Button yesButton = dialogView.findViewById(R.id.buttonYes);
+                Button noButton = dialogView.findViewById(R.id.buttonNo);
+
+                yesButton.setOnClickListener(view -> {
+                    ProfileManager.removeProfile(this, currentProfile);
+                    adapter.remove(currentProfile);
+                    adapter.notifyDataSetChanged();
+                    dialog.dismiss();
+                });
+
+                noButton.setOnClickListener(view -> dialog.dismiss());
+            }
+        });
 
     }
 
@@ -284,7 +387,8 @@ public class MainActivity extends AppCompatActivity {
      * @return boolean flag
      */
     private boolean isFirstLaunch() {
-        return preferences.getBoolean(KEY_FIRST_RUN , true);
+        SharedPreferences firstLaunchPrefs = getSharedPreferences(FIRST_LAUNCH_PREFS, Context.MODE_PRIVATE);
+        return firstLaunchPrefs.getBoolean(KEY_FIRST_RUN, true);
     }
 
 

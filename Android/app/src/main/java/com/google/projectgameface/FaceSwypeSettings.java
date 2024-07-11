@@ -16,9 +16,12 @@
 
 package com.google.projectgameface;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -98,7 +101,8 @@ public class FaceSwypeSettings extends AppCompatActivity {
 
     private void setUpSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
         seekBar.setMax(9); // 1 to 10 in increments of 1 means 9 steps
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedProgress;
         if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION.toString())) {
             savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.EDGE_HOLD_DURATION);
@@ -151,8 +155,41 @@ public class FaceSwypeSettings extends AppCompatActivity {
                 }
             };
 
+    // Ensure to reload config on profile change
+    private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            cursorMovementConfig = new CursorMovementConfig(context);
+            cursorMovementConfig.updateAllConfigFromSharedPreference();
+            // Update UI elements with new profile settings
+            realtimeSwipeSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE));
+            durationPopOutSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT));
+            int edgeHoldDuration = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION);
+            int progress = (edgeHoldDuration / 200) - 1;
+            holdDurationSeekBar.setProgress(progress);
+            holdDurationTxt.setText(String.valueOf(progress + 1));
+        }
+    };
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(profileChangeReceiver);
+    }
+
     private void sendValueToService(String configName, int value) {
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt(configName, value);
         editor.apply();
@@ -162,7 +199,8 @@ public class FaceSwypeSettings extends AppCompatActivity {
     }
 
     private void sendValueToService(String configName, boolean value) {
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(configName, value);
         editor.apply();

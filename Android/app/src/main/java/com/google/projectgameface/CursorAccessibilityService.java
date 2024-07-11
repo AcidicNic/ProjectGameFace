@@ -98,6 +98,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver loadSharedConfigBasicReceiver;
     private BroadcastReceiver loadSharedConfigGestureReceiver;
     private BroadcastReceiver enableScorePreviewReceiver;
+    private BroadcastReceiver profileChangeReceiver;
     private Instrumentation instrumentation;
     private Handler handler;
     private HandlerThread handlerThread;
@@ -199,6 +200,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 }
             };
 
+        profileChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.i(TAG, "Profile change detected. Reloading configuration.");
+                cursorController.cursorMovementConfig.reloadSharedPreferences(context);
+                cursorController.blendshapeEventTriggerConfig.updateAllConfigFromSharedPreference();
+            }
+        };
+
+
         if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             registerReceiver(
                 changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"), RECEIVER_EXPORTED);
@@ -224,6 +235,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 serviceUiManager.flyOutWindowReceiver,
                 new IntentFilter("FLY_OUT_FLOAT_WINDOW"),
                 RECEIVER_EXPORTED);
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
         } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
@@ -235,6 +247,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"));
             registerReceiver(
                 serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
         }
     }
 
@@ -596,6 +609,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         unregisterReceiver(enableScorePreviewReceiver);
         unregisterReceiver(serviceUiManager.flyInWindowReceiver);
         unregisterReceiver(serviceUiManager.flyOutWindowReceiver);
+        unregisterReceiver(profileChangeReceiver);
+        cursorController.cleanup();
 
         super.onDestroy();
     }

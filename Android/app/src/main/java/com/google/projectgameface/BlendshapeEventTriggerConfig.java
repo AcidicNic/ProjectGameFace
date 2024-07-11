@@ -15,9 +15,14 @@
  */
 package com.google.projectgameface;
 
+import static android.content.Context.RECEIVER_EXPORTED;
+
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.util.Log;
 import androidx.annotation.Nullable;
 import com.google.auto.value.AutoValue;
@@ -180,14 +185,42 @@ public class BlendshapeEventTriggerConfig {
    *
    * @param context Context for open SharedPreference in device's local storage.
    */
+  private BroadcastReceiver profileChangeReceiver;
+
   public BlendshapeEventTriggerConfig(Context context) {
     Log.i(TAG, "Create BlendshapeEventTriggerConfig.");
     // Create or retrieve SharedPreference.
-    sharedPreferences = context.getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+    String profileName = ProfileManager.getCurrentProfile(context);
+    sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
     configMap = new HashMap<>();
-
     updateAllConfigFromSharedPreference();
+
+    profileChangeReceiver = new BroadcastReceiver() {
+      @Override
+      public void onReceive(Context context, Intent intent) {
+        String profileName = ProfileManager.getCurrentProfile(context);
+        sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        updateAllConfigFromSharedPreference();
+      }
+    };
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
+    } else {
+      context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+    }
+    updateProfile(context, ProfileManager.getCurrentProfile(context));
+  }
+
+
+
+  public void updateProfile(Context context, String profileName) {
+    sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+    updateAllConfigFromSharedPreference();
+  }
+
+  public void cleanup(Context context) {
+    context.unregisterReceiver(profileChangeReceiver);
   }
 
   /** Get every EventType-BlendshapeAndThreshold pairs. */
@@ -268,7 +301,8 @@ public class BlendshapeEventTriggerConfig {
   {
     Log.i(TAG, "writeBindingConfig: " + blendshape.toString() +" "+ eventType.toString() + " " + thresholdInUI);
 
-    SharedPreferences preferences = context.getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+    String profileName = ProfileManager.getCurrentProfile(context);
+    SharedPreferences preferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
     SharedPreferences.Editor editor = preferences.edit();
     editor.putInt(eventType.toString(), BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(blendshape));
     editor.putInt(eventType.toString()+"_size", thresholdInUI);

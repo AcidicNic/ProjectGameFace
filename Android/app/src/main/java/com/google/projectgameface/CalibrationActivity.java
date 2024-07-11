@@ -60,7 +60,8 @@ public class CalibrationActivity extends AppCompatActivity {
         setContentView(R.layout.activity_gesture_size);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
 
         BlendshapeEventTriggerConfig.EventType pageEventType = (BlendshapeEventTriggerConfig.EventType) getIntent().getSerializableExtra("eventType");

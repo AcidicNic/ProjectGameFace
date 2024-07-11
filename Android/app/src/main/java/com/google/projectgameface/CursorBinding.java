@@ -80,7 +80,8 @@ public class CursorBinding extends AppCompatActivity {
         TextView textViewAction,
         TextView textViewStatus,
         ImageView statusImage) {
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
         // Load config from local sharedpref.
         BlendshapeEventTriggerConfig.Blendshape savedBlendshape = BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI

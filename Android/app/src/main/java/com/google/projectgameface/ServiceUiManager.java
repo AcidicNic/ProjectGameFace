@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
+import android.net.VpnProfileState;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -556,8 +557,9 @@ public class ServiceUiManager {
   /** Save default camera box position to make it persistent when open the app. */
   private void saveCameraBoxPosition(String key, float value) {
     Log.i(TAG, "saveDefaultPosition: " + key + " " + value);
+    String profileName = ProfileManager.getCurrentProfile(parentContext);
     SharedPreferences preferences =
-        parentContext.getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
     SharedPreferences.Editor editor = preferences.edit();
     editor.putFloat(key, value);
     editor.apply();
@@ -649,8 +651,9 @@ public class ServiceUiManager {
       new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+          String profileName = ProfileManager.getCurrentProfile(parentContext);
           SharedPreferences preferences =
-              parentContext.getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+              parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
           float positionX =
               preferences.getFloat(
                   "savedFloatCamXNorm",
@@ -703,8 +706,9 @@ public class ServiceUiManager {
 
     // Update the camera box location
     // so it not going out of screen when rotate device.
+    String profileName = ProfileManager.getCurrentProfile(parentContext);
     SharedPreferences preferences =
-        parentContext.getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
     cameraBoxLayoutParams.x =
         (int)
             (preferences.getFloat(

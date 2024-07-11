@@ -16,9 +16,12 @@
 
 package com.google.projectgameface;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager.LayoutParams;
@@ -133,7 +136,8 @@ public class CursorSpeed extends AppCompatActivity {
     private void setUpSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
         seekBar.setMax(SEEK_BAR_MAXIMUM_VALUE);
         seekBar.setMin(SEEK_BAR_MINIMUM_VALUE);
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedProgress;
         if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER.toString())) {
             savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.SMOOTH_POINTER);
@@ -317,10 +321,60 @@ public class CursorSpeed extends AppCompatActivity {
             }
         };
 
+    private BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Reload the configuration for the new profile
+            Log.d("CursorSpeed", "Profile changed");
+            updateAllSeekBars();
+        }
+    };
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(profileChangeReceiver);
+    }
+
+    private void updateAllSeekBars() {
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+
+        updateSeekBarAndTextView(seekBarMu, textViewMu, preferences, CursorMovementConfig.CursorMovementConfigType.UP_SPEED);
+        updateSeekBarAndTextView(seekBarMd, textViewMd, preferences, CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED);
+        updateSeekBarAndTextView(seekBarMr, textViewMr, preferences, CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED);
+        updateSeekBarAndTextView(seekBarMl, textViewMl, preferences, CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED);
+        updateSeekBarAndTextView(seekBarSmoothPointer, textViewSmoothPointer, preferences, CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
+        updateSeekBarAndTextView(seekBarBlendshapes, textViewBlendshapes, preferences, CursorMovementConfig.CursorMovementConfigType.SMOOTH_BLENDSHAPES);
+        updateSeekBarAndTextView(seekBarDelay, textViewDelay, preferences, CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS);
+    }
+
+    private void updateSeekBarAndTextView(SeekBar seekBar, TextView textView, SharedPreferences preferences, CursorMovementConfig.CursorMovementConfigType configType) {
+        int savedProgress = preferences.getInt(configType.toString(), CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
+        seekBar.setProgress(savedProgress);
+        if (configType == CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS) {
+            int timeMsForShow = (int) (savedProgress * CursorMovementConfig.RawConfigMultiplier.HOLD_TIME_MS);
+            textView.setText(String.valueOf(timeMsForShow));
+        } else {
+            textView.setText(String.valueOf(savedProgress));
+        }
+    }
+
     private void saveCursorSpeed(String key, int value) {
         CursorMovementConfig cursorMovementConfig = new CursorMovementConfig(this);
         cursorMovementConfig.setRawValueFromUi(key, value);
-        SharedPreferences preferences = getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt(key, value);
         editor.apply();

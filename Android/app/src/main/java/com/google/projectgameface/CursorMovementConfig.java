@@ -15,14 +15,25 @@
  */
 package com.google.projectgameface;
 
+import static android.content.Context.RECEIVER_EXPORTED;
+
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.util.Log;
 import java.util.HashMap;
 import java.util.Map;
 
 /** Store cursor movement config such as speed or smoothing value. */
 class CursorMovementConfig {
+
+  public void updateProfile(Context context, String profileName) {
+    sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+    updateAllConfigFromSharedPreference();
+  }
 
   public enum CursorMovementConfigType {
     UP_SPEED,
@@ -41,6 +52,14 @@ class CursorMovementConfig {
     DURATION_POP_OUT,
   }
 
+  private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      // Reload the configuration for the new profile
+      updateAllConfigFromSharedPreference();
+      Log.i(TAG, "Profile changed, updated configs in CursorMovementConfig.");
+    }
+  };
   private static final String TAG = "CursorMovementConfig";
   private static final int PREFERENCE_INT_NOT_FOUND = -1;
 
@@ -91,7 +110,8 @@ class CursorMovementConfig {
     Log.i(TAG, "Create CursorMovementConfig.");
 
     // Create or retrieve SharedPreference.
-    sharedPreferences = context.getSharedPreferences("GameFaceLocalConfig", Context.MODE_PRIVATE);
+    String profileName = ProfileManager.getCurrentProfile(context);
+    sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
     // Initialize default slider values.
     rawValueMap = new HashMap<>();
@@ -109,6 +129,23 @@ class CursorMovementConfig {
     rawBooleanValueMap = new HashMap<>();
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.DEFAULT_REALTIME_SWIPE);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DEFAULT_DURATION_POP_OUT);
+
+    // Register the receiver
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
+    } else {
+      context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+    }
+  }
+
+  public void unregisterReceiver(Context context) {
+    context.unregisterReceiver(profileChangeReceiver);
+  }
+
+  public void reloadSharedPreferences(Context context) {
+    String profileName = ProfileManager.getCurrentProfile(context);
+    sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+    updateAllConfigFromSharedPreference();
   }
 
   /**

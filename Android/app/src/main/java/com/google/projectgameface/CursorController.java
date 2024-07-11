@@ -17,11 +17,16 @@
 package com.google.projectgameface;
 
 
+import static android.content.Context.RECEIVER_EXPORTED;
 import static androidx.core.math.MathUtils.clamp;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Build;
 import android.util.Log;
 
 import android.graphics.Path;
@@ -122,6 +127,8 @@ public class CursorController {
     private boolean realtimeSwype = true;
     private List<Point> swipePathPoints = new ArrayList<>(); // For tracking points in realtimeSwype
 
+    private BroadcastReceiver profileChangeReceiver;
+    private Context parentContext;
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -129,6 +136,7 @@ public class CursorController {
      * @param context Context for open SharedPreference
      */
     public CursorController(Context context) {
+        parentContext = context;
         faceCoordXBuffer = new ArrayList<>();
         faceCoordYBuffer = new ArrayList<>();
 
@@ -140,10 +148,29 @@ public class CursorController {
         blendshapeEventTriggerConfig = new BlendshapeEventTriggerConfig(context);
         blendshapeEventTriggerConfig.updateAllConfigFromSharedPreference();
 
-        // Init blendshape event tracker.
+        // Register profile change receiver
+        IntentFilter filter = new IntentFilter("PROFILE_CHANGED");
+        profileChangeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String profileName = ProfileManager.getCurrentProfile(context);
+                cursorMovementConfig.updateProfile(context, profileName);
+                blendshapeEventTriggerConfig.updateProfile(context, profileName);
+            }
+        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
+        } else {
+            context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+        }
+
+        // Init blendshape event tracker
         for (BlendshapeEventTriggerConfig.EventType eventType : BlendshapeEventTriggerConfig.EventType.values()) {
             blendshapeEventTriggeredTracker.put(eventType, false);
         }
+    }
+    public void cleanup() {
+        cursorMovementConfig.unregisterReceiver(parentContext);
     }
 
     /** Scale cursor velocity X, Y with different multiplier in each axis. */
