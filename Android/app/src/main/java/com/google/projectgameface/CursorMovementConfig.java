@@ -82,7 +82,7 @@ class CursorMovementConfig {
     public static final int SMOOTH_POINTER = 1;
     public static final int HOLD_TIME_MS = 5;
     public static final int HOLD_RADIUS = 2;
-    public static final boolean DEFAULT_REALTIME_SWIPE = false;
+    public static final boolean DEFAULT_REALTIME_SWIPE = true;
     public static final boolean DEFAULT_DURATION_POP_OUT = true;
     public static final boolean DEFAULT_DIRECT_MAPPING = false;
     public static final boolean DEFAULT_ENABLE_FEATURE = false;

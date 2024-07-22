@@ -92,8 +92,8 @@ public class CursorController {
     public float dragEndX = 0.f;
     public float dragEndY = 0.f;
 
-    private int screenWidth = 0;
-    private int screenHeight = 0;
+    private int screenWidth;
+    private int screenHeight;
 
     private int tempMinX = 0;
     private int tempMaxX = 0;
@@ -134,7 +134,16 @@ public class CursorController {
      *
      * @param context Context for open SharedPreference
      */
-    public CursorController(Context context) {
+    public CursorController(Context context, int width, int height) {
+        screenWidth = width;
+        screenHeight = height;
+//        maxHeadCoordX = screenWidth / 2;
+//        minHeadCoordY = screenHeight / 2;
+//        maxHeadCoordY = screenHeight / 2;
+//        minHeadCoordX = screenWidth / 2;
+        Log.d(TAG, "OnCreate: Screen size: " + screenWidth + "x" + screenHeight);
+        Log.d(TAG, "OnCreate: Head Coord: " + maxHeadCoordX + "x" + minHeadCoordY + "x" + maxHeadCoordY + "x" + minHeadCoordX);
+
         parentContext = context;
         faceCoordXBuffer = new ArrayList<>();
         faceCoordYBuffer = new ArrayList<>();
@@ -168,6 +177,7 @@ public class CursorController {
             blendshapeEventTriggeredTracker.put(eventType, false);
         }
     }
+
     public void cleanup() {
         cursorMovementConfig.unregisterReceiver(parentContext);
     }
@@ -340,99 +350,13 @@ public class CursorController {
         isDragging = false;
     }
 
-    private double[] getTeleportLocation() {
-        double teleportDegrees;
-
-        double screenCenterX = (double) this.screenWidth / 2;
-        double screenCenterY = (double) this.screenHeight / 2;
-
-        if (tempBoundsSet && !isCursorOutsideBounds) {
-            screenCenterX = (tempMinX + tempMaxX) / 2;
-            screenCenterY = (tempMinY + tempMaxY) / 2;
-        }
-
-        double distanceFromCenter = euclideanDistance(
-                screenCenterX,
-                screenCenterY,
-                teleportShadowX,
-                teleportShadowY);
-
-        // Reject, go to screen center.
-        if (distanceFromCenter < TELEPORT_TRIGGER_THRESHOLD) {
-            return new double[]{screenCenterX, screenCenterY};
-        }
-
-        // Calculate teleport location.
-        double angle1 = Math.atan2(0, 1);
-        double angle2 = Math.atan2(
-                teleportShadowY - screenCenterY,
-                teleportShadowX - screenCenterX
-        );
-
-        teleportDegrees = Math.toDegrees(angle1 - angle2);
-
-        teleportDegrees = (teleportDegrees + 360) % 360;
-        double segmentSize = 360.0 / 8;
-        int segmentIndex = (int) Math.floor((teleportDegrees + segmentSize / 2) / segmentSize);
-
-        // Teleport edges.
-        int edgeMinX = TELEPORT_MARGIN_LEFT;
-        int edgeCenterX = (int) screenCenterX;
-        int edgeMaxX = this.screenWidth - TELEPORT_MARGIN_RIGHT;
-
-        int edgeMinY = TELEPORT_MARGIN_TOP;
-        int edgeCenterY = (int) screenCenterY;
-        int edgeMaxY = this.screenHeight - TELEPORT_MARGIN_BOTTOM;
-
-        switch (segmentIndex) {
-            case 0:
-            case 8:
-                // East.
-                return new double[]{edgeMaxX, edgeCenterY};
-
-            case 7:
-                // South-East.
-                return new double[]{edgeMaxX, edgeMaxY};
-            case 1:
-                // North-East.
-                return new double[]{edgeMaxX, edgeMinY};
-            case 2:
-                // North.
-                return new double[]{edgeCenterX, edgeMinY};
-            case 3:
-                // North-West.
-                return new double[]{edgeMinX, edgeMinY};
-            case 4:
-                // West.
-                return new double[]{edgeMinX, edgeCenterY};
-            case 5:
-                // South-West.
-                return new double[]{edgeMinX, edgeMaxY};
-            case 6:
-                // South.
-                return new double[]{edgeCenterX, edgeMaxY};
-            default:
-                // Should never be reached.
-                return new double[]{edgeCenterX, edgeCenterY};
-
-        }
-    }
-
-
-    private static double euclideanDistance(double vecAX, double vecAY, double vecBX, double vecBY) {
-        double dx = vecBX - vecAX;
-        double dy = vecBY - vecAY;
-
-        double dxSquared = dx * dx;
-        double dySquared = dy * dy;
-
-        return Math.sqrt(dxSquared + dySquared);
-    }
-
     private float maxHeadCoordX = -1;
     private float minHeadCoordY = -1;
     private float maxHeadCoordY = -1;
     private float minHeadCoordX = -1;
+    private static final float SMOOTHING_FACTOR = 0.1f; // Adjust this value for more or less smoothing
+    private float smoothedCursorPositionX = 0;
+    private float smoothedCursorPositionY = 0;
 
     public void resetHeadCoord() {
         maxHeadCoordX = -1;
@@ -469,26 +393,41 @@ public class CursorController {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
 
-        updateHeadCoordMinMax(headCoordXY);
-
         if (isDirectMappingEnabled()) {
-            // Normalize head coordinates
-            float normalizedX = (headCoordXY[0] - minHeadCoordX) / (maxHeadCoordX - minHeadCoordX);
-            float normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
+            updateHeadCoordMinMax(headCoordXY);
+
+            float normalizedX = 0.5f;
+            float normalizedY = 0.5f;
+
+            if (maxHeadCoordX != minHeadCoordX) {
+                normalizedX = (headCoordXY[0] - minHeadCoordX) / (maxHeadCoordX - minHeadCoordX);
+            }
+            if (maxHeadCoordY != minHeadCoordY) {
+                normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
+            }
 
             float headCoordScaleFactor = getHeadCoordScaleFactor();
+            float scaledX = normalizedX * screenWidth * headCoordScaleFactor;
+            float scaledY = normalizedY * screenHeight * headCoordScaleFactor;
 
-            // Scale to screen dimensions with scaling factor
-            float scaledScreenWidth = screenWidth * headCoordScaleFactor;
-            float scaledScreenHeight = screenHeight * headCoordScaleFactor;
 
-            float offsetX = (scaledScreenWidth - screenWidth) / 2;
-            float offsetY = (scaledScreenHeight - screenHeight) / 2;
+            // Center the scaled coordinates on the screen
+            float centeredX = (scaledX - (screenWidth / 2 * headCoordScaleFactor)) + (screenWidth / 2);
+            float centeredY = (scaledY - (screenHeight / 2 * headCoordScaleFactor)) + (screenHeight / 2);
 
-            cursorPositionX = (normalizedX * scaledScreenWidth) - offsetX;
-            cursorPositionY = (normalizedY * scaledScreenHeight) - offsetY;
+//            Log.d("CursorController", "Centered Coordinates: (" + centeredX + ", " + centeredY + ")");
 
-            // Handle bounding logic
+            cursorPositionX = centeredX;
+            cursorPositionY = centeredY;
+
+            smoothedCursorPositionX += SMOOTHING_FACTOR * (cursorPositionX - smoothedCursorPositionX);
+            smoothedCursorPositionY += SMOOTHING_FACTOR * (cursorPositionY - smoothedCursorPositionY);
+
+            cursorPositionX = smoothedCursorPositionX;
+            cursorPositionY = smoothedCursorPositionY;
+
+//            Log.d("CursorController", "Cursor Position: (" + cursorPositionX + ", " + cursorPositionY + ")");
+
             if (tempBoundsSet) {
                 handleBoundingLogic();
             }
@@ -496,6 +435,8 @@ public class CursorController {
             // Clamp cursor position to screen bounds
             cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
             cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+
+//            Log.d("CursorController", "Clamped Cursor Position: (" + cursorPositionX + ", " + cursorPositionY + ")");
         } else {
             // How far we should move this frame.
             float[] offsetXY = this.getCursorTranslateXY(headCoordXY, gapFrames);
@@ -702,23 +643,6 @@ public class CursorController {
         return cursorTrail;
     }
 
-    public void clearSwipePathPoints() {
-        swipePathPoints.clear();
-    }
-
-    public void startRealtimeSwipe() {
-        swipePathPoints.clear();
-        isRealtimeSwipe = true;
-    }
-
-    public void stopRealtimeSwipe() {
-        isRealtimeSwipe = false;
-    }
-
-    public List<Point> getRealtimeSwipePathPoints() {
-        return new ArrayList<>(swipePathPoints);
-    }
-
     public void updateRealtimeSwipe(float x, float y) {
         swipePathPoints.add(new Point((int) x, (int) y));
     }
@@ -737,6 +661,10 @@ public class CursorController {
 
     public float getHeadCoordScaleFactor() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR);
+    }
+
+    public float getSmoothingFactor() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
     }
 
 }

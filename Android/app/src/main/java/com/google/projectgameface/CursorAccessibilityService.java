@@ -286,11 +286,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         windowManager = ContextCompat.getSystemService(this, WindowManager.class);
 
-        cursorController = new CursorController(this);
-        serviceUiManager = new ServiceUiManager(this, windowManager, cursorController);
-
         screenSize = new Point();
         windowManager.getDefaultDisplay().getRealSize(screenSize);
+
+        cursorController = new CursorController(this, screenSize.x, screenSize.y);
+        serviceUiManager = new ServiceUiManager(this, windowManager, cursorController);
 
         lifecycleRegistry = new LifecycleRegistry(this::getLifecycle);
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
@@ -600,6 +600,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                 facelandmarkerHelper.resumeThread();
                 setImageAnalyzer();
+//                cursorController.resetCursorToCenter(false);
 
             case PAUSE:
             case GLOBAL_STICK:
@@ -611,7 +612,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.showAllWindows();
         serviceUiManager.fitCameraBoxToScreen();
         serviceUiManager.setCameraBoxDraggable(true);
-
 
         serviceState = ServiceState.ENABLE;
 

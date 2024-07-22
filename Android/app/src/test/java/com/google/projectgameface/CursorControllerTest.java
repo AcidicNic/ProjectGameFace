@@ -28,7 +28,7 @@ public class CursorControllerTest {
   public void getCursorTranslateXY_buildSuccess_returnCursorMoveOffset() {
 
     CursorController cursorController =
-        new CursorController(ApplicationProvider.getApplicationContext());
+        new CursorController(ApplicationProvider.getApplicationContext(), 0, 0);
 
     float[] foreheadF1 = {500.f, 500.f};
     assertEquals(cursorController.getCursorTranslateXY(foreheadF1, 100)[0], 500.0f, 0.1);
