@@ -1,0 +1,5 @@
+<permissions>
+    <privapp-permissions package="com.google.projectgameface">
+        <permission name="android.permission.INJECT_EVENTS"/>
+    </privapp-permissions>
+</permissions>
