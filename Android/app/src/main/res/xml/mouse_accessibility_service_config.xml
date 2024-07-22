@@ -26,4 +26,5 @@
     android:canRequestFilterKeyEvents="true"
     android:canPerformGestures="true"
     android:isAccessibilityTool="true"
+    android:settingsActivity="com.google.projectgameface.FaceSwypeSettings"
     />

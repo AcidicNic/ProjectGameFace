@@ -715,13 +715,12 @@ public class CursorController {
         isRealtimeSwipe = false;
     }
 
-    public void updateRealtimeSwipe(float x, float y) {
-        swipePathPoints.add(new Point((int) x, (int) y));
-    }
-
-
     public List<Point> getRealtimeSwipePathPoints() {
         return new ArrayList<>(swipePathPoints);
+    }
+
+    public void updateRealtimeSwipe(float x, float y) {
+        swipePathPoints.add(new Point((int) x, (int) y));
     }
 
     public boolean isDurationPopOutEnabled() {

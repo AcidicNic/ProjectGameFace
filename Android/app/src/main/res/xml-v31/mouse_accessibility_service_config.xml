@@ -26,9 +26,9 @@
     android:canRequestFilterKeyEvents="true"
     android:canPerformGestures="true"
     android:isAccessibilityTool="true"
+    android:settingsActivity="com.google.projectgameface.FaceSwypeSettings"
     />
 
 <!-- TODO: description, summary, settings! -->
 <!--       android:description="@string/service_description" -->
 <!--       android:summary="@string/service_summary" -->
-<!--       android:settingsActivity="com.google.projectgameface.CursorSpeed" -->
