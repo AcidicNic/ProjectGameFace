@@ -33,6 +33,7 @@ import android.content.pm.Signature;
 import android.content.res.Configuration;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.hardware.input.InputManager;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Environment;
@@ -42,6 +43,7 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
 import android.util.Size;
+import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.WindowManager;
@@ -66,6 +68,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -890,7 +893,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             );
 
             Log.d(TAG, "MotionEvent.ACTION_DOWN @ (" + initialPosition[0] + ", " + initialPosition[1] + ")");
-            instrumentation.sendPointerSync(event);
+//            instrumentation.sendPointerSync(event);
+            injectInputEvent(event);
 
             while (isSwiping) {
                 float[] cursorPosition = getCursorPosition();
@@ -903,7 +907,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         0
                 );
                 try {
-                    instrumentation.sendPointerSync(event);
+//                    instrumentation.sendPointerSync(event);
+                    injectInputEvent(event);
                     Thread.sleep(16); // 60 FPS
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -930,7 +935,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             );
             try {
                 Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorPosition[0] + ", " + cursorPosition[1] + ")");
-                instrumentation.sendPointerSync(event);
+//                instrumentation.sendPointerSync(event);
+                injectInputEvent(event);
             } catch (RuntimeException e) {
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
             }
@@ -942,6 +948,21 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return new float[]{cursorPosition[0], cursorPosition[1]};
     }
 
+    private void injectInputEvent(InputEvent event) {
+        try {
+            InputManager inputManager = (InputManager) this.getSystemService(Context.INPUT_SERVICE);
+            Class<?> inputManagerClass = Class.forName("android.hardware.input.InputManager");
+            Method injectInputEventMethod = inputManagerClass.getMethod("injectInputEvent", InputEvent.class, int.class);
+            injectInputEventMethod.setAccessible(true);
+
+            // INJECT_INPUT_EVENT_MODE_ASYNC is 0
+            injectInputEventMethod.invoke(inputManager, event, 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
     private void simulateSwipe(float startX, float startY, float endX, float endY, long duration) {
         new Thread(() -> {
             long startTime = SystemClock.uptimeMillis();
@@ -951,7 +972,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             // Simulate initial touch down event
             MotionEvent event = MotionEvent.obtain(startTime, startTime, MotionEvent.ACTION_DOWN, startX, startY, 0);
-            instrumentation.sendPointerSync(event);
+//            instrumentation.sendPointerSync(event);
+            injectInputEvent(event);
 
             while (SystemClock.uptimeMillis() < endTime) {
                 long currentTime = SystemClock.uptimeMillis();
@@ -960,7 +982,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 float currentY = startY + (deltaY * progress);
 
                 event = MotionEvent.obtain(startTime, currentTime, MotionEvent.ACTION_MOVE, currentX, currentY, 0);
-                instrumentation.sendPointerSync(event);
+//                instrumentation.sendPointerSync(event);
+                injectInputEvent(event);
 
                 try {
                     Thread.sleep(16); // 60 FPS
@@ -971,7 +994,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             // Simulate final touch up event
             event = MotionEvent.obtain(startTime, endTime, MotionEvent.ACTION_UP, endX, endY, 0);
-            instrumentation.sendPointerSync(event);
+//            instrumentation.sendPointerSync(event);
+            injectInputEvent(event);
         }).start();
     }
 

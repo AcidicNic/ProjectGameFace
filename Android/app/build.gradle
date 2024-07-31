@@ -26,6 +26,15 @@ android {
     namespace 'com.google.projectgameface'
     compileSdk 34
 
+    signingConfigs {
+        debug {
+            storeFile file("platform.keystore")
+            storePassword "android"
+            keyPassword "android"
+            keyAlias "AndroidDebugKey"
+        }
+    }
+
     defaultConfig {
         applicationId 'com.google.projectgameface'
         minSdk 28
@@ -46,21 +55,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
-        }
-    }
-
-    signingConfigs {
-        platform {
-            storeFile file("platform.keystore")
-            storePassword "android"
-            keyPassword "android"
-            keyAlias "AndroidDebugKey"
-        }
-        debug {
-            storeFile file("platform.keystore")
-            storePassword "android"
-            keyPassword "android"
-            keyAlias "AndroidDebugKey"
         }
     }
 
