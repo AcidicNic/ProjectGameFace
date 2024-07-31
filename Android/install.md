@@ -2,7 +2,7 @@
 
 ## Initial Setup
 
-This only needs to be done the first time
+This only needs to be done once per device.
 
 1. Flash device with AOSP @ [flash.android.com](https://flash.android.com)
 2. Enable developer mode
@@ -84,12 +84,16 @@ This only needs to be done the first time
 ## Additional Setup
 
 * Open the Gboard app > `Enable in settings` > Enable `Gboard` and disable `Android Keyboard (AOSP)`
-    * You can modify these settings anytime in the settings app:
+    * You can modify these settings anytime in the settings app via:
 	* `Settings` > `System` > `Keyboard` > `On-screen Keyboard`
 
 * Connect your bluetooth input device
 
-## Updating app after initial setup is complete
+* Open GameFace and enable the gameface accessibility service
+
+## Updating GameFace After Initial Setup
+
+How to push new versions of GameFace to a device that has already been set up. Where `gameface.apk` in your current directory is the new apk you wish to install.
 
 1.  ``` bash
 	adb root
