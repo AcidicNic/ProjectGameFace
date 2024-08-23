@@ -416,7 +416,7 @@ public class CursorController {
                 normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
             }
 
-            int WIGGLE_ROOM = screenHeight / 10;
+            int WIGGLE_ROOM = screenHeight / 20;
             int yBound = tempMinY;
             if (tempBoundsSet) {
                 if (isCursorOutsideBounds) {
@@ -435,21 +435,21 @@ public class CursorController {
                 if (isCursorOutsideBounds) {
                     scaledY = normalizedY * yBound * headCoordScaleFactorY;
                 } else {
-                    float adjustedNormalizedY = (normalizedY * (screenHeight - yBound) / screenHeight);
-                    scaledY = yBound + adjustedNormalizedY * (screenHeight - yBound) * headCoordScaleFactorY * 2;
+                    scaledY = yBound + normalizedY * (screenHeight - yBound) * headCoordScaleFactorY * 2;
                 }
             }
 
             // Center the scaled coordinates on the screen
             float centeredX = (scaledX - ((float) screenWidth / 2 * headCoordScaleFactorX)) + ((float) screenWidth / 2);
             float centeredY = (scaledY - ((float) screenHeight / 2 * headCoordScaleFactorY)) + ((float) screenHeight / 2);
+
             if (tempBoundsSet) {
                 if (isCursorOutsideBounds) {
                     centeredY = (scaledY - ((float) yBound / 2 * headCoordScaleFactorY)) + ((float) yBound) / 2;
                 } else {
                     // Adjust centeredY to correctly center within the bounded region
                     float regionHeight = screenHeight - yBound;
-                    float regionCenter = yBound + (regionHeight / 2);
+                    float regionCenter = ((float) yBound / 2 * headCoordScaleFactorY * 2) + (regionHeight / 2);
 
                     // Map scaledY to center on the region center
                     centeredY = scaledY - (screenHeight - regionCenter);

@@ -295,10 +295,17 @@ class FaceLandmarkerHelper extends HandlerThread {
         return matrix;
     }
 
-    private static final float MIN_PITCH = -30.0f; // Minimum pitch (down)
-    private static final float MAX_PITCH = 30.0f;  // Maximum pitch (up)
-    private static final float MIN_YAW = -45.0f;   // Minimum yaw (left)
-    private static final float MAX_YAW = 45.0f;    // Maximum yaw (right)
+    private float minPitch = -20.0f;    // Minimum pitch (down)
+    private float maxPitch = 20.0f;     // Maximum pitch (up)
+    private float minYaw = -35.0f;      // Minimum yaw (left)
+    private float maxYaw = 35.0f;       // Maximum yaw (right)
+
+    public void resetMinMaxValues() {
+        minPitch = -20.0f;
+        maxPitch = 20.0f;
+        minYaw = -35.0f;
+        maxYaw = 35.0f;
+    }
 
     /**
      * Gets result landmarks and blendshapes then apply some scaling and save the value.
@@ -345,11 +352,18 @@ class FaceLandmarkerHelper extends HandlerThread {
                 roll = (float) Math.toDegrees(roll);
 //                Log.d(TAG, "yaw: " + yaw + ", pitch: " + pitch + ", roll: " + roll);
 
-                float normalizedPitch = (MAX_PITCH - pitch) / (MAX_PITCH - MIN_PITCH);
+                // Update the min/max ranges dynamically based on observed values
+//                if (pitch < minPitch) minPitch = pitch;
+//                if (pitch > maxPitch) maxPitch = pitch;
+//                if (yaw < minYaw) minYaw = yaw;
+//                if (yaw > maxYaw) maxYaw = yaw;
+//                Log.d(TAG, "minPitch: " + minPitch + ", maxPitch: " + maxPitch + ", minYaw: " + minYaw + ", maxYaw: " + maxYaw);
+
+                float normalizedPitch = (maxPitch - pitch) / (maxPitch - minPitch);
                 normalizedPitch = clamp(normalizedPitch, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
 
                 // Normalize yaw: Convert yaw from degrees to a [0.0, 1.0] range
-                float normalizedYaw = (MAX_YAW - yaw) / (MAX_YAW - MIN_YAW);
+                float normalizedYaw = (maxYaw - yaw) / (maxYaw - minYaw);
                 normalizedYaw = clamp(normalizedYaw, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
 
 //                Log.d(TAG, "normalizedYaw: " + normalizedYaw + ", normalizedPitch: " + normalizedPitch + ", yaw: " + yaw + ", pitch: " + pitch);

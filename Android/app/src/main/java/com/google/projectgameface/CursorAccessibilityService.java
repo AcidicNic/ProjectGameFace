@@ -625,6 +625,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 facelandmarkerHelper.resumeThread();
                 setImageAnalyzer();
                 cursorController.resetHeadCoord();
+                facelandmarkerHelper.resetMinMaxValues();
 
             case PAUSE:
             case GLOBAL_STICK:
