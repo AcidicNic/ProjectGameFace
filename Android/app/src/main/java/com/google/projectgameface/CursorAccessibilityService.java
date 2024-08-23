@@ -34,11 +34,13 @@ import android.content.res.Configuration;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.input.InputManager;
+import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
@@ -327,16 +329,35 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isPlatformSigned() {
         try {
             PackageManager pm = getPackageManager();
-            PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
-            PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNATURES);
 
-            Signature[] appSignatures = packageInfo.signatures;
-            Signature[] platformSignatures = platformPackageInfo.signatures;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28 and above
+                PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+                PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNING_CERTIFICATES);
 
-            for (Signature appSignature : appSignatures) {
-                for (Signature platformSignature : platformSignatures) {
-                    if (appSignature.equals(platformSignature)) {
-                        return true;
+                if (packageInfo.signingInfo != null && platformPackageInfo.signingInfo != null) {
+                    Signature[] appSignatures = packageInfo.signingInfo.getApkContentsSigners();
+                    Signature[] platformSignatures = platformPackageInfo.signingInfo.getApkContentsSigners();
+
+                    for (Signature appSignature : appSignatures) {
+                        for (Signature platformSignature : platformSignatures) {
+                            if (appSignature.equals(platformSignature)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            } else { // Below API 28
+                PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
+                PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNATURES);
+
+                Signature[] appSignatures = packageInfo.signatures;
+                Signature[] platformSignatures = platformPackageInfo.signatures;
+
+                for (Signature appSignature : appSignatures) {
+                    for (Signature platformSignature : platformSignatures) {
+                        if (appSignature.equals(platformSignature)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -603,7 +624,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                 facelandmarkerHelper.resumeThread();
                 setImageAnalyzer();
-//                cursorController.resetCursorToCenter(false);
+                cursorController.resetHeadCoord();
 
             case PAUSE:
             case GLOBAL_STICK:
@@ -765,39 +786,53 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            checkForKeyboard(event);
-        }
+        if (serviceState != ServiceState.ENABLE) { return; }
+        checkForKeyboard(event);
     }
 
     private void checkForKeyboard(AccessibilityEvent event) {
-        boolean keyboardFound = false;
-        List<AccessibilityWindowInfo> windows = getWindows();
-        for (AccessibilityWindowInfo window : windows) {
-            if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-                keyboardFound = true;
-                window.getBoundsInScreen(keyboardBounds);
-//                Log.d(TAG, "window.getBoundsInScreen: " + keyboardBounds);
-//                Log.d(TAG, "Window title: " + window.getTitle());
+//        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            boolean keyboardFound = false;
+            Rect tempBounds = new Rect();
+            Rect navBarBounds = new Rect();
+            List<AccessibilityWindowInfo> windows = getWindows();
+            for (AccessibilityWindowInfo window : windows) {
+                window.getBoundsInScreen(tempBounds);
+//                Log.d(TAG, "Window title: " + window.getTitle() + ", type: " + window.getType() + ", bounds: " + tempBounds);
+                if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                    keyboardFound = true;
+                    window.getBoundsInScreen(keyboardBounds);
+                    if (keyboardBounds.equals(cursorController.getTemporaryBounds())) {
+                        return;
+                    }
+                    Log.d(TAG, "keyboard Found @ : " + window);
+                } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM
+                        && window.getTitle() != null && window.getTitle().equals("Navigation bar")
+                ) {
+                    window.getBoundsInScreen(navBarBounds);
+                }
             }
-        }
 
-        if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
-            return;
-        }
-        isKeyboardOpen = keyboardFound;
+            if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
+                return;
+            }
+            isKeyboardOpen = keyboardFound;
 
-        if (isKeyboardOpen) {
-            cursorController.setTemporaryBounds(keyboardBounds);
-            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
-        } else {
-            cursorController.clearTemporaryBounds();
-            serviceUiManager.fullScreenCanvas.setRect(null);
-        }
-        serviceUiManager.fullScreenCanvas.invalidate();
+            if (isKeyboardOpen) {
+                if (!navBarBounds.isEmpty()) {
+                    keyboardBounds.union(navBarBounds); // Expand the bounds to include the navigation bar
+                    Log.d(TAG, "Navigation bar bounds added: " + navBarBounds);
+                }
+                cursorController.setTemporaryBounds(keyboardBounds);
+                serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
+            } else {
+                cursorController.clearTemporaryBounds();
+                serviceUiManager.fullScreenCanvas.setRect(null);
+            }
+            serviceUiManager.fullScreenCanvas.invalidate();
 
-        Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
+            Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
+//        }, 400);
     }
 
 

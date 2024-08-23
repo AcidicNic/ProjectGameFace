@@ -44,18 +44,23 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private Switch durationPopOutSwitch;
     private Switch directMappingSwitch;
     private SeekBar holdDurationSeekBar;
-    private SeekBar headCoordScaleFactorSeekBar;
+    private SeekBar headCoordScaleFactorXSeekBar;
+    private SeekBar headCoordScaleFactorYSeekBar;
     private TextView holdDurationTxt;
-    private TextView headCoordScaleFactorTxt;
-    private TextView headCoordScaleFactorProgress;
+    private TextView headCoordScaleFactorXTxt;
+    private TextView headCoordScaleFactorYTxt;
+    private TextView headCoordScaleFactorXProgress;
+    private TextView headCoordScaleFactorYProgress;
     private ConstraintLayout holdDurationLayout;
     private ConstraintLayout headCoordScaleFactorLayout;
 
     private final int[] viewIds = {
             R.id.fasterHoldDuration,
             R.id.slowerHoldDuration,
-            R.id.headCoordScaleFactorSlower,
-            R.id.headCoordScaleFactorFaster
+            R.id.headCoordScaleFactorXSlower,
+            R.id.headCoordScaleFactorXFaster,
+            R.id.headCoordScaleFactorYSlower,
+            R.id.headCoordScaleFactorYFaster
     };
 
     @Override
@@ -110,12 +115,19 @@ public class FaceSwypeSettings extends AppCompatActivity {
 
         // Head Coord Scale Factor
         headCoordScaleFactorLayout = findViewById(R.id.headCoordScaleFactorLayout);
-        headCoordScaleFactorSeekBar = findViewById(R.id.headCoordScaleFactorSeekBar);
-        headCoordScaleFactorProgress = findViewById(R.id.headCoordScaleFactorProgress);
-        headCoordScaleFactorTxt = findViewById(R.id.headCoordScaleFactorTxt);
+        headCoordScaleFactorXSeekBar = findViewById(R.id.headCoordScaleFactorXSeekBar);
+        headCoordScaleFactorXProgress = findViewById(R.id.headCoordScaleFactorXProgress);
+        headCoordScaleFactorXTxt = findViewById(R.id.headCoordScaleFactorXTxt);
+        headCoordScaleFactorYSeekBar = findViewById(R.id.headCoordScaleFactorYSeekBar);
+        headCoordScaleFactorYProgress = findViewById(R.id.headCoordScaleFactorYProgress);
+        headCoordScaleFactorYTxt = findViewById(R.id.headCoordScaleFactorYTxt);
 
         setUpScaleFactorSeekBarAndTextView(
-                headCoordScaleFactorSeekBar, headCoordScaleFactorProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR)
+                headCoordScaleFactorXSeekBar, headCoordScaleFactorXProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X)
+        );
+
+        setUpScaleFactorSeekBarAndTextView(
+                headCoordScaleFactorYSeekBar, headCoordScaleFactorYProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y)
         );
 
         // Set initial visibility based on the DIRECT_MAPPING value
@@ -141,33 +153,43 @@ public class FaceSwypeSettings extends AppCompatActivity {
                     } else if (v.getId() == R.id.slowerHoldDuration) {
                         currentValue = holdDurationSeekBar.getProgress();
                         newValue = currentValue - 1;
-                    } else if (v.getId() == R.id.headCoordScaleFactorFaster) {
-                        currentValue = headCoordScaleFactorSeekBar.getProgress();
+                    } else if (v.getId() == R.id.headCoordScaleFactorXFaster) {
+                        currentValue = headCoordScaleFactorXSeekBar.getProgress();
                         newValue = currentValue + 1;
-                    } else if (v.getId() == R.id.headCoordScaleFactorSlower) {
-                        currentValue = headCoordScaleFactorSeekBar.getProgress();
+                    } else if (v.getId() == R.id.headCoordScaleFactorXSlower) {
+                        currentValue = headCoordScaleFactorXSeekBar.getProgress();
+                        newValue = currentValue - 1;
+                    } else if (v.getId() == R.id.headCoordScaleFactorYFaster) {
+                        currentValue = headCoordScaleFactorYSeekBar.getProgress();
+                        newValue = currentValue + 1;
+                    } else if (v.getId() == R.id.headCoordScaleFactorYSlower) {
+                        currentValue = headCoordScaleFactorYSeekBar.getProgress();
                         newValue = currentValue - 1;
                     }
 
-                    if ((isFaster && newValue < 10) || (!isFaster && newValue >= 0)) {
+                    if ((isFaster && newValue < 15) || (!isFaster && newValue >= 0)) {
                         if (v.getId() == R.id.fasterHoldDuration || v.getId() == R.id.slowerHoldDuration) {
                             holdDurationSeekBar.setProgress(newValue);
                             int duration = (newValue + 1) * 200;
                             sendValueToService("EDGE_HOLD_DURATION", duration);
-                        } else if (v.getId() == R.id.headCoordScaleFactorFaster || v.getId() == R.id.headCoordScaleFactorSlower) {
-                            headCoordScaleFactorSeekBar.setProgress(newValue);
+                        } else if (v.getId() == R.id.headCoordScaleFactorXFaster || v.getId() == R.id.headCoordScaleFactorXSlower) {
+                            headCoordScaleFactorXSeekBar.setProgress(newValue);
                             float scaleFactor = (newValue + 1) / 10.0f;
-                            sendValueToService("HEAD_COORD_SCALE_FACTOR", scaleFactor);
+                            sendValueToService("HEAD_COORD_SCALE_FACTOR_X", scaleFactor);
+                        } else if (v.getId() == R.id.headCoordScaleFactorYFaster || v.getId() == R.id.headCoordScaleFactorYSlower) {
+                            headCoordScaleFactorYSeekBar.setProgress(newValue);
+                            float scaleFactor = (newValue + 1) / 10.0f;
+                            sendValueToService("HEAD_COORD_SCALE_FACTOR_Y", scaleFactor);
                         }
                     }
                 }
             };
 
     private void setUpScaleFactorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
-        seekBar.setMax(10); // 0.0 to 1.0 in increments of 0.1 means 10 steps
+        seekBar.setMax(15); // 0.0 to 1.0 in increments of 0.1 means 10 steps
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
-        float savedProgress = preferences.getFloat(preferencesId, 1.2f); // Default to 1.2
+        float savedProgress = preferences.getFloat(preferencesId, 1.5f); // Default to 1.2
         int progress = Math.round((savedProgress - 1.0f) * 10);
         seekBar.setProgress(progress); // Set initial progress
         textView.setText(String.valueOf(savedProgress)); // Set initial text
@@ -185,7 +207,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 float scaleFactor = 1.0f + (seekBar.getProgress() / 10.0f);
-                sendValueToService("HEAD_COORD_SCALE_FACTOR", scaleFactor);
+                sendValueToService(preferencesId, scaleFactor);
             }
         });
     }
@@ -237,10 +259,15 @@ public class FaceSwypeSettings extends AppCompatActivity {
             holdDurationSeekBar.setProgress(progress);
             holdDurationTxt.setText(String.valueOf(progress + 1));
 
-            float scaleFactor = cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR);
-            int scaleFactorProgress = Math.round((scaleFactor - 1.0f) * 10);
-            headCoordScaleFactorSeekBar.setProgress(scaleFactorProgress);
-            headCoordScaleFactorProgress.setText(String.valueOf(scaleFactor));
+            float scaleFactorX = cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X);
+            int scaleFactorXProgress = Math.round((scaleFactorX - 1.0f) * 15);
+            headCoordScaleFactorXSeekBar.setProgress(scaleFactorXProgress);
+            headCoordScaleFactorXProgress.setText(String.valueOf(scaleFactorX));
+
+            float scaleFactorY = cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y);
+            int scaleFactorYProgress = Math.round((scaleFactorY - 1.0f) * 15);
+            headCoordScaleFactorYSeekBar.setProgress(scaleFactorYProgress);
+            headCoordScaleFactorYProgress.setText(String.valueOf(scaleFactorY));
         }
     };
 

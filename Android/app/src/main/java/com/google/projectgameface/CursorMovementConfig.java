@@ -45,7 +45,8 @@ class CursorMovementConfig {
     HOLD_TIME_MS,
     HOLD_RADIUS,
     EDGE_HOLD_DURATION,
-    HEAD_COORD_SCALE_FACTOR
+    HEAD_COORD_SCALE_FACTOR_X,
+    HEAD_COORD_SCALE_FACTOR_Y
   }
 
   public enum CursorMovementBooleanConfigType {
@@ -87,7 +88,8 @@ class CursorMovementConfig {
     public static final boolean DEFAULT_DIRECT_MAPPING = false;
     public static final boolean DEFAULT_ENABLE_FEATURE = false;
     public static final int EDGE_HOLD_DURATION = 1000;
-    public static final float HEAD_COORD_SCALE_FACTOR = 1.0f;
+    public static final float HEAD_COORD_SCALE_FACTOR_X = 1.5f;
+    public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.5f;
 
     private InitialRawValue() {}
   }
@@ -103,7 +105,8 @@ class CursorMovementConfig {
     public static final float HOLD_TIME_MS = 200.f;
     public static final float HOLD_RADIUS = 50;
     public static final float EDGE_HOLD_DURATION = 1.0f;
-    public static final float HEAD_COORD_SCALE_FACTOR = 1.0f;
+    public static final float HEAD_COORD_SCALE_FACTOR_X = 1.0f;
+    public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.0f;
 
     private RawConfigMultiplier() {}
   }
@@ -135,7 +138,8 @@ class CursorMovementConfig {
 
     // Initialize default float values.
     rawFloatValueMap = new HashMap<>();
-    rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR, InitialRawValue.HEAD_COORD_SCALE_FACTOR);
+    rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X, InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
+    rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y, InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
 
     // Initialize default boolean values.
     rawBooleanValueMap = new HashMap<>();
@@ -213,9 +217,13 @@ class CursorMovementConfig {
    * @return Action value of cursor.
    */
   public float get(CursorMovementConfigType targetConfig) {
-    if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR) {
+    if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X) {
       float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : 1.0f;
-      return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR;
+      return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR_X;
+    }
+    else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
+      float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : 1.0f;
+      return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR_Y;
     } else {
       int rawValue = (rawValueMap.get(targetConfig) != null) ? rawValueMap.get(targetConfig) : 0;
       float multiplier;
@@ -290,8 +298,12 @@ class CursorMovementConfig {
 
     try {
       CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
-      if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR) {
-        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR);
+      if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
         setRawFloatValueFromUi(configName, configValueInUi);
         Log.i(TAG, "Set raw float value to: " + configValueInUi);
       } else {

@@ -16,6 +16,8 @@
 
 package com.google.projectgameface;
 
+import static androidx.core.math.MathUtils.clamp;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -31,11 +33,15 @@ import androidx.annotation.NonNull;
 import androidx.camera.core.ImageProxy;
 import com.google.mediapipe.framework.image.BitmapImageBuilder;
 import com.google.mediapipe.framework.image.MPImage;
+import com.google.mediapipe.tasks.components.containers.NormalizedLandmark;
 import com.google.mediapipe.tasks.core.BaseOptions;
 import com.google.mediapipe.tasks.core.Delegate;
 import com.google.mediapipe.tasks.vision.core.RunningMode;
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker;
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
+
+import java.util.Collections;
+import java.util.List;
 
 /** The helper of camera feed. */
 class FaceLandmarkerHelper extends HandlerThread {
@@ -54,6 +60,7 @@ class FaceLandmarkerHelper extends HandlerThread {
 
     private static final int TOTAL_BLENDSHAPES = 52;
     private static final int FOREHEAD_INDEX = 8;
+    private static final int NOSE_INDEX = 1;
 
     public volatile boolean isRunning = false;
 
@@ -177,7 +184,7 @@ class FaceLandmarkerHelper extends HandlerThread {
                     .setMinFacePresenceConfidence(MIN_FACE_PRESENCE_CONFIDENCE)
                     .setNumFaces(MAX_NUM_FACES)
                     .setOutputFaceBlendshapes(true)
-                    .setOutputFacialTransformationMatrixes(false)
+                    .setOutputFacialTransformationMatrixes(true)
                     .setRunningMode(RUNNING_MODE);
 
             optionsBuilder.setResultListener(this::postProcessLandmarks);
@@ -288,6 +295,11 @@ class FaceLandmarkerHelper extends HandlerThread {
         return matrix;
     }
 
+    private static final float MIN_PITCH = -30.0f; // Minimum pitch (down)
+    private static final float MAX_PITCH = 30.0f;  // Maximum pitch (up)
+    private static final float MIN_YAW = -45.0f;   // Minimum yaw (left)
+    private static final float MAX_YAW = 45.0f;    // Maximum yaw (right)
+
     /**
      * Gets result landmarks and blendshapes then apply some scaling and save the value.
      *
@@ -305,8 +317,48 @@ class FaceLandmarkerHelper extends HandlerThread {
 
         if (!result.faceLandmarks().isEmpty()) {
             isFaceVisible = true;
-            currHeadX = result.faceLandmarks().get(0).get(FOREHEAD_INDEX).x() * mpInputWidth;
-            currHeadY = result.faceLandmarks().get(0).get(FOREHEAD_INDEX).y() * mpInputHeight;
+
+            if (result.facialTransformationMatrixes().isPresent()) {
+                float[] transformationMatrix = result.facialTransformationMatrixes().get().get(0);
+                float r00 = transformationMatrix[0];
+                float r01 = transformationMatrix[1];
+                float r02 = transformationMatrix[2];
+                float r10 = transformationMatrix[4];
+                float r11 = transformationMatrix[5];
+                float r12 = transformationMatrix[6];
+                float r20 = transformationMatrix[8];
+                float r21 = transformationMatrix[9];
+                float r22 = transformationMatrix[10];
+
+                // Calculate yaw (rotation around the Y-axis)
+                float yaw = (float) Math.atan2(r02, r22);
+
+                // Calculate pitch (rotation around the X-axis)
+                float pitch = (float) Math.atan2(-r12, Math.sqrt(r00 * r00 + r10 * r10));
+
+                // Calculate roll (rotation around the Z-axis), if needed
+                float roll = (float) Math.atan2(r10, r00);
+
+                // Convert radians to degrees if needed
+                yaw = (float) Math.toDegrees(yaw);
+                pitch = (float) Math.toDegrees(pitch);
+                roll = (float) Math.toDegrees(roll);
+//                Log.d(TAG, "yaw: " + yaw + ", pitch: " + pitch + ", roll: " + roll);
+
+                float normalizedPitch = (MAX_PITCH - pitch) / (MAX_PITCH - MIN_PITCH);
+                normalizedPitch = clamp(normalizedPitch, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
+
+                // Normalize yaw: Convert yaw from degrees to a [0.0, 1.0] range
+                float normalizedYaw = (MAX_YAW - yaw) / (MAX_YAW - MIN_YAW);
+                normalizedYaw = clamp(normalizedYaw, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
+
+                Log.d(TAG, "normalizedYaw: " + normalizedYaw + ", normalizedPitch: " + normalizedPitch + ", yaw: " + yaw + ", pitch: " + pitch);
+                currHeadY = normalizedPitch * mpInputHeight;
+                currHeadX = normalizedYaw * mpInputWidth;
+            } else {
+                currHeadX = result.faceLandmarks().get(0).get(NOSE_INDEX).x() * mpInputWidth;
+                currHeadY = result.faceLandmarks().get(0).get(NOSE_INDEX).y() * mpInputHeight;
+            }
 
             if (result.faceBlendshapes().isPresent()) {
                 // Convert from Category to simple float array.
@@ -326,9 +378,13 @@ class FaceLandmarkerHelper extends HandlerThread {
         prevCallbackTimeMs = ts;
     }
 
+    private float normalizeAngle(float angle) {
+        return (angle + (float) Math.PI) / (2 * (float) Math.PI);
+    }
+
     /** Get user's head X, Y coordinate in image space. */
     public float[] getHeadCoordXY() {
-        return new float[] {currHeadX, currHeadY};
+                return new float[] {currHeadX, currHeadY};
     }
 
     public float[] getBlendshapes() {

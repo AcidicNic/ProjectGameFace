@@ -366,13 +366,22 @@ public class CursorController {
     }
 
     public void updateHeadCoordMinMax(float[] headCoordXY) {
+        if (headCoordXY[0] == 0 && headCoordXY[1] == 0) {
+            return;
+        }
         if (maxHeadCoordX == -1 || headCoordXY[0] > maxHeadCoordX) {
+            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
             maxHeadCoordX = headCoordXY[0];
         }
         if (minHeadCoordX == -1 || headCoordXY[0] < minHeadCoordX) {
+            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
             minHeadCoordX = headCoordXY[0];
         }
         if (maxHeadCoordY == -1 || headCoordXY[1] > maxHeadCoordY) {
+            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
             maxHeadCoordY = headCoordXY[1];
         }
         if (minHeadCoordY == -1 || headCoordXY[1] < minHeadCoordY) {
@@ -394,6 +403,7 @@ public class CursorController {
         this.screenHeight = screenHeight;
 
         if (isDirectMappingEnabled()) {
+
             updateHeadCoordMinMax(headCoordXY);
 
             float normalizedX = 0.5f;
@@ -406,22 +416,23 @@ public class CursorController {
                 normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
             }
 
-            float headCoordScaleFactor = getHeadCoordScaleFactor();
-            float scaledX = normalizedX * screenWidth * headCoordScaleFactor;
-            float scaledY = normalizedY * screenHeight * headCoordScaleFactor;
+            float headCoordScaleFactorX = getHeadCoordScaleFactorX();
+            float headCoordScaleFactorY = getHeadCoordScaleFactorY();
+            float scaledX = normalizedX * screenWidth * headCoordScaleFactorX;
+            float scaledY = normalizedY * screenHeight * headCoordScaleFactorY;
 
 
             // Center the scaled coordinates on the screen
-            float centeredX = (scaledX - (screenWidth / 2 * headCoordScaleFactor)) + (screenWidth / 2);
-            float centeredY = (scaledY - (screenHeight / 2 * headCoordScaleFactor)) + (screenHeight / 2);
+            float centeredX = (scaledX - ((float) screenWidth / 2 * headCoordScaleFactorX)) + ((float) screenWidth / 2);
+            float centeredY = (scaledY - ((float) screenHeight / 2 * headCoordScaleFactorY)) + ((float) screenHeight / 2);
 
 //            Log.d("CursorController", "Centered Coordinates: (" + centeredX + ", " + centeredY + ")");
 
             cursorPositionX = centeredX;
             cursorPositionY = centeredY;
 
-            smoothedCursorPositionX += SMOOTHING_FACTOR * (cursorPositionX - smoothedCursorPositionX);
-            smoothedCursorPositionY += SMOOTHING_FACTOR * (cursorPositionY - smoothedCursorPositionY);
+            smoothedCursorPositionX += (float) (SMOOTHING_FACTOR * (cursorPositionX - smoothedCursorPositionX));
+            smoothedCursorPositionY += (float) (SMOOTHING_FACTOR * (cursorPositionY - smoothedCursorPositionY));
 
             cursorPositionX = smoothedCursorPositionX;
             cursorPositionY = smoothedCursorPositionY;
@@ -659,8 +670,11 @@ public class CursorController {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DIRECT_MAPPING);
     }
 
-    public float getHeadCoordScaleFactor() {
-        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR);
+    public float getHeadCoordScaleFactorX() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X);
+    }
+    public float getHeadCoordScaleFactorY() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y);
     }
 
     public float getSmoothingFactor() {

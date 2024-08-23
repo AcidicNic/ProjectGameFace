@@ -24,12 +24,11 @@
     android:id="@+id/scrollView"
     >
 
-    <!-- TODO: Update blank fragment layout -->
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/constraintCursor"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:padding="20dp">
 
         <TextView
@@ -157,7 +156,7 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:id="@+id/headCoordScaleFactorLayout"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/directMappingSwitch"
@@ -166,66 +165,133 @@
             android:visibility="gone"
             tools:visibility="visible"
             >
-            <TextView
-                android:id="@+id/headCoordScaleFactorProgress"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="5"
-                android:textStyle="bold"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-            <TextView
-                android:id="@+id/headCoordScaleFactorTxt"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Head Coord Scale Factor"
-                android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-            <SeekBar
-                android:id="@+id/headCoordScaleFactorSeekBar"
-                style="@style/Widget.AppCompat.SeekBar.Discrete"
+                <TextView
+                    android:id="@+id/headCoordScaleFactorXProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+                <TextView
+                    android:id="@+id/headCoordScaleFactorXTxt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Horizontal Scale Factor"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+                <SeekBar
+                    android:id="@+id/headCoordScaleFactorXSeekBar"
+                    style="@style/Widget.AppCompat.SeekBar.Discrete"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:max="15"
+                    android:maxHeight="3dp"
+                    android:min="0"
+                    android:progressDrawable="@drawable/custom_seekbar"
+                    android:thumbTint="#1a73e8"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="1.0"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorXTxt" />
+                <TextView
+                    android:id="@+id/headCoordScaleFactorXSlower"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textColor="#444746"
+                    android:text="Less"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="5dp"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp"
+                    android:background="@drawable/textview_custom"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorXSeekBar" />
+                <TextView
+                    android:id="@+id/headCoordScaleFactorXFaster"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="More"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="5dp"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp"
+                    android:background="@drawable/textview_custom"
+                    android:textColor="#444746"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorXSeekBar" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:max="10"
-                android:maxHeight="3dp"
-                android:min="0"
-                android:progressDrawable="@drawable/custom_seekbar"
-                android:thumbTint="#1a73e8"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="1.0"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorTxt" />
-            <TextView
-                android:id="@+id/headCoordScaleFactorSlower"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:textColor="#444746"
-                android:text="Less"
-                android:paddingTop="4dp"
-                android:paddingBottom="5dp"
-                android:paddingLeft="10dp"
-                android:paddingRight="10dp"
-                android:background="@drawable/textview_custom"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorSeekBar" />
-            <TextView
-                android:id="@+id/headCoordScaleFactorFaster"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="More"
-                android:paddingTop="4dp"
-                android:paddingBottom="5dp"
-                android:paddingLeft="10dp"
-                android:paddingRight="10dp"
-                android:background="@drawable/textview_custom"
-                android:textColor="#444746"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorSeekBar" />
+                app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorXFaster"
+                >
+                <TextView
+                    android:id="@+id/headCoordScaleFactorYProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="5"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+                <TextView
+                    android:id="@+id/headCoordScaleFactorYTxt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Vertical Scale Factor"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+                <SeekBar
+                    android:id="@+id/headCoordScaleFactorYSeekBar"
+                    style="@style/Widget.AppCompat.SeekBar.Discrete"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:max="15"
+                    android:maxHeight="3dp"
+                    android:min="0"
+                    android:progressDrawable="@drawable/custom_seekbar"
+                    android:thumbTint="#1a73e8"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="1.0"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorYTxt" />
+                <TextView
+                    android:id="@+id/headCoordScaleFactorYSlower"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textColor="#444746"
+                    android:text="Less"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="5dp"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp"
+                    android:background="@drawable/textview_custom"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorYSeekBar" />
+                <TextView
+                    android:id="@+id/headCoordScaleFactorYFaster"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="More"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="5dp"
+                    android:paddingLeft="10dp"
+                    android:paddingRight="10dp"
+                    android:background="@drawable/textview_custom"
+                    android:textColor="#444746"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorYSeekBar" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
