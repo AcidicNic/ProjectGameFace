@@ -461,9 +461,21 @@ public class CursorController {
             cursorPositionX = centeredX;
             cursorPositionY = centeredY;
 
-            smoothedCursorPositionX += (float) (SMOOTHING_FACTOR * (cursorPositionX - smoothedCursorPositionX));
-            smoothedCursorPositionY += (float) (SMOOTHING_FACTOR * (cursorPositionY - smoothedCursorPositionY));
+            // Define a smoothing factor between 0 and 1 (e.g., 0.1 for heavy smoothing, 0.9 for light smoothing)
+            final float SMOOTHING_FACTOR = 0.1f;
 
+            // Smooth the cursor position using exponential smoothing
+            smoothedCursorPositionX = (float) (smoothedCursorPositionX + SMOOTHING_FACTOR * (cursorPositionX - smoothedCursorPositionX));
+            smoothedCursorPositionY = (float) (smoothedCursorPositionY + SMOOTHING_FACTOR * (cursorPositionY - smoothedCursorPositionY));
+
+            // Define a damping factor between 0 and 1 (e.g., 0.8 for moderate damping)
+//            final float DAMPING_FACTOR = 0.8f;
+//
+//            // Apply damping to further smooth the cursor movement
+//            smoothedCursorPositionX = (float) (smoothedCursorPositionX * DAMPING_FACTOR + (1 - DAMPING_FACTOR) * cursorPositionX);
+//            smoothedCursorPositionY = (float) (smoothedCursorPositionY * DAMPING_FACTOR + (1 - DAMPING_FACTOR) * cursorPositionY);
+
+            // Update the cursor position to the smoothed values
             cursorPositionX = smoothedCursorPositionX;
             cursorPositionY = smoothedCursorPositionY;
 

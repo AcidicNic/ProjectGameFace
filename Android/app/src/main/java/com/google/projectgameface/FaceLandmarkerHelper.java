@@ -295,16 +295,16 @@ class FaceLandmarkerHelper extends HandlerThread {
         return matrix;
     }
 
-    private float minPitch = -20.0f;    // Minimum pitch (down)
-    private float maxPitch = 20.0f;     // Maximum pitch (up)
-    private float minYaw = -35.0f;      // Minimum yaw (left)
-    private float maxYaw = 35.0f;       // Maximum yaw (right)
+    private float minPitch = -30.0f;    // Minimum pitch (down)
+    private float maxPitch = 30.0f;     // Maximum pitch (up)
+    private float minYaw = -45.0f;      // Minimum yaw (left)
+    private float maxYaw = 45.0f;       // Maximum yaw (right)
 
     public void resetMinMaxValues() {
-        minPitch = -20.0f;
-        maxPitch = 20.0f;
-        minYaw = -35.0f;
-        maxYaw = 35.0f;
+        minPitch = -30.0f;
+        maxPitch = 30.0f;
+        minYaw = -45.0f;
+        maxYaw = 45.0f;
     }
 
     /**
