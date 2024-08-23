@@ -352,7 +352,7 @@ class FaceLandmarkerHelper extends HandlerThread {
                 float normalizedYaw = (MAX_YAW - yaw) / (MAX_YAW - MIN_YAW);
                 normalizedYaw = clamp(normalizedYaw, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
 
-                Log.d(TAG, "normalizedYaw: " + normalizedYaw + ", normalizedPitch: " + normalizedPitch + ", yaw: " + yaw + ", pitch: " + pitch);
+//                Log.d(TAG, "normalizedYaw: " + normalizedYaw + ", normalizedPitch: " + normalizedPitch + ", yaw: " + yaw + ", pitch: " + pitch);
                 currHeadY = normalizedPitch * mpInputHeight;
                 currHeadX = normalizedYaw * mpInputWidth;
             } else {

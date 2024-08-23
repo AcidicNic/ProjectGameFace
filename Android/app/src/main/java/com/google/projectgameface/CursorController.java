@@ -416,17 +416,47 @@ public class CursorController {
                 normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
             }
 
+            int WIGGLE_ROOM = screenHeight / 10;
+            int yBound = tempMinY;
+            if (tempBoundsSet) {
+                if (isCursorOutsideBounds) {
+                    yBound = tempMinY + WIGGLE_ROOM;
+                } else {
+                    yBound = tempMinY - WIGGLE_ROOM;
+                }
+            }
+
             float headCoordScaleFactorX = getHeadCoordScaleFactorX();
             float headCoordScaleFactorY = getHeadCoordScaleFactorY();
             float scaledX = normalizedX * screenWidth * headCoordScaleFactorX;
             float scaledY = normalizedY * screenHeight * headCoordScaleFactorY;
 
+            if (tempBoundsSet) {
+                if (isCursorOutsideBounds) {
+                    scaledY = normalizedY * yBound * headCoordScaleFactorY;
+                } else {
+                    float adjustedNormalizedY = (normalizedY * (screenHeight - yBound) / screenHeight);
+                    scaledY = yBound + adjustedNormalizedY * (screenHeight - yBound) * headCoordScaleFactorY * 2;
+                }
+            }
 
             // Center the scaled coordinates on the screen
             float centeredX = (scaledX - ((float) screenWidth / 2 * headCoordScaleFactorX)) + ((float) screenWidth / 2);
             float centeredY = (scaledY - ((float) screenHeight / 2 * headCoordScaleFactorY)) + ((float) screenHeight / 2);
+            if (tempBoundsSet) {
+                if (isCursorOutsideBounds) {
+                    centeredY = (scaledY - ((float) yBound / 2 * headCoordScaleFactorY)) + ((float) yBound) / 2;
+                } else {
+                    // Adjust centeredY to correctly center within the bounded region
+                    float regionHeight = screenHeight - yBound;
+                    float regionCenter = yBound + (regionHeight / 2);
 
-//            Log.d("CursorController", "Centered Coordinates: (" + centeredX + ", " + centeredY + ")");
+                    // Map scaledY to center on the region center
+                    centeredY = scaledY - (screenHeight - regionCenter);
+                }
+            }
+
+            Log.d("CursorController", "tempMinY: " + yBound + ", screenHeight: " + screenHeight + ", normalizedY: " + normalizedY + ", scaledY: " + scaledY + ", centeredY: " + centeredY);
 
             cursorPositionX = centeredX;
             cursorPositionY = centeredY;
@@ -485,74 +515,60 @@ public class CursorController {
         boolean touchingBottomEdge = cursorPositionY >= tempMaxY;
 
         if (!isCursorOutsideBounds) {
-            if (durationPopOut) {
-                if ((touchingLeftEdge || touchingRightEdge || touchingTopEdge || touchingBottomEdge) &&
-                        (cursorPositionX > 0 && cursorPositionX < screenWidth && cursorPositionY > 0 && cursorPositionY < screenHeight)) {
+            // Cursor is inside the bounds
+            if (touchingTopEdge && (cursorPositionY > 0 && cursorPositionY < screenHeight)) {
+                if (edgeHoldStartTime == 0) {
+                    edgeHoldStartTime = currentTime;
+                }
 
-                    if (edgeHoldStartTime == 0) {
-                        edgeHoldStartTime = currentTime;
-                    }
-
-                    if (currentTime - edgeHoldStartTime > getHoldDuration()) {
-                        Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
-                        isCursorOutsideBounds = true;
-                        isCursorBoosted = true;
-                        cursorBoostStartTime = currentTime;
-                        edgeHoldStartTime = 0;
-                    } else {
-                        // Clamp cursor to bounds while holding against the edge
-                        cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
-                        cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
-                    }
-                } else {
+                if (currentTime - edgeHoldStartTime > getHoldDuration()) {
+                    Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
+                    isCursorOutsideBounds = true;
+//                    isCursorBoosted = true;
+//                    cursorBoostStartTime = currentTime;
                     edgeHoldStartTime = 0;
-                    // Clamp cursor to bounds
-                    cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
-                    cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
+                } else {
+                    // Clamp cursor to the top bound while holding against the edge
+                    cursorPositionY = clamp(cursorPositionY, tempMinY, screenHeight);
                 }
             } else {
-                if ((cursorPositionX < tempMinX || cursorPositionX > tempMaxX || cursorPositionY < tempMinY || cursorPositionY > tempMaxY)) {
-                    if (currentTime - lastBoundaryHitTime > boundaryHitCooldown) {
-                        float distanceX = (float) Math.abs(cursorPositionX - (cursorPositionX < tempMinX ? tempMinX : tempMaxX));
-                        float distanceY = (float) Math.abs(cursorPositionY - (cursorPositionY < tempMinY ? tempMinY : tempMaxY));
-                        float velocityX = Math.abs(velX);
-                        float velocityY = Math.abs(velY);
-
-                        float dynamicVelocityThreshold = getDynamicVelocityThreshold(velX, velY);
-                        float dynamicPopOutThresholdDistanceX = getDynamicPopOutThresholdDistance(cursorPositionX, tempMinX, tempMaxX, screenWidth, velX < 0);
-                        float dynamicPopOutThresholdDistanceY = getDynamicPopOutThresholdDistance(cursorPositionY, tempMinY, tempMaxY, screenHeight, velY < 0);
-
-                        if ((distanceX > dynamicPopOutThresholdDistanceX && velocityX > dynamicVelocityThreshold) ||
-                                (distanceY > dynamicPopOutThresholdDistanceY && velocityY > dynamicVelocityThreshold)) {
-                            isCursorOutsideBounds = true;
-                            isCursorBoosted = true;
-                            cursorBoostStartTime = currentTime;
-                            lastBoundaryHitTime = currentTime;
-                        } else {
-                            cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
-                            cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
-                        }
-                    } else {
-                        cursorPositionX = clamp(cursorPositionX, tempMinX, tempMaxX);
-                        cursorPositionY = clamp(cursorPositionY, tempMinY, tempMaxY);
-                    }
-                }
+                edgeHoldStartTime = 0;
+                // Ensure cursor stays within the bounds
+                cursorPositionY = clamp(cursorPositionY, tempMinY, screenHeight);
             }
         } else {
-            if (cursorPositionX >= tempMinX && cursorPositionX <= tempMaxX && cursorPositionY >= tempMinY && cursorPositionY <= tempMaxY) {
-                isCursorOutsideBounds = false;
+            // Cursor is outside the bounds
+            if (cursorPositionY >= tempMinY) {
+                if (edgeHoldStartTime == 0) {
+                    edgeHoldStartTime = currentTime;
+                }
+
+                if (currentTime - edgeHoldStartTime > getHoldDuration()) {
+                    Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop in cursor.");
+                    isCursorOutsideBounds = false;
+//                    isCursorBoosted = true;
+//                    cursorBoostStartTime = currentTime;
+                    edgeHoldStartTime = 0;
+                } else {
+                    // Clamp cursor to the area just above the bound while holding against the edge
+                    cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
+                }
+            } else {
+                edgeHoldStartTime = 0;
+                // Ensure cursor stays within the bounds
+                cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
             }
         }
 
-        if (isCursorBoosted) {
-            long elapsedTime = currentTime - cursorBoostStartTime;
-            if (elapsedTime < BOOST_DURATION) {
-                cursorPositionX += velX * BOOST_FACTOR;
-                cursorPositionY += velY * BOOST_FACTOR;
-            } else {
-                isCursorBoosted = false;
-            }
-        }
+//        if (isCursorBoosted) {
+//            long elapsedTime = currentTime - cursorBoostStartTime;
+//            if (elapsedTime < BOOST_DURATION) {
+//                cursorPositionX += velX * BOOST_FACTOR;
+//                cursorPositionY += velY * BOOST_FACTOR;
+//            } else {
+//                isCursorBoosted = false;
+//            }
+//        }
     }
 
     public void setTemporaryBounds(Rect bounds) {
@@ -562,6 +578,7 @@ public class CursorController {
         this.tempMaxY = bounds.bottom;
         this.tempBoundsSet = true;
 //        resetCursorToCenter(true);
+        this.isCursorOutsideBounds = this.cursorPositionY < tempMinY;
         Log.d(TAG, "Set temporary bounds: " + bounds);
     }
 

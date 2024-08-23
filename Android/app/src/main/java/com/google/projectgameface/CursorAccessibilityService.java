@@ -824,6 +824,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     Log.d(TAG, "Navigation bar bounds added: " + navBarBounds);
                 }
                 cursorController.setTemporaryBounds(keyboardBounds);
+                Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
                 serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
             } else {
                 cursorController.clearTemporaryBounds();
