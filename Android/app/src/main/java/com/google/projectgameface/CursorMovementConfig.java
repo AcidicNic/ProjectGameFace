@@ -113,6 +113,7 @@ class CursorMovementConfig {
     public static final float EDGE_HOLD_DURATION = 1.0f;
     public static final float HEAD_COORD_SCALE_FACTOR_X = 1.0f;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.0f;
+    public static final float AVG_SMOOTHING = 1.0f;
 
     private RawConfigMultiplier() {}
   }
@@ -262,6 +263,9 @@ class CursorMovementConfig {
           break;
         case EDGE_HOLD_DURATION:
           multiplier = RawConfigMultiplier.EDGE_HOLD_DURATION;
+          break;
+        case AVG_SMOOTHING:
+          multiplier = RawConfigMultiplier.AVG_SMOOTHING;
           break;
         default:
           multiplier = 0.f;

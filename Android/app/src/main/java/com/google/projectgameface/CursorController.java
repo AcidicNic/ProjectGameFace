@@ -84,8 +84,10 @@ public class CursorController {
 
     private float prevX = 0.f;
     private float prevY = 0.f;
-    private float prevSmallStepX = 0.0f;
-    private float prevSmallStepY = 0.0f;
+    private double prevCursorPosX = 0.0f;
+    private double prevCursorPosY = 0.0f;
+    private double prevSmallStepX = 0.0f;
+    private double prevSmallStepY = 0.0f;
 
     public float dragStartX = 0.f;
     public float dragStartY = 0.f;
@@ -317,13 +319,34 @@ public class CursorController {
         this.updateVelocity(faceCoordXy);
         int smooth = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
 
-        float smallStepX = (smooth * prevSmallStepX + velX / (float) gapFrames) / (smooth + 1);
-        float smallStepY = (smooth * prevSmallStepY + velY / (float) gapFrames) / (smooth + 1);
+        float smallStepX = (float) ((smooth * prevSmallStepX + velX / (float) gapFrames) / (smooth + 1));
+        float smallStepY = (float) ((smooth * prevSmallStepY + velY / (float) gapFrames) / (smooth + 1));
 
         prevSmallStepX = smallStepX;
         prevSmallStepY = smallStepY;
 
         return new float[] {smallStepX, smallStepY};
+    }
+
+    public double[] getCursorSmoothedXY(double[] targetCoordXY, int gapFrames) {
+        // Calculate velocity based on the difference between the target and previous positions
+        double velocityX = targetCoordXY[0] - prevCursorPosX;
+        double velocityY = targetCoordXY[1] - prevCursorPosY;
+
+        // Smooth the cursor movement using a configurable smoothing factor
+        int smooth = 2;
+
+        double smallStepX = (smooth * prevSmallStepX + velocityX / (double) gapFrames) / (smooth + 1);
+        double smallStepY = (smooth * prevSmallStepY + velocityY / (double) gapFrames) / (smooth + 1);
+
+        prevSmallStepX = smallStepX;
+        prevSmallStepY = smallStepY;
+
+        // Update the previous cursor position for the next frame
+        prevCursorPosX = cursorPositionX;
+        prevCursorPosY = cursorPositionY;
+
+        return new double[]{smallStepX, smallStepY};
     }
 
     /**
@@ -354,9 +377,7 @@ public class CursorController {
     private float minHeadCoordY = -1;
     private float maxHeadCoordY = -1;
     private float minHeadCoordX = -1;
-    private static final float SMOOTHING_FACTOR = 0.1f; // Adjust this value for more or less smoothing
-    private float smoothedCursorPositionX = 0;
-    private float smoothedCursorPositionY = 0;
+    private static final float SMOOTHING_FACTOR = 0.05f; // Adjust this value for more or less smoothing
 
     public void resetHeadCoord() {
         maxHeadCoordX = -1;
@@ -370,24 +391,24 @@ public class CursorController {
             return;
         }
         if (maxHeadCoordX == -1 || headCoordXY[0] > maxHeadCoordX) {
-            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
+//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
             maxHeadCoordX = headCoordXY[0];
         }
         if (minHeadCoordX == -1 || headCoordXY[0] < minHeadCoordX) {
-            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
+//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
             minHeadCoordX = headCoordXY[0];
         }
         if (maxHeadCoordY == -1 || headCoordXY[1] > maxHeadCoordY) {
-            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
+//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
             maxHeadCoordY = headCoordXY[1];
         }
         if (minHeadCoordY == -1 || headCoordXY[1] < minHeadCoordY) {
             minHeadCoordY = headCoordXY[1];
-            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
+//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
+//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
         }
     }
 
@@ -404,11 +425,7 @@ public class CursorController {
 
         float[] coordsXY = noseCoordXY;
 
-        if (isNoseTipEnabled() && isPitchYawEnabled()) {
-            coordsXY = noseCoordXY;
-//        } else if (isNoseTipEnabled()) {
-//            coordsXY = noseCoordXY;
-        } else if (isPitchYawEnabled()) {
+        if (isPitchYawEnabled()) {
             coordsXY = headCoordXY;
         }
 
@@ -431,16 +448,13 @@ public class CursorController {
             int regionMinY = 0;
             int regionMaxY = screenHeight;
 
-            int WIGGLE_ROOM = screenHeight / 20;
-            int yBound = tempMinY;
             if (tempBoundsSet) {
+                int WIGGLE_ROOM = screenHeight / 20;
+                int yBound = tempMinY;
                 if (isCursorOutsideBounds) {
-                    yBound = tempMinY + WIGGLE_ROOM;
-                    regionMaxY = yBound;
+                    regionMaxY =  tempMinY + WIGGLE_ROOM;
                 } else {
-                    yBound = tempMinY - WIGGLE_ROOM;
-                    regionMinY = yBound;
-                    regionMaxY = screenHeight;
+                    regionMinY = tempMinY - WIGGLE_ROOM;
                 }
             }
 
@@ -451,30 +465,19 @@ public class CursorController {
             float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX + (float) (regionMaxX + regionMinX) / 2;
             float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
 
-            Log.d("CursorController", "tempMinY: " + yBound + ", screenHeight: " + screenHeight + ", normalizedY: " + normalizedY + ", centeredY: " + centeredY);
+//            Log.d("CursorController", "tempMinY: " + yBound + ", screenHeight: " + screenHeight + ", normalizedY: " + normalizedY + ", centeredY: " + centeredY);
+//            double[] smoothedOffset = getCursorSmoothedXY(new double[]{cursorPositionX, cursorPositionY}, gapFrames);
+//            cursorPositionX += smoothedOffset[0];
+//            cursorPositionY += smoothedOffset[1];
 
-            cursorPositionX = centeredX;
-            cursorPositionY = centeredY;
+            cursorPositionX += getSmoothFactor() * (centeredX - cursorPositionX);
+            cursorPositionY += getSmoothFactor() * (centeredY - cursorPositionY);
 
-            // Define a smoothing factor between 0 and 1 (e.g., 0.1 for heavy smoothing, 0.9 for light smoothing)
-            final float SMOOTHING_FACTOR = 0.1f;
+//            cursorPositionX = prevCursorPosX + SMOOTHING_FACTOR * (cursorPositionX - prevCursorPosX);
+//            cursorPositionY = prevCursorPosY + SMOOTHING_FACTOR * (cursorPositionY - prevCursorPosY);
 
-            // Smooth the cursor position using exponential smoothing
-            smoothedCursorPositionX = (float) (smoothedCursorPositionX + SMOOTHING_FACTOR * (cursorPositionX - smoothedCursorPositionX));
-            smoothedCursorPositionY = (float) (smoothedCursorPositionY + SMOOTHING_FACTOR * (cursorPositionY - smoothedCursorPositionY));
-
-            // Define a damping factor between 0 and 1 (e.g., 0.8 for moderate damping)
-//            final float DAMPING_FACTOR = 0.8f;
-//
-//            // Apply damping to further smooth the cursor movement
-//            smoothedCursorPositionX = (float) (smoothedCursorPositionX * DAMPING_FACTOR + (1 - DAMPING_FACTOR) * cursorPositionX);
-//            smoothedCursorPositionY = (float) (smoothedCursorPositionY * DAMPING_FACTOR + (1 - DAMPING_FACTOR) * cursorPositionY);
-
-            // Update the cursor position to the smoothed values
-            cursorPositionX = smoothedCursorPositionX;
-            cursorPositionY = smoothedCursorPositionY;
-
-//            Log.d("CursorController", "Cursor Position: (" + cursorPositionX + ", " + cursorPositionY + ")");
+//            prevCursorPosX = cursorPositionX;
+//            prevCursorPosY = cursorPositionY;
 
             if (tempBoundsSet) {
                 handleBoundingLogic();
@@ -510,6 +513,21 @@ public class CursorController {
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
         }
         updateTrail((float) cursorPositionX, (float) cursorPositionY);
+    }
+
+    public float getSmoothFactor() {
+        int smoothInt = getSmoothing();
+        // Define the range for smoothing factor
+        float minSmoothingFactor = 0.01f;
+        float maxSmoothingFactor = 0.5f;
+
+        // Ensure the intValue is within the expected range [0, 9]
+        smoothInt = clamp(smoothInt, 0, 9);
+
+        // Calculate the smoothing factor using linear interpolation
+        float smoothingFactor = minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
+
+        return smoothingFactor;
     }
 
     private void handleBoundingLogic() {
@@ -711,6 +729,10 @@ public class CursorController {
 
     public float getSmoothingFactor() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
+    }
+
+    public int getSmoothing() {
+        return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
     }
 
 }
