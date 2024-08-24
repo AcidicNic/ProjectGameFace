@@ -46,13 +46,16 @@ class CursorMovementConfig {
     HOLD_RADIUS,
     EDGE_HOLD_DURATION,
     HEAD_COORD_SCALE_FACTOR_X,
-    HEAD_COORD_SCALE_FACTOR_Y
+    HEAD_COORD_SCALE_FACTOR_Y,
+    AVG_SMOOTHING,
   }
 
   public enum CursorMovementBooleanConfigType {
     REALTIME_SWIPE,
     DURATION_POP_OUT,
-    DIRECT_MAPPING
+    DIRECT_MAPPING,
+    NOSE_TIP,
+    PITCH_YAW,
   }
 
   private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
@@ -85,11 +88,14 @@ class CursorMovementConfig {
     public static final int HOLD_RADIUS = 2;
     public static final boolean DEFAULT_REALTIME_SWIPE = true;
     public static final boolean DEFAULT_DURATION_POP_OUT = true;
-    public static final boolean DEFAULT_DIRECT_MAPPING = false;
+    public static final boolean DEFAULT_DIRECT_MAPPING = true;
     public static final boolean DEFAULT_ENABLE_FEATURE = false;
     public static final int EDGE_HOLD_DURATION = 1000;
     public static final float HEAD_COORD_SCALE_FACTOR_X = 1.5f;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.5f;
+    public static final int AVG_SMOOTHING = 5;
+    public static final boolean DEFAULT_PITCH_YAW = false;
+    public static final boolean DEFAULT_NOSE_TIP = true;
 
     private InitialRawValue() {}
   }
@@ -146,6 +152,8 @@ class CursorMovementConfig {
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.DEFAULT_REALTIME_SWIPE);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DEFAULT_DURATION_POP_OUT);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.DIRECT_MAPPING, InitialRawValue.DEFAULT_DIRECT_MAPPING);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.PITCH_YAW, InitialRawValue.DEFAULT_PITCH_YAW);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.DEFAULT_NOSE_TIP);
 
     // Register the receiver
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

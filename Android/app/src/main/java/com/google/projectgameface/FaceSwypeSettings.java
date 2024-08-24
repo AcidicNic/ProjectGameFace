@@ -43,7 +43,12 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private Switch realtimeSwipeSwitch;
     private Switch durationPopOutSwitch;
     private Switch directMappingSwitch;
+    private Switch noseTipSwitch;
+    private Switch pitchYawSwitch;
     private SeekBar holdDurationSeekBar;
+    private SeekBar smoothingSeekBar;
+    private TextView smoothingTxt;
+    private TextView smoothingProgress;
     private SeekBar headCoordScaleFactorXSeekBar;
     private SeekBar headCoordScaleFactorYSeekBar;
     private TextView holdDurationTxt;
@@ -60,7 +65,9 @@ public class FaceSwypeSettings extends AppCompatActivity {
             R.id.headCoordScaleFactorXSlower,
             R.id.headCoordScaleFactorXFaster,
             R.id.headCoordScaleFactorYSlower,
-            R.id.headCoordScaleFactorYFaster
+            R.id.headCoordScaleFactorYFaster,
+            R.id.slowerSmoothing,
+            R.id.fasterSmoothing
     };
 
     @Override
@@ -132,6 +139,29 @@ public class FaceSwypeSettings extends AppCompatActivity {
 
         // Set initial visibility based on the DIRECT_MAPPING value
         headCoordScaleFactorLayout.setVisibility(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DIRECT_MAPPING) ? View.VISIBLE : View.GONE);
+
+        // Nose Tip Cursor Movement
+        noseTipSwitch = findViewById(R.id.noseTipSwitch);
+        noseTipSwitch.setChecked(
+                cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP));
+        noseTipSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            sendValueToService("NOSE_TIP", isChecked);
+        });
+
+        // Pitch + Yaw Cursor Movement
+        pitchYawSwitch = findViewById(R.id.pitchYawSwitch);
+        pitchYawSwitch.setChecked(
+                cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.PITCH_YAW));
+        pitchYawSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            sendValueToService("PITCH_YAW", isChecked);
+        });
+
+        // Smoothing
+        smoothingSeekBar = findViewById(R.id.smoothingSeekBar);
+        smoothingProgress = findViewById(R.id.progressSmoothing);
+        setUpSmoothingSeekBarAndTextView(
+                smoothingSeekBar, smoothingProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING)
+        );
 
         // Binding buttons
         for (int id : viewIds) {
@@ -244,6 +274,33 @@ public class FaceSwypeSettings extends AppCompatActivity {
         });
     }
 
+    private void setUpSmoothingSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(9); // 1 to 10 in increments of 1 means 9 steps
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.AVG_SMOOTHING);
+        int progress = savedProgress;
+        seekBar.setProgress(progress); // Set initial progress
+        textView.setText(String.valueOf(progress)); // Set initial text
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int displayValue = progress + 1;
+                textView.setText(String.valueOf(displayValue));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int duration = (seekBar.getProgress());
+                sendValueToService("AVG_SMOOTHING", duration);
+            }
+        });
+    }
+
     // Ensure to reload config on profile change
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -268,6 +325,14 @@ public class FaceSwypeSettings extends AppCompatActivity {
             int scaleFactorYProgress = Math.round((scaleFactorY - 1.0f) * 15);
             headCoordScaleFactorYSeekBar.setProgress(scaleFactorYProgress);
             headCoordScaleFactorYProgress.setText(String.valueOf(scaleFactorY));
+
+            noseTipSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP));
+            pitchYawSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.PITCH_YAW));
+
+            float avgSmoothing = cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
+            int avgSmoothingProgress = Math.round(avgSmoothing);
+            smoothingSeekBar.setProgress(avgSmoothingProgress);
+            smoothingProgress.setText(String.valueOf(avgSmoothing));
         }
     };
 

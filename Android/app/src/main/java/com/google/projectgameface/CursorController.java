@@ -398,22 +398,32 @@ public class CursorController {
      * @param screenWidth Screen size for prevent cursor move out of of the screen.
      * @param screenHeight Screen size for prevent cursor move out of of the screen.
      */
-    public void updateInternalCursorPosition(float[] headCoordXY, int gapFrames, int screenWidth, int screenHeight) {
+    public void updateInternalCursorPosition(float[] headCoordXY, float[] noseCoordXY, int gapFrames, int screenWidth, int screenHeight) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
 
+        float[] coordsXY = noseCoordXY;
+
+        if (isNoseTipEnabled() && isPitchYawEnabled()) {
+            coordsXY = noseCoordXY;
+//        } else if (isNoseTipEnabled()) {
+//            coordsXY = noseCoordXY;
+        } else if (isPitchYawEnabled()) {
+            coordsXY = headCoordXY;
+        }
+
         if (isDirectMappingEnabled()) {
 
-            updateHeadCoordMinMax(headCoordXY);
+            updateHeadCoordMinMax(coordsXY);
 
             float normalizedX = 0.5f;
             float normalizedY = 0.5f;
 
             if (maxHeadCoordX != minHeadCoordX) {
-                normalizedX = (headCoordXY[0] - minHeadCoordX) / (maxHeadCoordX - minHeadCoordX);
+                normalizedX = (coordsXY[0] - minHeadCoordX) / (maxHeadCoordX - minHeadCoordX);
             }
             if (maxHeadCoordY != minHeadCoordY) {
-                normalizedY = (headCoordXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
+                normalizedY = (coordsXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
             }
 
             int WIGGLE_ROOM = screenHeight / 20;
@@ -492,7 +502,7 @@ public class CursorController {
 //            Log.d("CursorController", "Clamped Cursor Position: (" + cursorPositionX + ", " + cursorPositionY + ")");
         } else {
             // How far we should move this frame.
-            float[] offsetXY = this.getCursorTranslateXY(headCoordXY, gapFrames);
+            float[] offsetXY = this.getCursorTranslateXY(coordsXY, gapFrames);
 
             // Update cursor position with clamping to screen bounds
             cursorPositionX += offsetXY[0];
@@ -697,6 +707,14 @@ public class CursorController {
 
     public boolean isDirectMappingEnabled() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DIRECT_MAPPING);
+    }
+
+    public boolean isNoseTipEnabled() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP);
+    }
+
+    public boolean isPitchYawEnabled() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.PITCH_YAW);
     }
 
     public float getHeadCoordScaleFactorX() {

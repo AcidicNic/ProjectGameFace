@@ -78,8 +78,11 @@ class FaceLandmarkerHelper extends HandlerThread {
     public int frameWidth = 0;
     public int frameHeight = 0;
 
-    float currHeadX = 0.f;
-    float currHeadY = 0.f;
+    public float currHeadX = 0.f;
+    public float currHeadY = 0.f;
+
+    public float currNoseX = 0.f;
+    public float currNoseY = 0.f;
 
     public long mediapipeTimeMs = 0;
     public long preprocessTimeMs = 0;
@@ -369,10 +372,11 @@ class FaceLandmarkerHelper extends HandlerThread {
 //                Log.d(TAG, "normalizedYaw: " + normalizedYaw + ", normalizedPitch: " + normalizedPitch + ", yaw: " + yaw + ", pitch: " + pitch);
                 currHeadY = normalizedPitch * mpInputHeight;
                 currHeadX = normalizedYaw * mpInputWidth;
-            } else {
-                currHeadX = result.faceLandmarks().get(0).get(NOSE_INDEX).x() * mpInputWidth;
-                currHeadY = result.faceLandmarks().get(0).get(NOSE_INDEX).y() * mpInputHeight;
             }
+
+            currNoseX = result.faceLandmarks().get(0).get(NOSE_INDEX).x() * mpInputWidth;
+            currNoseY = result.faceLandmarks().get(0).get(NOSE_INDEX).y() * mpInputHeight;
+
 
             if (result.faceBlendshapes().isPresent()) {
                 // Convert from Category to simple float array.
@@ -398,7 +402,12 @@ class FaceLandmarkerHelper extends HandlerThread {
 
     /** Get user's head X, Y coordinate in image space. */
     public float[] getHeadCoordXY() {
-                return new float[] {currHeadX, currHeadY};
+        return new float[] {currHeadX, currHeadY};
+    }
+
+    /** Get user's nose X, Y coordinate in image space. */
+    public float[] getNoseCoordXY() {
+        return new float[] {currNoseX, currNoseY};
     }
 
     public float[] getBlendshapes() {

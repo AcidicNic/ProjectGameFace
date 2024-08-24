@@ -390,6 +390,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE);
     }
 
+    public boolean isPitchYawEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.PITCH_YAW);
+    }
+
+    public boolean isNoseTipEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP);
+    }
+
     /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
     private ImageAnalysis imageAnalyzer =
         new ImageAnalysis.Builder()
@@ -434,7 +442,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
 
                         cursorController.updateInternalCursorPosition(
-                                facelandmarkerHelper.getHeadCoordXY(),
+                                facelandmarkerHelper.getHeadCoordXY(), facelandmarkerHelper.getNoseCoordXY(),
                                 gapFrames, screenSize.x, screenSize.y
                         );
 
@@ -445,11 +453,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                         dispatchEvent();
 
-                        serviceUiManager.drawHeadCenter(
-                                facelandmarkerHelper.getHeadCoordXY(),
-                                facelandmarkerHelper.mpInputWidth,
-                                facelandmarkerHelper.mpInputHeight
-                        );
+                        if (isPitchYawEnabled()) {
+                            serviceUiManager.drawHeadCenter(
+                                    facelandmarkerHelper.getHeadCoordXY(),
+                                    facelandmarkerHelper.mpInputWidth,
+                                    facelandmarkerHelper.mpInputHeight
+                            );
+                        } else {
+                            serviceUiManager.drawHeadCenter(
+                                    facelandmarkerHelper.getNoseCoordXY(),
+                                    facelandmarkerHelper.mpInputWidth,
+                                    facelandmarkerHelper.mpInputHeight
+                            );
+                        }
 
                         serviceUiManager.updateDebugTextOverlay(
                                 facelandmarkerHelper.preprocessTimeMs,
@@ -468,11 +484,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         // but still can perform some event from face gesture.
                         dispatchEvent();
 
-                        serviceUiManager.drawHeadCenter(
-                                facelandmarkerHelper.getHeadCoordXY(),
-                                facelandmarkerHelper.mpInputWidth,
-                                facelandmarkerHelper.mpInputHeight
-                        );
+                        if (isPitchYawEnabled()) {
+                            serviceUiManager.drawHeadCenter(
+                                    facelandmarkerHelper.getHeadCoordXY(),
+                                    facelandmarkerHelper.mpInputWidth,
+                                    facelandmarkerHelper.mpInputHeight
+                            );
+                        } else {
+                            serviceUiManager.drawHeadCenter(
+                                    facelandmarkerHelper.getNoseCoordXY(),
+                                    facelandmarkerHelper.mpInputWidth,
+                                    facelandmarkerHelper.mpInputHeight
+                            );
+                        }
 
                         serviceUiManager.updateDebugTextOverlay(
                                 facelandmarkerHelper.preprocessTimeMs,
