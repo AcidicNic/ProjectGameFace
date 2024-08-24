@@ -421,7 +421,6 @@ class FaceLandmarkerHelper extends HandlerThread {
         isRunning = true;
     }
 
-
     /**
      * Completely pause the detection process.
      */
