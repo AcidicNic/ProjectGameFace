@@ -32,10 +32,12 @@ public class CalibrationActivity extends AppCompatActivity {
     BroadcastReceiver scoreReceiver;
     private boolean isServicePreviouslyEnabled = false;
 
-    private ProgressBar progressBar;
+    private ProgressBar progressBarLeft;
+    private ProgressBar progressBarRight;
+    private ProgressBar progressBarUp;
+    private ProgressBar progressBarDown;
 
     private int thresholdInUi;
-
 
     private final int seekBarDefaultValue = 2;
     private static final int SEEK_BAR_MAXIMUM_VALUE = 10;
@@ -47,74 +49,109 @@ public class CalibrationActivity extends AppCompatActivity {
 
     private Boolean isPlaceHolderLaidOut = false;
 
-    protected int getSeekBarDefaultValue() {
-        return seekBarDefaultValue;
+    private float minPitch = 0.0f;    // Minimum pitch (down)
+    private float maxPitch = 0.0f;    // Maximum pitch (up)
+    private float minYaw = 0.0f;      // Minimum yaw (left)
+    private float maxYaw = 0.0f;      // Maximum yaw (right)
+
+    public void resetMinMaxValues() {
+        minPitch = 0.0f;
+        maxPitch = 0.0f;
+        minYaw = 0.0f;
+        maxYaw = 0.0f;
     }
 
-
-
+    public void updatePitchYawMinMax(float[] pitchYawXY) {
+        if (pitchYawXY[0] == 0 && pitchYawXY[1] == 0) {
+            return;
+        }
+        if (pitchYawXY[0] > maxPitch) {
+            maxPitch = pitchYawXY[0];
+        }
+        if (pitchYawXY[0] < minPitch) {
+            minPitch = pitchYawXY[0];
+        }
+        if (pitchYawXY[1] > maxYaw) {
+            maxYaw = pitchYawXY[1];
+        }
+        if (pitchYawXY[1] < minYaw) {
+            minYaw = pitchYawXY[1];
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_gesture_size);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_calibration);
+        getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
-
-        BlendshapeEventTriggerConfig.EventType pageEventType = (BlendshapeEventTriggerConfig.EventType) getIntent().getSerializableExtra("eventType");
-        BlendshapeEventTriggerConfig.Blendshape selectedGesture = (BlendshapeEventTriggerConfig.Blendshape) getIntent().getSerializableExtra("selectedGesture");
-        if (selectedGesture == null || pageEventType == null)
-        {
-            Log.e(TAG, "Start intent with invalid extras.");
-            finish();
-            return;
-        }
-        Log.i(TAG, "onCreate: " + pageEventType + " " + selectedGesture);
-
         //setting actionbar
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("Adjust gesture sensitivity");
+        getSupportActionBar().setTitle("Calibration");
 
         //Check if service is enabled.
         checkIfServiceEnabled();
 
-        scorePreview(true, selectedGesture.toString());
+        scorePreview(true, null);
 
-        SeekBar gestureSizeSeekBar = findViewById(R.id.gestureSizeSeekBar);
-        thresholdInUi = preferences.getInt(pageEventType +"_size", seekBarDefaultValue * 10);
+        SeekBar leftSeekBar = findViewById(R.id.leftSeekBar);
+//        thresholdInUi = preferences.getInt(pageEventType +"_size", seekBarDefaultValue * 10);
+        thresholdInUi = 50;
         thresholdInUi = MathUtils.clamp(thresholdInUi, SEEK_BAR_LOW_CLIP, SEEK_BAR_HIGH_CLIP);
-        gestureSizeSeekBar.setMax(SEEK_BAR_MAXIMUM_VALUE);
-        gestureSizeSeekBar.setMin(SEEK_BAR_MINIMUM_VALUE);
-        gestureSizeSeekBar.setProgress(thresholdInUi / 10);
+        leftSeekBar.setMax(SEEK_BAR_MAXIMUM_VALUE);
+        leftSeekBar.setMin(SEEK_BAR_MINIMUM_VALUE);
+        leftSeekBar.setProgress(thresholdInUi / 10);
 
         TextView targetGesture = findViewById(R.id.targetGesture);
 
-        String beautifyBlendshapeName = BlendshapeEventTriggerConfig.BEAUTIFY_BLENDSHAPE_NAME.get(selectedGesture);
-        targetGesture.setText("Perform \""+beautifyBlendshapeName+"\"");
+//        String beautifyBlendshapeName = BlendshapeEventTriggerConfig.BEAUTIFY_BLENDSHAPE_NAME.get(selectedGesture);
+//        targetGesture.setText("Perform \""+beautifyBlendshapeName+"\"");
 
 
         stateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                int stateIndex = intent.getIntExtra("state", CursorAccessibilityService.ServiceState.DISABLE.ordinal());
+                int stateIndex = intent.getIntExtra("state", ServiceState.DISABLE.ordinal());
                 isServicePreviouslyEnabled =
-                        Objects.requireNonNull(CursorAccessibilityService.ServiceState.values()[stateIndex]) != CursorAccessibilityService.ServiceState.DISABLE;
+                        Objects.requireNonNull(ServiceState.values()[stateIndex]) != ServiceState.DISABLE;
             }
         };
 
         scoreReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                int progress = (int)(intent.getFloatExtra("score", 0.0f)*100);
-                if(progress > thresholdInUi){
-                    progressBar.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress, null));
-                } else {
-                    progressBar.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress_threshold,null));
-                }
-                progressBar.setProgress(progress);
+                // Pitch in degrees. Positive is down, negative is up.
+                float pitch = intent.getFloatExtra("PITCH", 0.0f);
+                // Yaw in degrees. Positive is left, negative is right.
+                float yaw = intent.getFloatExtra("YAW", 0.0f);
+
+                float[] headCoordsXY = intent.getFloatArrayExtra("CURRHEADXY");
+                float[] noseCoordsXY = intent.getFloatArrayExtra("CURRNOSEXY");
+                targetGesture.setText("Pitch: " + pitch + "; Yaw: " + yaw + ";\nHead: (" + headCoordsXY[0] + ", " + headCoordsXY[1] + ");\nNose: (" + noseCoordsXY[0] + " " + noseCoordsXY[1] + ")");
+
+                int progressLeft = (int) ((yaw - 0) / (50 - 0) * 100);
+                int progressRight = (int) ((0 - yaw) / (0 - -50) * 100);
+                int progressDown = (int) ((pitch - 0) / (50 - 0) * 100);
+                int progressUp = (int) ((0 - pitch) / (0 - -50) * 100);
+
+                if (progressLeft > thresholdInUi) progressBarLeft.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress, null));
+                else progressBarLeft.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress_threshold,null));
+                progressBarLeft.setProgress(progressLeft);
+
+                if (progressRight > thresholdInUi) progressBarRight.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress, null));
+                else progressBarRight.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress_threshold,null));
+                progressBarRight.setProgress(progressRight);
+
+                if (progressUp > thresholdInUi) progressBarUp.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress, null));
+                else progressBarUp.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress_threshold,null));
+                progressBarUp.setProgress(progressUp);
+
+                if (progressDown > thresholdInUi) progressBarDown.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress, null));
+                else progressBarDown.setProgressDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.custom_progress_threshold,null));
+                progressBarDown.setProgress(progressDown);
             }
         };
 
@@ -134,27 +171,9 @@ public class CalibrationActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.Bigger).setOnClickListener(v -> {
-            int currentValue = gestureSizeSeekBar.getProgress();
-            int newValue = currentValue+1;
-            if(newValue<11){
-                thresholdInUi = newValue*10;
-                gestureSizeSeekBar.setProgress(newValue);
-            }
-        });
-
-        findViewById(R.id.Smaller).setOnClickListener(v -> {
-            int currentValue = gestureSizeSeekBar.getProgress();
-            int newValue = currentValue - 1;
-            if(newValue>-1){
-                thresholdInUi = newValue * 10;
-                gestureSizeSeekBar.setProgress(newValue);
-            }
-        });
-
         findViewById(R.id.doneBtn).setOnClickListener(v -> {
-            BlendshapeEventTriggerConfig.writeBindingConfig(getBaseContext(), selectedGesture, pageEventType,
-                    thresholdInUi);
+//            BlendshapeEventTriggerConfig.writeBindingConfig(getBaseContext(), selectedGesture, pageEventType,
+//                    thresholdInUi);
             try {
                 CharSequence text = "Setting Completed!";
                 int duration = Toast.LENGTH_LONG;
@@ -179,7 +198,7 @@ public class CalibrationActivity extends AppCompatActivity {
 
 
 
-        gestureSizeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        leftSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 // Prevent user from set the threshold to 0.
@@ -199,8 +218,12 @@ public class CalibrationActivity extends AppCompatActivity {
             }
         });
 
-        progressBar = findViewById(R.id.gestureSizeBar);
-        registerReceiver(scoreReceiver, new IntentFilter(selectedGesture.toString()),RECEIVER_EXPORTED);
+        progressBarLeft = findViewById(R.id.leftBar);
+        progressBarRight = findViewById(R.id.rightBar);
+        progressBarUp = findViewById(R.id.upBar);
+        progressBarDown = findViewById(R.id.downBar);
+
+        registerReceiver(scoreReceiver, new IntentFilter("PITCH_YAW"),RECEIVER_EXPORTED);
         registerReceiver(stateReceiver, new IntentFilter("SERVICE_STATE_GESTURE"),RECEIVER_EXPORTED);
     }
 
@@ -231,7 +254,6 @@ public class CalibrationActivity extends AppCompatActivity {
     private void scorePreview(boolean status, String requestedScoreName) {
         Intent intent = new Intent("ENABLE_SCORE_PREVIEW");
         intent.putExtra("enable", status);
-        intent.putExtra("blendshapesName", requestedScoreName);
         sendBroadcast(intent);
     }
 

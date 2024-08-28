@@ -15,154 +15,247 @@
  limitations under the License.
 -->
 
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/gestureSizeLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="20dp"
-    tools:context=".GestureSizeActivity">
+    >
 
-
-    <TextView
-        android:id="@+id/title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:text="Perform the gesture to adjust the sensitive."
-        android:textSize="14sp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <LinearLayout
-        android:id="@+id/cameraBoxPlaceHolder"
-        android:layout_width="333dp"
-        android:layout_height="224dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="40dp"
-        android:layout_marginEnd="10dp"
-        android:background="#E9F1FC"
-        android:orientation="vertical"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title"></LinearLayout>
-
-    <TextView
-        android:id="@+id/gestureSizeTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="36dp"
-        android:text="Gesture size"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.027"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/targetGesture" />
-
-    <TextView
-        android:id="@+id/gestureSizeDescription"
-        android:layout_width="345dp"
-        android:layout_height="64dp"
-        android:lines="3"
-        android:text="When you perform the gesture, it will register below. To find the right sensitivity for you, adjust the slider to match the length of the green line."
-        android:textColor="#868686"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/gestureSizeTitle" />
-
-    <ProgressBar
-        android:id="@+id/gestureSizeBar"
-        style="?android:attr/progressBarStyleHorizontal"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/gestureSizeLayout"
         android:layout_width="match_parent"
-        android:layout_height="10dp"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="20dp"
-        android:layout_marginEnd="10dp"
-        android:progressDrawable="@drawable/custom_progress"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/gestureSizeDescription" />
+        android:layout_height="match_parent"
+        android:padding="20dp"
+        tools:context=".GestureSizeActivity">
 
-    <SeekBar
-        android:id="@+id/gestureSizeSeekBar"
-        style="@style/Widget.AppCompat.SeekBar.Discrete"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxHeight="3dp"
-        android:progressDrawable="@drawable/custom_seekbar"
-        android:thumbTint="#1a73e8"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/gestureSizeBar" />
+        <LinearLayout
+            android:id="@+id/cameraBoxPlaceHolder"
+            android:layout_width="300dip"
+            android:layout_height="300dip"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:background="#E9F1FC"
+            android:orientation="vertical"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"></LinearLayout>
 
-    <TextView
-        android:id="@+id/Smaller"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/textview_custom"
-        android:paddingLeft="10dp"
-        android:paddingTop="4dp"
-        android:paddingRight="10dp"
-        android:paddingBottom="5dp"
-        android:text="Smaller"
-        android:textColor="#444746"
-        app:layout_constraintStart_toStartOf="@+id/gestureSizeSeekBar"
-        app:layout_constraintTop_toBottomOf="@+id/gestureSizeSeekBar" />
+        <TextView
+            android:id="@+id/targetGesture"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Perform &quot;Head Up&quot;"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="@+id/cameraBoxPlaceHolder"
+            app:layout_constraintStart_toStartOf="@+id/cameraBoxPlaceHolder"
+            app:layout_constraintTop_toBottomOf="@+id/cameraBoxPlaceHolder" />
 
-    <TextView
-        android:id="@+id/Bigger"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/textview_custom"
-        android:paddingLeft="10dp"
-        android:paddingTop="4dp"
-        android:paddingRight="10dp"
-        android:paddingBottom="5dp"
-        android:text="Bigger"
-        android:textColor="#444746"
-        app:layout_constraintEnd_toEndOf="@+id/gestureSizeSeekBar"
-        app:layout_constraintTop_toBottomOf="@+id/gestureSizeSeekBar" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/leftLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/targetGesture"
+            >
+            <TextView
+                android:id="@+id/leftTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Left Max"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.027"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+            <ProgressBar
+                android:id="@+id/leftBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="10dp"
+                android:progressDrawable="@drawable/custom_progress"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/leftTitle" />
+            <SeekBar
+                android:id="@+id/leftSeekBar"
+                style="@style/Widget.AppCompat.SeekBar.Discrete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxHeight="3dp"
+                android:progressDrawable="@drawable/custom_seekbar"
+                android:thumbTint="#1a73e8"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/leftBar" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <Button
-        android:id="@+id/doneBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/round_button"
-        android:text="Done"
-        android:textAllCaps="false"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/rightLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            app:layout_constraintTop_toBottomOf="@+id/leftLayout"
+            >
+            <TextView
+                android:id="@+id/rightTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Right Max"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.027"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+            <ProgressBar
+                android:id="@+id/rightBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="10dp"
+                android:progressDrawable="@drawable/custom_progress"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/rightTitle" />
+            <SeekBar
+                android:id="@+id/rightSeekBar"
+                style="@style/Widget.AppCompat.SeekBar.Discrete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxHeight="3dp"
+                android:progressDrawable="@drawable/custom_seekbar"
+                android:thumbTint="#1a73e8"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/rightBar" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <Button
-        android:id="@+id/backBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/round_button_w"
-        android:text="Back"
-        android:textAllCaps="false"
-        android:textColor="#1967d2"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/upLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            app:layout_constraintTop_toBottomOf="@+id/rightLayout"
+            >
+            <TextView
+                android:id="@+id/upTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Up Max"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.027"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+            <ProgressBar
+                android:id="@+id/upBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="10dp"
+                android:progressDrawable="@drawable/custom_progress"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/upTitle" />
+            <SeekBar
+                android:id="@+id/upSeekBar"
+                style="@style/Widget.AppCompat.SeekBar.Discrete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxHeight="3dp"
+                android:progressDrawable="@drawable/custom_seekbar"
+                android:thumbTint="#1a73e8"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/upBar" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <TextView
-        android:id="@+id/targetGesture"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Perform &quot;Head Up&quot;"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="@+id/cameraBoxPlaceHolder"
-        app:layout_constraintStart_toStartOf="@+id/cameraBoxPlaceHolder"
-        app:layout_constraintTop_toBottomOf="@+id/cameraBoxPlaceHolder" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/downLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            app:layout_constraintTop_toBottomOf="@+id/upLayout"
+            >
+            <TextView
+                android:id="@+id/downTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Down Max"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.027"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+            <ProgressBar
+                android:id="@+id/downBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="10dp"
+                android:progressDrawable="@drawable/custom_progress"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/downTitle" />
+            <SeekBar
+                android:id="@+id/downSeekBar"
+                style="@style/Widget.AppCompat.SeekBar.Discrete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxHeight="3dp"
+                android:progressDrawable="@drawable/custom_seekbar"
+                android:thumbTint="#1a73e8"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/downBar" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <Button
+            android:id="@+id/doneBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/round_button"
+            android:text="Done"
+            android:textAllCaps="false"
+            app:layout_constraintTop_toBottomOf="@+id/downLayout"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/backBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/round_button_w"
+            android:text="Back"
+            android:textAllCaps="false"
+            android:textColor="#1967d2"
+            app:layout_constraintTop_toBottomOf="@+id/downLayout"
+            app:layout_constraintStart_toStartOf="parent" />
 
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

@@ -37,88 +37,41 @@ import java.util.List;
 import java.util.Map;
 
 public class CursorController {
-
     private static final String TAG = "CursorController";
-
-
-    /** How much you need to move the head to trigger teleport */
-    private static final int TELEPORT_TRIGGER_THRESHOLD = 200;
-
-    private static final int TELEPORT_MARGIN_TOP = 60;
-    private static final int TELEPORT_MARGIN_BOTTOM = 60;
-
-    private static final int TELEPORT_MARGIN_LEFT = 30;
-    private static final int TELEPORT_MARGIN_RIGHT = 30;
-
-    /** How fast cursor can go in teleport mode*/
-    private static final double TELEPORT_LERP_SPEED = 0.15;
-
-
-    // Cursor velocity.
     private float velX = 0.f;
     private float velY = 0.f;
-
-    /** Cursor position.*/
-    private double cursorPositionX;
-
-    /** Cursor position.*/
-    private double cursorPositionY;
-
-
-    /** Invisible cursor when using teleport mode.*/
+    private double cursorPositionX = 0;
+    private double cursorPositionY = 0;
     private double teleportShadowX;
     private double teleportShadowY;
-
-    /** Teleport mode helps user quickly jump to screen edge with small head turning.*/
     private boolean isTeleportMode = false;
-
     public boolean isDragging = false;
-
     private static final int MAX_BUFFER_SIZE = 100;
-
     /** Array for storing user face coordinate x coordinate (detected from FaceLandmarks). */
-    ArrayList<Float> faceCoordXBuffer;
-
+    ArrayList<Float> rawCoordXBuffer;
     /** Array for storing user face coordinate y coordinate (detected from FaceLandmarks). */
-    ArrayList<Float> faceCoordYBuffer;
-
+    ArrayList<Float> rawCoordYBuffer;
     private float prevX = 0.f;
     private float prevY = 0.f;
-    private double prevCursorPosX = 0.0f;
-    private double prevCursorPosY = 0.0f;
     private double prevSmallStepX = 0.0f;
     private double prevSmallStepY = 0.0f;
-
     public float dragStartX = 0.f;
     public float dragStartY = 0.f;
     public float dragEndX = 0.f;
     public float dragEndY = 0.f;
-
     private int screenWidth;
     private int screenHeight;
-
     private int tempMinX = 0;
     private int tempMaxX = 0;
     private int tempMinY = 0;
     private int tempMaxY = 0;
-
+    private float smoothedCursorPositionX = 0;
+    private float smoothedCursorPositionY = 0;
     private boolean tempBoundsSet = false;
-    private static final int POP_OUT_THRESHOLD_DISTANCE = 200;
-    private static final int POP_OUT_THRESHOLD_VELOCITY = 50;
-    private static final int POP_OUT_MAX_DISTANCE = 300;
-    private long lastBoundaryHitTime = 0;
-    private long boundaryHitCooldown = 1000; // milliseconds
     private boolean isCursorOutsideBounds = false;
-    private boolean isCursorBoosted = false;
-    private long cursorBoostStartTime = 0;
-    private static final int BOOST_DURATION = 300; // milliseconds
-    private static final float BOOST_FACTOR = 1.5f; // Boost factor
-
     public CursorMovementConfig cursorMovementConfig;
-
     /** A Config define which face shape should trigger which event */
     BlendshapeEventTriggerConfig blendshapeEventTriggerConfig;
-
     /** Keep tracking if any event is triggered. */
     private final HashMap<BlendshapeEventTriggerConfig.EventType, Boolean> blendshapeEventTriggeredTracker = new HashMap<>();
     private boolean isSwiping = false;
@@ -139,16 +92,12 @@ public class CursorController {
     public CursorController(Context context, int width, int height) {
         screenWidth = width;
         screenHeight = height;
-//        maxHeadCoordX = screenWidth / 2;
-//        minHeadCoordY = screenHeight / 2;
-//        maxHeadCoordY = screenHeight / 2;
-//        minHeadCoordX = screenWidth / 2;
         Log.d(TAG, "OnCreate: Screen size: " + screenWidth + "x" + screenHeight);
-        Log.d(TAG, "OnCreate: Head Coord: " + maxHeadCoordX + "x" + minHeadCoordY + "x" + maxHeadCoordY + "x" + minHeadCoordX);
+        Log.d(TAG, "OnCreate: Head Coord: " + maxRawCoordX + "x" + minRawCoordY + "x" + maxRawCoordY + "x" + minRawCoordX);
 
         parentContext = context;
-        faceCoordXBuffer = new ArrayList<>();
-        faceCoordYBuffer = new ArrayList<>();
+        rawCoordXBuffer = new ArrayList<>();
+        rawCoordYBuffer = new ArrayList<>();
 
         // Create cursor movement config and initialize;
         cursorMovementConfig = new CursorMovementConfig(context);
@@ -211,16 +160,16 @@ public class CursorController {
      * Calculate cursor velocity from face coordinate location. Use getVelX() and get getVelY() to
      * receive it.
      */
-    private void updateVelocity(float[] faceCoordXy) {
-        float faceCoordX = faceCoordXy[0];
-        float faceCoordY = faceCoordXy[1];
+    private void updateVelocity(float[] rawCoordsXY) {
+        float rawCoordX = rawCoordsXY[0];
+        float rawCoordY = rawCoordsXY[1];
 
-        faceCoordXBuffer.add(faceCoordX);
-        faceCoordYBuffer.add(faceCoordY);
+        rawCoordXBuffer.add(rawCoordX);
+        rawCoordYBuffer.add(rawCoordY);
 
         // Calculate speed
-        float tempVelX = faceCoordX - prevX;
-        float tempVelY = faceCoordY - prevY;
+        float tempVelX = rawCoordX - prevX;
+        float tempVelY = rawCoordY - prevY;
 
         float[] result = asymmetryScaleXy(tempVelX, tempVelY);
 
@@ -228,12 +177,12 @@ public class CursorController {
         this.velY = result[1];
 
         // History
-        prevX = faceCoordX;
-        prevY = faceCoordY;
+        prevX = rawCoordX;
+        prevY = rawCoordY;
 
-        if (faceCoordXBuffer.size() > MAX_BUFFER_SIZE) {
-            faceCoordXBuffer.remove(0);
-            faceCoordYBuffer.remove(0);
+        if (rawCoordXBuffer.size() > MAX_BUFFER_SIZE) {
+            rawCoordXBuffer.remove(0);
+            rawCoordYBuffer.remove(0);
         }
     }
 
@@ -328,27 +277,6 @@ public class CursorController {
         return new float[] {smallStepX, smallStepY};
     }
 
-    public double[] getCursorSmoothedXY(double[] targetCoordXY, int gapFrames) {
-        // Calculate velocity based on the difference between the target and previous positions
-        double velocityX = targetCoordXY[0] - prevCursorPosX;
-        double velocityY = targetCoordXY[1] - prevCursorPosY;
-
-        // Smooth the cursor movement using a configurable smoothing factor
-        int smooth = 2;
-
-        double smallStepX = (smooth * prevSmallStepX + velocityX / (double) gapFrames) / (smooth + 1);
-        double smallStepY = (smooth * prevSmallStepY + velocityY / (double) gapFrames) / (smooth + 1);
-
-        prevSmallStepX = smallStepX;
-        prevSmallStepY = smallStepY;
-
-        // Update the previous cursor position for the next frame
-        prevCursorPosX = cursorPositionX;
-        prevCursorPosY = cursorPositionY;
-
-        return new double[]{smallStepX, smallStepY};
-    }
-
     /**
      * Set start point for drag action.
      *
@@ -373,153 +301,122 @@ public class CursorController {
         isDragging = false;
     }
 
-    private float maxHeadCoordX = -1;
-    private float minHeadCoordY = -1;
-    private float maxHeadCoordY = -1;
-    private float minHeadCoordX = -1;
-    private static final float SMOOTHING_FACTOR = 0.05f; // Adjust this value for more or less smoothing
+    private float maxRawCoordX = -1;
+    private float minRawCoordY = -1;
+    private float maxRawCoordY = -1;
+    private float minRawCoordX = -1;
 
-    public void resetHeadCoord() {
-        maxHeadCoordX = -1;
-        minHeadCoordY = -1;
-        maxHeadCoordY = -1;
-        minHeadCoordX = -1;
+    public void resetRawCoordMinMax() {
+        maxRawCoordX = -1;
+        minRawCoordY = -1;
+        maxRawCoordY = -1;
+        minRawCoordX = -1;
     }
 
-    public void updateHeadCoordMinMax(float[] headCoordXY) {
-        if (headCoordXY[0] == 0 && headCoordXY[1] == 0) {
+    public void updateRawCoordMinMax(float[] rawCoordXY) {
+        if (rawCoordXY[0] == 0 && rawCoordXY[1] == 0) {
             return;
         }
-        if (maxHeadCoordX == -1 || headCoordXY[0] > maxHeadCoordX) {
-//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
-            maxHeadCoordX = headCoordXY[0];
+        if (maxRawCoordX == -1 || rawCoordXY[0] > maxRawCoordX) {
+            maxRawCoordX = rawCoordXY[0];
         }
-        if (minHeadCoordX == -1 || headCoordXY[0] < minHeadCoordX) {
-//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
-            minHeadCoordX = headCoordXY[0];
+        if (minRawCoordX == -1 || rawCoordXY[0] < minRawCoordX) {
+            minRawCoordX = rawCoordXY[0];
         }
-        if (maxHeadCoordY == -1 || headCoordXY[1] > maxHeadCoordY) {
-//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
-            maxHeadCoordY = headCoordXY[1];
+        if (maxRawCoordY == -1 || rawCoordXY[1] > maxRawCoordY) {
+            maxRawCoordY = rawCoordXY[1];
         }
-        if (minHeadCoordY == -1 || headCoordXY[1] < minHeadCoordY) {
-            minHeadCoordY = headCoordXY[1];
-//            Log.d(TAG, "MIN (X, Y): " + minHeadCoordY + ", " + minHeadCoordX);
-//            Log.d(TAG, "MAX (X, Y): " + maxHeadCoordY + ", " + maxHeadCoordX);
+        if (minRawCoordY == -1 || rawCoordXY[1] < minRawCoordY) {
+            minRawCoordY = rawCoordXY[1];
         }
     }
 
     /**
      * Update internal cursor position.
      * @param headCoordXY User head coordinate.
-     * @param gapFrames How many frames we use to wait for the FaceLandmarks model.
+//     * @param gapFrames How many frames we use to wait for the FaceLandmarks model.
      * @param screenWidth Screen size for prevent cursor move out of of the screen.
      * @param screenHeight Screen size for prevent cursor move out of of the screen.
      */
-    public void updateInternalCursorPosition(float[] headCoordXY, float[] noseCoordXY, int gapFrames, int screenWidth, int screenHeight) {
+    public void updateInternalCursorPosition(float[] headCoordXY, float[] noseCoordXY, int screenWidth, int screenHeight) {
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
 
-        float[] coordsXY = noseCoordXY;
+        boolean isPitchYawEnabled = isPitchYawEnabled();
+        boolean isNoseTipEnabled = isNoseTipEnabled();
+        float[] coordsXY;
+        float normalizedX = 0.5f;
+        float normalizedY = 0.5f;
 
-        if (isPitchYawEnabled()) {
+        if (isPitchYawEnabled && isNoseTipEnabled) { // Combined
+            coordsXY = noseCoordXY;
+        } else if (isPitchYawEnabled) { // Only Pitch+Yaw
             coordsXY = headCoordXY;
+        } else { // Only Nose Tip
+            coordsXY = noseCoordXY;
         }
 
-        if (isDirectMappingEnabled()) {
-
-            updateHeadCoordMinMax(coordsXY);
-
-            float normalizedX = 0.5f;
-            float normalizedY = 0.5f;
-
-            if (maxHeadCoordX != minHeadCoordX) {
-                normalizedX = (coordsXY[0] - minHeadCoordX) / (maxHeadCoordX - minHeadCoordX);
-            }
-            if (maxHeadCoordY != minHeadCoordY) {
-                normalizedY = (coordsXY[1] - minHeadCoordY) / (maxHeadCoordY - minHeadCoordY);
-            }
-
-            int regionMinX = 0;
-            int regionMaxX = screenWidth;
-            int regionMinY = 0;
-            int regionMaxY = screenHeight;
-
-            if (tempBoundsSet) {
-                int WIGGLE_ROOM = screenHeight / 20;
-                int yBound = tempMinY;
-                if (isCursorOutsideBounds) {
-                    regionMaxY =  tempMinY + WIGGLE_ROOM;
-                } else {
-                    regionMinY = tempMinY - WIGGLE_ROOM;
-                }
-            }
-
-            float headCoordScaleFactorX = getHeadCoordScaleFactorX();
-            float headCoordScaleFactorY = getHeadCoordScaleFactorY();
-
-            // Center the normalized coordinates within the region
-            float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX + (float) (regionMaxX + regionMinX) / 2;
-            float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
-
-//            Log.d("CursorController", "tempMinY: " + yBound + ", screenHeight: " + screenHeight + ", normalizedY: " + normalizedY + ", centeredY: " + centeredY);
-//            double[] smoothedOffset = getCursorSmoothedXY(new double[]{cursorPositionX, cursorPositionY}, gapFrames);
-//            cursorPositionX += smoothedOffset[0];
-//            cursorPositionY += smoothedOffset[1];
-
-            cursorPositionX += getSmoothFactor() * (centeredX - cursorPositionX);
-            cursorPositionY += getSmoothFactor() * (centeredY - cursorPositionY);
-
-//            cursorPositionX = prevCursorPosX + SMOOTHING_FACTOR * (cursorPositionX - prevCursorPosX);
-//            cursorPositionY = prevCursorPosY + SMOOTHING_FACTOR * (cursorPositionY - prevCursorPosY);
-
-//            prevCursorPosX = cursorPositionX;
-//            prevCursorPosY = cursorPositionY;
-
-            if (tempBoundsSet) {
-                handleBoundingLogic();
-            }
-
-            // Clamp cursor position to screen bounds
-            cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
-            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
-
-//            Log.d("CursorController", "Clamped Cursor Position: (" + cursorPositionX + ", " + cursorPositionY + ")");
-        } else {
-            // How far we should move this frame.
-            float[] offsetXY = this.getCursorTranslateXY(coordsXY, gapFrames);
-
-            // Update cursor position with clamping to screen bounds
-            cursorPositionX += offsetXY[0];
-            cursorPositionY += offsetXY[1];
-
-            // Handle bounding logic
-            if (tempBoundsSet) {
-                handleBoundingLogic();
-            }
-
-            // Clamp cursor position to screen bounds
-            cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
-            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        updateRawCoordMinMax(coordsXY);
+        if (maxRawCoordX != minRawCoordX) {
+            normalizedX = (coordsXY[0] - minRawCoordX) / (maxRawCoordX - minRawCoordX);
         }
+        if (maxRawCoordY != minRawCoordY) {
+            normalizedY = (coordsXY[1] - minRawCoordY) / (maxRawCoordY - minRawCoordY);
+        }
+
+        int regionMinX = 0;
+        int regionMaxX = screenWidth;
+        int regionMinY = 0;
+        int regionMaxY = screenHeight;
+        if (tempBoundsSet) {
+            int WIGGLE_ROOM = screenHeight / 20;
+            if (isCursorOutsideBounds) {
+                regionMaxY =  tempMinY + WIGGLE_ROOM;
+            } else {
+                regionMinY = tempMinY - WIGGLE_ROOM;
+            }
+        }
+        float headCoordScaleFactorX = getHeadCoordScaleFactorX();
+        float headCoordScaleFactorY = getHeadCoordScaleFactorY();
+
+        // Center the normalized coordinates within the region
+        float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX + (float) (regionMaxX + regionMinX) / 2;
+        float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
+
+        // Smoothing
+        float smoothingFactor = getSmoothFactor(0.01f, 0.3f);
+        smoothedCursorPositionX += (smoothingFactor * (centeredX - smoothedCursorPositionX));
+        smoothedCursorPositionY += (smoothingFactor * (centeredY - smoothedCursorPositionY));
+
+        cursorPositionX = smoothedCursorPositionX;
+        cursorPositionY = smoothedCursorPositionY;
+
+        if (tempBoundsSet) {
+            handleBoundingLogic();
+        }
+
+        // Clamp cursor position to screen bounds
+        cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
+        cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
 
         if (isRealtimeSwipe) {
             updateRealtimeSwipe((float) cursorPositionX, (float) cursorPositionY);
         }
         if (isSwiping) {
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
+            updateTrail((float) cursorPositionX, (float) cursorPositionY);
         }
-        updateTrail((float) cursorPositionX, (float) cursorPositionY);
     }
 
-    public float getSmoothFactor() {
-        int smoothInt = getSmoothing();
-        // Define the range for smoothing factor
-        float minSmoothingFactor = 0.01f;
-        float maxSmoothingFactor = 0.5f;
+    /**
+     * Calculate smoothing factor using FaceSwype smoothing config var.
+     * @param minSmoothingFactor Minimum smoothing factor (Typically 0.01f)
+     * @param maxSmoothingFactor Maximum smoothing factor (Typically 0.5f)
+     * @return Smoothing factor (Between minSmoothingFactor and maxSmoothingFactor)
+     */
+    public float getSmoothFactor(float minSmoothingFactor, float maxSmoothingFactor) {
+        // get the smoothing factor from the config and invert it
+        int smoothInt = 9 - getSmoothing();
 
         // Ensure the intValue is within the expected range [0, 9]
         smoothInt = clamp(smoothInt, 0, 9);
@@ -527,17 +424,13 @@ public class CursorController {
         // Calculate the smoothing factor using linear interpolation
         float smoothingFactor = minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
 
+//        Log.d(TAG, "Smoothing factor: " + smoothingFactor + " (int: " + getSmoothing() + ")");
         return smoothingFactor;
     }
 
     private void handleBoundingLogic() {
         long currentTime = System.currentTimeMillis();
-        boolean durationPopOut = isDurationPopOutEnabled();
-
-        boolean touchingLeftEdge = cursorPositionX <= tempMinX;
-        boolean touchingRightEdge = cursorPositionX >= tempMaxX;
         boolean touchingTopEdge = cursorPositionY <= tempMinY;
-        boolean touchingBottomEdge = cursorPositionY >= tempMaxY;
 
         if (!isCursorOutsideBounds) {
             // Cursor is inside the bounds
@@ -584,16 +477,10 @@ public class CursorController {
                 cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
             }
         }
+    }
 
-//        if (isCursorBoosted) {
-//            long elapsedTime = currentTime - cursorBoostStartTime;
-//            if (elapsedTime < BOOST_DURATION) {
-//                cursorPositionX += velX * BOOST_FACTOR;
-//                cursorPositionY += velY * BOOST_FACTOR;
-//            } else {
-//                isCursorBoosted = false;
-//            }
-//        }
+    public Rect getTemporaryBounds() {
+        return new Rect(this.tempMinX, this.tempMinY, this.tempMaxX, this.tempMaxY);
     }
 
     public void setTemporaryBounds(Rect bounds) {
@@ -607,38 +494,12 @@ public class CursorController {
         Log.d(TAG, "Set temporary bounds: " + bounds);
     }
 
-    private float getDynamicPopOutThresholdDistance() {
-        return Math.min(screenHeight, screenWidth) * 0.18f; // Adjust the factor as needed
-    }
-
-    private float getDynamicPopOutThresholdDistance(double cursorPosition, int boundMin, int boundMax, int screenSize, boolean isMovingTowardsMin) {
-        float thresholdDistance = Math.min(screenHeight, screenWidth) * 0.18f; // Adjust the factor as needed
-
-        // Check if the bound is flush against the edge of the screen
-        if ((isMovingTowardsMin && boundMin <= 0) || (!isMovingTowardsMin && boundMax >= screenSize)) {
-            // Ignore attempts to escape if the bound is flush against the edge of the screen
-            return Float.MAX_VALUE;
-        }
-
-        return thresholdDistance;
-    }
-
-    private float getDynamicVelocityThreshold(float velX, float velY) {
-        double speedScale = 0.2;
-        float rightSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED) * speedScale) + speedScale);
-        float leftSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED) * speedScale) + speedScale);
-        float downSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) * speedScale) + speedScale);
-        float upSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) + speedScale);
-
-        return upSpeed;
-    }
-
-    public Rect getTemporaryBounds() {
-        return new Rect(this.tempMinX, this.tempMinY, this.tempMaxX, this.tempMaxY);
-    }
-
     public void clearTemporaryBounds() {
         this.tempBoundsSet = false;
+        this.tempMinX = 0;
+        this.tempMinY = 0;
+        this.tempMaxX = screenWidth;
+        this.tempMaxY = screenHeight;
     }
 
     public int[] getCursorPositionXY() {

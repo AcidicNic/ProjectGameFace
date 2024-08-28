@@ -32,7 +32,6 @@ public class CameraBoxOverlay extends View {
 
     /** White dot on user head. */
     private float whiteDotX = -100.f;
-
     private float whiteDotY = -100.f;
 
     private String preprocessTimeText = "";

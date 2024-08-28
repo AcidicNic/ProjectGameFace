@@ -28,7 +28,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.content.pm.Signature;
 import android.content.res.Configuration;
 import android.graphics.Point;
@@ -37,10 +36,8 @@ import android.hardware.input.InputManager;
 import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
@@ -64,17 +61,9 @@ import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -425,7 +414,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     // Back-off.
                     tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
                 }
-
                 switch (serviceState) {
                     case GLOBAL_STICK:
                         if (shouldSendScore) {
@@ -438,12 +426,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         }
 
                         // Use for smoothing.
-                        int gapFrames =
-                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
+//                        int gapFrames =
+//                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
 
                         cursorController.updateInternalCursorPosition(
-                                facelandmarkerHelper.getHeadCoordXY(), facelandmarkerHelper.getNoseCoordXY(),
-                                gapFrames, screenSize.x, screenSize.y
+                                facelandmarkerHelper.getHeadCoordXY(false), facelandmarkerHelper.getNoseCoordXY(false), screenSize.x, screenSize.y
                         );
 
                         // Actually update the UI cursor image.
@@ -453,15 +440,21 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                         dispatchEvent();
 
-                        if (isPitchYawEnabled()) {
+                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
                             serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getHeadCoordXY(),
+                                    facelandmarkerHelper.getNoseCoordXY(false),
+                                    facelandmarkerHelper.mpInputWidth,
+                                    facelandmarkerHelper.mpInputHeight
+                            );
+                        } else if (isPitchYawEnabled()) {
+                            serviceUiManager.drawHeadCenter(
+                                    facelandmarkerHelper.getHeadCoordXY(false),
                                     facelandmarkerHelper.mpInputWidth,
                                     facelandmarkerHelper.mpInputHeight
                             );
                         } else {
                             serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getNoseCoordXY(),
+                                    facelandmarkerHelper.getNoseCoordXY(false),
                                     facelandmarkerHelper.mpInputWidth,
                                     facelandmarkerHelper.mpInputHeight
                             );
@@ -484,15 +477,21 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         // but still can perform some event from face gesture.
                         dispatchEvent();
 
-                        if (isPitchYawEnabled()) {
+                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
                             serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getHeadCoordXY(),
+                                    facelandmarkerHelper.getCombinedNoseAndHeadCoords(),
+                                    facelandmarkerHelper.mpInputWidth,
+                                    facelandmarkerHelper.mpInputHeight
+                            );
+                        } else if (isPitchYawEnabled()) {
+                            serviceUiManager.drawHeadCenter(
+                                    facelandmarkerHelper.getHeadCoordXY(false),
                                     facelandmarkerHelper.mpInputWidth,
                                     facelandmarkerHelper.mpInputHeight
                             );
                         } else {
                             serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getNoseCoordXY(),
+                                    facelandmarkerHelper.getNoseCoordXY(false),
                                     facelandmarkerHelper.mpInputWidth,
                                     facelandmarkerHelper.mpInputHeight
                             );
@@ -549,18 +548,35 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
 
         // Get float score of the requested blendshape.
-        try {
-            BlendshapeEventTriggerConfig.Blendshape enumValue =
-                BlendshapeEventTriggerConfig.Blendshape.valueOf(requestedScoreBlendshapeName);
+        if (requestedScoreBlendshapeName != null) {
+            try {
+                BlendshapeEventTriggerConfig.Blendshape enumValue =
+                        BlendshapeEventTriggerConfig.Blendshape.valueOf(requestedScoreBlendshapeName);
 
-            float score = facelandmarkerHelper.getBlendshapes()[enumValue.value];
-            Intent intent = new Intent(requestedScoreBlendshapeName);
-            intent.putExtra("score", score);
-            sendBroadcast(intent);
-        } catch (IllegalArgumentException e) {
-            Log.w(TAG, "No Blendshape named " + requestedScoreBlendshapeName);
+                float score = facelandmarkerHelper.getBlendshapes()[enumValue.value];
+                Intent intent = new Intent(requestedScoreBlendshapeName);
+                intent.putExtra("score", score);
+                sendBroadcast(intent);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "No Blendshape named " + requestedScoreBlendshapeName);
+            }
+        } else {
+            try {
+                float[] pitchYaw = facelandmarkerHelper.getPitchYaw();
+                float[] currHeadXY = facelandmarkerHelper.getHeadCoordXY(true);
+                float[] currNoseXY = facelandmarkerHelper.getNoseCoordXY(true);
+                Intent intent = new Intent("PITCH_YAW");
+                intent.putExtra("PITCH", pitchYaw[0]);
+                intent.putExtra("YAW", pitchYaw[1]);
+                intent.putExtra("CURRHEADXY", currHeadXY);
+                intent.putExtra("CURRNOSEXY", currNoseXY);
+                sendBroadcast(intent);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "err while retrieving pitch & yaw " + e);
+            }
         }
     }
+
 
     private void sendBroadcastServiceState(String state) {
         Intent intent;
@@ -648,7 +664,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                 facelandmarkerHelper.resumeThread();
                 setImageAnalyzer();
-                cursorController.resetHeadCoord();
+                cursorController.resetRawCoordMinMax();
                 facelandmarkerHelper.resetMinMaxValues();
 
             case PAUSE:

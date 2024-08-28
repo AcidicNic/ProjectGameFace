@@ -27,6 +27,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager.LayoutParams;
+import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -58,6 +59,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private TextView headCoordScaleFactorYProgress;
     private ConstraintLayout holdDurationLayout;
     private ConstraintLayout headCoordScaleFactorLayout;
+    private Button calibrationButton;
 
     private final int[] viewIds = {
             R.id.fasterHoldDuration,
@@ -162,6 +164,16 @@ public class FaceSwypeSettings extends AppCompatActivity {
         setUpSmoothingSeekBarAndTextView(
                 smoothingSeekBar, smoothingProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING)
         );
+
+        calibrationButton = findViewById(R.id.calibrationBtn);
+        calibrationButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(FaceSwypeSettings.this, CalibrationActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
+            }
+        });
 
         // Binding buttons
         for (int id : viewIds) {

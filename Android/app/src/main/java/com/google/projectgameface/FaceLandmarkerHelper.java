@@ -84,6 +84,9 @@ class FaceLandmarkerHelper extends HandlerThread {
     public float currNoseX = 0.f;
     public float currNoseY = 0.f;
 
+    public float currYaw = 0.f;
+    public float currPitch = 0.f;
+
     public long mediapipeTimeMs = 0;
     public long preprocessTimeMs = 0;
 
@@ -328,6 +331,9 @@ class FaceLandmarkerHelper extends HandlerThread {
         if (!result.faceLandmarks().isEmpty()) {
             isFaceVisible = true;
 
+            float headPosX = 0.0f;
+            float headPosY = 0.0f;
+
             if (result.facialTransformationMatrixes().isPresent()) {
                 float[] transformationMatrix = result.facialTransformationMatrixes().get().get(0);
                 float r00 = transformationMatrix[0];
@@ -339,6 +345,11 @@ class FaceLandmarkerHelper extends HandlerThread {
                 float r20 = transformationMatrix[8];
                 float r21 = transformationMatrix[9];
                 float r22 = transformationMatrix[10];
+                headPosX = transformationMatrix[12];
+                headPosY = transformationMatrix[13];
+                float headPosZ = transformationMatrix[14];
+
+//                Log.d(TAG, "headPosX: " + headPosX + " headPosY: " + headPosY + " headPosZ: " + headPosZ);
 
                 // Calculate yaw (rotation around the Y-axis)
                 float yaw = (float) Math.atan2(r02, r22);
@@ -350,28 +361,15 @@ class FaceLandmarkerHelper extends HandlerThread {
                 float roll = (float) Math.atan2(r10, r00);
 
                 // Convert radians to degrees if needed
-                yaw = (float) Math.toDegrees(yaw);
-                pitch = (float) Math.toDegrees(pitch);
-                roll = (float) Math.toDegrees(roll);
-//                Log.d(TAG, "yaw: " + yaw + ", pitch: " + pitch + ", roll: " + roll);
-
-                // Update the min/max ranges dynamically based on observed values
-//                if (pitch < minPitch) minPitch = pitch;
-//                if (pitch > maxPitch) maxPitch = pitch;
-//                if (yaw < minYaw) minYaw = yaw;
-//                if (yaw > maxYaw) maxYaw = yaw;
-//                Log.d(TAG, "minPitch: " + minPitch + ", maxPitch: " + maxPitch + ", minYaw: " + minYaw + ", maxYaw: " + maxYaw);
-
-                float normalizedPitch = (maxPitch - pitch) / (maxPitch - minPitch);
-                normalizedPitch = clamp(normalizedPitch, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
-
-                // Normalize yaw: Convert yaw from degrees to a [0.0, 1.0] range
-                float normalizedYaw = (maxYaw - yaw) / (maxYaw - minYaw);
-                normalizedYaw = clamp(normalizedYaw, 0.0f, 1.0f); // Ensure within [0.0, 1.0]
-
-//                Log.d(TAG, "normalizedYaw: " + normalizedYaw + ", normalizedPitch: " + normalizedPitch + ", yaw: " + yaw + ", pitch: " + pitch);
-                currHeadY = normalizedPitch * mpInputHeight;
-                currHeadX = normalizedYaw * mpInputWidth;
+                currYaw = (float) -Math.toDegrees(yaw);
+                currPitch = (float) Math.toDegrees(pitch);
+//                roll = (float) Math.toDegrees(roll);
+                // Invert pitch and yaw
+                currYaw = -currYaw;
+                currPitch = -currPitch;
+                // Convert pitch and yaw degrees to X, Y coordinates on the image
+                currHeadX = (currYaw + 90) / 180.0f * mpInputWidth; // Yaw normalized to [0, 180] -> [0, mpInputWidth]
+                currHeadY = (currPitch + 90) / 180.0f * mpInputHeight; // Pitch normalized to [0, 180] -> [0, mpInputHeight]
             }
 
             currNoseX = result.faceLandmarks().get(0).get(NOSE_INDEX).x() * mpInputWidth;
@@ -400,14 +398,29 @@ class FaceLandmarkerHelper extends HandlerThread {
         return (angle + (float) Math.PI) / (2 * (float) Math.PI);
     }
 
-    /** Get user's head X, Y coordinate in image space. */
-    public float[] getHeadCoordXY() {
+    /** Get user's head X, Y coordinate in image space or normalized (0-1) */
+    public float[] getHeadCoordXY(boolean isNormalized) {
+        if (isNormalized) {
+            return new float[] {currHeadX / mpInputWidth, currHeadY / mpInputHeight};
+        }
         return new float[] {currHeadX, currHeadY};
     }
-
-    /** Get user's nose X, Y coordinate in image space. */
-    public float[] getNoseCoordXY() {
+    public float[] getNoseCoordXY(boolean isNormalized) {
+        if (isNormalized) {
+            return new float[] {currNoseX / mpInputWidth, currNoseY / mpInputHeight};
+        }
         return new float[] {currNoseX, currNoseY};
+    }
+    public float[] getCombinedNoseAndHeadCoords() {
+        float combinedX = 0;
+        float combinedY = 0;
+
+        return new float[]{combinedX, combinedY};
+    }
+
+    /** Get user's pitch and yaw in degrees */
+    public float[] getPitchYaw() {
+        return new float[] {currPitch, currYaw};
     }
 
     public float[] getBlendshapes() {
