@@ -362,11 +362,9 @@ class FaceLandmarkerHelper extends HandlerThread {
 
                 // Convert radians to degrees if needed
                 currYaw = (float) -Math.toDegrees(yaw);
-                currPitch = (float) Math.toDegrees(pitch);
+                currPitch = (float) -Math.toDegrees(pitch);
 //                roll = (float) Math.toDegrees(roll);
-                // Invert pitch and yaw
-                currYaw = -currYaw;
-                currPitch = -currPitch;
+
                 // Convert pitch and yaw degrees to X, Y coordinates on the image
                 currHeadX = (currYaw + 90) / 180.0f * mpInputWidth; // Yaw normalized to [0, 180] -> [0, mpInputWidth]
                 currHeadY = (currPitch + 90) / 180.0f * mpInputHeight; // Pitch normalized to [0, 180] -> [0, mpInputHeight]

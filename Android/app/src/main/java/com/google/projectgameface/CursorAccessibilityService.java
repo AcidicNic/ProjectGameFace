@@ -430,7 +430,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
 
                         cursorController.updateInternalCursorPosition(
-                                facelandmarkerHelper.getHeadCoordXY(false), facelandmarkerHelper.getNoseCoordXY(false), screenSize.x, screenSize.y
+                                facelandmarkerHelper.getHeadCoordXY(false),
+                                facelandmarkerHelper.getNoseCoordXY(false),
+                                facelandmarkerHelper.getPitchYaw(),
+                                new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
+                                new int[]{screenSize.x, screenSize.y}
                         );
 
                         // Actually update the UI cursor image.

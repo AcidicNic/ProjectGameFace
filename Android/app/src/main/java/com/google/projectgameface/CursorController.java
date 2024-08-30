@@ -331,37 +331,67 @@ public class CursorController {
         }
     }
 
+    private float targetOffsetX = 0f;
+    private float targetOffsetY = 0f;
+    private float appliedOffsetX = 0f;
+    private float appliedOffsetY = 0f;
+    // Time in milliseconds over which to apply the offset smoothly
+    private final long offsetTransitionDuration = 200; // 200ms
+    private long lastOffsetUpdateTime = System.currentTimeMillis();
+
+
     /**
      * Update internal cursor position.
-     * @param headCoordXY User head coordinate.
+     * @param headTiltXY User head coordinate.
+     *                    headTiltXY[0] = x coordinate.
+     *                    headTiltXY[1] = y coordinate.
+     * @param noseTipXY User nose tip coordinate.
+     *                    noseTipXY[0] = x coordinate.
+     *                    noseTipXY[1] = y coordinate.
+     * @param inputSize Input size of FaceLandmarks model.
+     *                  inputSize[0] = width.
+     *                  inputSize[1] = height.
+     * @param screenSize Screen size.
+     *                   screenSize[0] = width.
+     *                   screenSize[1] = height.
 //     * @param gapFrames How many frames we use to wait for the FaceLandmarks model.
-     * @param screenWidth Screen size for prevent cursor move out of of the screen.
-     * @param screenHeight Screen size for prevent cursor move out of of the screen.
+//     * @param screenWidth Screen size for prevent cursor move out of of the screen.
+//     * @param screenHeight Screen size for prevent cursor move out of of the screen.
      */
-    public void updateInternalCursorPosition(float[] headCoordXY, float[] noseCoordXY, int screenWidth, int screenHeight) {
-        this.screenWidth = screenWidth;
-        this.screenHeight = screenHeight;
+    public void updateInternalCursorPosition(float[] headTiltXY, float[] noseTipXY, float[] pitchYawXY, int[] inputSize, int[] screenSize) {
+        this.screenWidth = screenSize[0];
+        this.screenHeight = screenSize[1];
 
         boolean isPitchYawEnabled = isPitchYawEnabled();
         boolean isNoseTipEnabled = isNoseTipEnabled();
         float[] coordsXY;
         float normalizedX = 0.5f;
         float normalizedY = 0.5f;
+        float headCoordScaleFactorX = getHeadCoordScaleFactorX();
+        float headCoordScaleFactorY = getHeadCoordScaleFactorY();
 
         if (isPitchYawEnabled && isNoseTipEnabled) { // Combined
-            coordsXY = noseCoordXY;
-        } else if (isPitchYawEnabled) { // Only Pitch+Yaw
-            coordsXY = headCoordXY;
-        } else { // Only Nose Tip
-            coordsXY = noseCoordXY;
-        }
-
-        updateRawCoordMinMax(coordsXY);
-        if (maxRawCoordX != minRawCoordX) {
-            normalizedX = (coordsXY[0] - minRawCoordX) / (maxRawCoordX - minRawCoordX);
-        }
-        if (maxRawCoordY != minRawCoordY) {
-            normalizedY = (coordsXY[1] - minRawCoordY) / (maxRawCoordY - minRawCoordY);
+            coordsXY = noseTipXY;
+            handleCenterOffsetUpdate(pitchYawXY, noseTipXY, inputSize);
+            coordsXY[0] += appliedOffsetX;
+            coordsXY[1] += appliedOffsetY;
+            normalizedX = coordsXY[0] / inputSize[0];
+            normalizedY = coordsXY[1] / inputSize[1];
+            headCoordScaleFactorX *= 2;
+            headCoordScaleFactorY *= 6;
+        } else {
+            if (isPitchYawEnabled) { // Only Pitch+Yaw
+                coordsXY = headTiltXY;
+            } else { // Only Nose Tip
+                coordsXY = noseTipXY;
+            }
+            updateRawCoordMinMax(coordsXY);
+            if (maxRawCoordX != minRawCoordX) {
+                normalizedX = (coordsXY[0] - minRawCoordX) / (maxRawCoordX - minRawCoordX);
+            }
+            if (maxRawCoordY != minRawCoordY) {
+                normalizedY = (coordsXY[1] - minRawCoordY) / (maxRawCoordY - minRawCoordY);
+            }
         }
 
         int regionMinX = 0;
@@ -376,15 +406,19 @@ public class CursorController {
                 regionMinY = tempMinY - WIGGLE_ROOM;
             }
         }
-        float headCoordScaleFactorX = getHeadCoordScaleFactorX();
-        float headCoordScaleFactorY = getHeadCoordScaleFactorY();
 
         // Center the normalized coordinates within the region
         float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX + (float) (regionMaxX + regionMinX) / 2;
         float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
 
+//        Log.d(TAG, "Normalized: (" + normalizedX + ", " + normalizedY + ") Raw: (" + coordsXY[0] + ", " + coordsXY[1] + ") Centered: (" + centeredX + ", " + centeredY + ") Smoothed-PRE: (" + smoothedCursorPositionX + ", " + smoothedCursorPositionY + ")");
+
         // Smoothing
         float smoothingFactor = getSmoothFactor(0.01f, 0.3f);
+        if (smoothedCursorPositionX != smoothedCursorPositionX || smoothedCursorPositionY != smoothedCursorPositionY) {
+            smoothedCursorPositionX = centeredX;
+            smoothedCursorPositionY = centeredY;
+        }
         smoothedCursorPositionX += (smoothingFactor * (centeredX - smoothedCursorPositionX));
         smoothedCursorPositionY += (smoothingFactor * (centeredY - smoothedCursorPositionY));
 
@@ -406,6 +440,44 @@ public class CursorController {
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
             updateTrail((float) cursorPositionX, (float) cursorPositionY);
         }
+    }
+
+    private float[] normalizeOffsetNose(float[] coordsXY, int[] inputSize) {
+        float AREA = 0.25f;
+        float minX = (inputSize[0] / 2) - AREA * inputSize[0];
+        float minY = (inputSize[0] / 2) - AREA * inputSize[1];
+        float maxX = (float) (inputSize[0] / 2) + (AREA * inputSize[0]);
+        float maxY = (float) (inputSize[1] / 2) + (AREA * inputSize[1]);
+
+        float normalizedX = (coordsXY[0] - minX) / (maxX - minX);
+        float normalizedY = (coordsXY[1] - minY) / (maxY - minY);
+
+        return new float[] {normalizedX, normalizedY};
+    }
+
+    private void handleCenterOffsetUpdate(float[] pitchYawXY, float[] noseTipXY, int[] inputSize) {
+        // Determine if pitch and yaw are close to center (0 degrees)
+        boolean isCenteredX = Math.abs(pitchYawXY[1]) < 2.0f; // Yaw close to 0 degrees
+        boolean isCenteredY = Math.abs(pitchYawXY[0]) < 2.0f; // Pitch close to 0 degrees
+        if (isCenteredX) {
+            targetOffsetX = ((float) inputSize[0] / 2) - noseTipXY[0]; // Calculate offset from head center to nose tip
+        }
+        if (isCenteredY) {
+            targetOffsetY = ((float) inputSize[1] / 2) - noseTipXY[1]; // Calculate offset from head center to nose tip
+        }
+
+        // Smoothly apply the offset over time
+        long currentTime = System.currentTimeMillis();
+        float timeElapsed = (currentTime - lastOffsetUpdateTime) / (float) offsetTransitionDuration;
+
+        if (timeElapsed < 1) {
+            appliedOffsetX += (targetOffsetX - appliedOffsetX) * timeElapsed;
+            appliedOffsetY += (targetOffsetY - appliedOffsetY) * timeElapsed;
+        } else {
+            appliedOffsetX = targetOffsetX;
+            appliedOffsetY = targetOffsetY;
+        }
+        lastOffsetUpdateTime = currentTime;
     }
 
     /**
