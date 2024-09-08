@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int BLUETOOTH_PERMISSION_CODE = 201;
     private static final int BLUETOOTH_ADMIN_PERMISSION_CODE = 202;
     private static final int BLUETOOTH_CONNECT_PERMISSION_CODE = 203;
+    private static final int POST_NOTIFICATIONS_PERMISSION_CODE = 204;
     private static final String KEY_FIRST_RUN = "GameFaceFirstRun";
 
     private final String TAG = "MainActivity";
@@ -163,6 +164,8 @@ public class MainActivity extends AppCompatActivity {
         //Check if service is enabled.
         checkIfServiceEnabled();
 
+        requestNotificationPermission();
+
         // Receive service state message and force toggle the switch accordingly
         BroadcastReceiver toggleStateReceiver = new BroadcastReceiver() {
             @Override
@@ -195,11 +198,9 @@ public class MainActivity extends AppCompatActivity {
             if(!checkAccessibilityPermission()){
                 gameFaceToggleSwitch.setChecked(false);
                 CameraDialog();
-            }
-            else if(isChecked){
+            } else if(isChecked){
                 wakeUpService();
-            }
-            else {
+            } else {
                 sleepCursorService();
             }
 
@@ -499,4 +500,31 @@ public class MainActivity extends AppCompatActivity {
         }, CAMERA_PERMISSION_CODE);
     }
 
+    private void requestNotificationPermission() {
+        // Only for Android 13 and above
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Check if the notification permission is granted
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                // Request the POST_NOTIFICATIONS permission
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        POST_NOTIFICATIONS_PERMISSION_CODE);
+            }
+        }
+    }
+
+//    @Override
+//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+//
+//        if (requestCode == POST_NOTIFICATIONS_PERMISSION_CODE) {
+//            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                // Permission granted, you can now send notifications
+//                // Show a notification or take some action
+//            } else {
+//                // Permission denied, handle accordingly (e.g., show a message to the user)
+//            }
+//        }
+//    }
 }

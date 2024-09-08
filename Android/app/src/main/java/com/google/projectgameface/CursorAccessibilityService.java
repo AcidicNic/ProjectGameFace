@@ -19,10 +19,16 @@ package com.google.projectgameface;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
 
+import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.app.Instrumentation;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -42,18 +48,25 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
 import android.util.Size;
+import android.util.SparseBooleanArray;
+import android.view.InputDevice;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityWindowInfo;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.resolutionselector.ResolutionSelector;
 import androidx.camera.core.resolutionselector.ResolutionStrategy;
 import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
@@ -62,8 +75,11 @@ import androidx.lifecycle.LifecycleRegistry;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -103,6 +119,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver loadSharedConfigGestureReceiver;
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
+    private BroadcastReceiver clipboardReceiver;
     private boolean isSwiping = false;
     private static final long GESTURE_DURATION = 100;
     private static final long MIN_GESTURE_DURATION = 100;
@@ -112,9 +129,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Rect keyboardBounds = new Rect();
     private boolean isKeyboardOpen = false;
     private long startTime;
+    private long endTime;
     private Instrumentation instrumentation;
     private Handler handler;
     private HandlerThread handlerThread;
+    private SparseBooleanArray keyStates = new SparseBooleanArray();
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -135,6 +154,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     /** Should we send blendshape score to front-end or not. */
     private boolean shouldSendScore = false;
+    private ArrayList<SwipePoint> swipePath = null;
+    private static final String CHANNEL_ID = "accessibility_service_channel";
+    private static final int NOTIFICATION_ID = 1001;
+    private String[] debugText = {"", ""};
 
     @SuppressLint({"UnspecifiedRegisterReceiverFlag", "ObsoleteSdkInt"})
     private void defineAndRegisterBroadcastMessageReceivers() {
@@ -153,57 +176,57 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 };
 
         loadSharedConfigGestureReceiver =
-            new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    String configName = intent.getStringExtra("configName");
-                    cursorController.blendshapeEventTriggerConfig.updateOneConfigFromSharedPreference(
-                        configName);
-                }
-            };
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        String configName = intent.getStringExtra("configName");
+                        cursorController.blendshapeEventTriggerConfig.updateOneConfigFromSharedPreference(
+                                configName);
+                    }
+                };
 
         changeServiceStateReceiver =
-            new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    int receivedEnumValue = intent.getIntExtra("state", -1);
-                    Log.i(TAG, "changeServiceStateReceiver: " + ServiceState.values()[receivedEnumValue]);
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        int receivedEnumValue = intent.getIntExtra("state", -1);
+                        Log.i(TAG, "changeServiceStateReceiver: " + ServiceState.values()[receivedEnumValue]);
 
-                    // Target state to be changing.
-                    switch (ServiceState.values()[receivedEnumValue]) {
-                        case ENABLE:
-                            enableService();
-                            break;
-                        case DISABLE:
-                            disableService();
-                            break;
-                        case PAUSE:
-                            togglePause();
-                            break;
-                        case GLOBAL_STICK:
-                            enterGlobalStickState();
-                            break;
+                        // Target state to be changing.
+                        switch (ServiceState.values()[receivedEnumValue]) {
+                            case ENABLE:
+                                enableService();
+                                break;
+                            case DISABLE:
+                                disableService();
+                                break;
+                            case PAUSE:
+                                togglePause();
+                                break;
+                            case GLOBAL_STICK:
+                                enterGlobalStickState();
+                                break;
+                        }
                     }
-                }
-            };
+                };
 
         requestServiceStateReceiver =
-            new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    String state = intent.getStringExtra("state");
-                    sendBroadcastServiceState(state);
-                }
-            };
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        String state = intent.getStringExtra("state");
+                        sendBroadcastServiceState(state);
+                    }
+                };
 
         enableScorePreviewReceiver =
-            new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    shouldSendScore = intent.getBooleanExtra("enable", false);
-                    requestedScoreBlendshapeName = intent.getStringExtra("blendshapesName");
-                }
-            };
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        shouldSendScore = intent.getBooleanExtra("enable", false);
+                        requestedScoreBlendshapeName = intent.getStringExtra("blendshapesName");
+                    }
+                };
 
         profileChangeReceiver = new BroadcastReceiver() {
             @Override
@@ -214,45 +237,61 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         };
 
+//        clipboardReceiver = new BroadcastReceiver() {
+//            @Override
+//            public void onReceive(Context context, Intent intent) {
+//                String textToCopy = intent.getStringExtra("text_to_copy");
+//
+//                // Copy the text to clipboard
+//                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+//                ClipData clip = ClipData.newPlainText("Copied Text", textToCopy);
+//                clipboard.setPrimaryClip(clip);
+//
+//                // Show a confirmation Toast
+//                Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+//            }
+//        };
+
 
         if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             registerReceiver(
-                changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"), RECEIVER_EXPORTED);
+                    changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"), RECEIVER_EXPORTED);
             registerReceiver(
-                requestServiceStateReceiver,
-                new IntentFilter("REQUEST_SERVICE_STATE"),
-                RECEIVER_EXPORTED);
+                    requestServiceStateReceiver,
+                    new IntentFilter("REQUEST_SERVICE_STATE"),
+                    RECEIVER_EXPORTED);
             registerReceiver(
-                loadSharedConfigBasicReceiver,
-                new IntentFilter("LOAD_SHARED_CONFIG_BASIC"),
-                RECEIVER_EXPORTED);
+                    loadSharedConfigBasicReceiver,
+                    new IntentFilter("LOAD_SHARED_CONFIG_BASIC"),
+                    RECEIVER_EXPORTED);
             registerReceiver(
-                loadSharedConfigGestureReceiver,
-                new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"),
-                RECEIVER_EXPORTED);
+                    loadSharedConfigGestureReceiver,
+                    new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"),
+                    RECEIVER_EXPORTED);
             registerReceiver(
-                enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"), RECEIVER_EXPORTED);
+                    enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"), RECEIVER_EXPORTED);
             registerReceiver(
-                serviceUiManager.flyInWindowReceiver,
-                new IntentFilter("FLY_IN_FLOAT_WINDOW"),
-                RECEIVER_EXPORTED);
+                    serviceUiManager.flyInWindowReceiver,
+                    new IntentFilter("FLY_IN_FLOAT_WINDOW"),
+                    RECEIVER_EXPORTED);
             registerReceiver(
-                serviceUiManager.flyOutWindowReceiver,
-                new IntentFilter("FLY_OUT_FLOAT_WINDOW"),
-                RECEIVER_EXPORTED);
+                    serviceUiManager.flyOutWindowReceiver,
+                    new IntentFilter("FLY_OUT_FLOAT_WINDOW"),
+                    RECEIVER_EXPORTED);
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
         } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
             registerReceiver(loadSharedConfigBasicReceiver, new IntentFilter("LOAD_SHARED_CONFIG_BASIC"));
             registerReceiver(
-                loadSharedConfigGestureReceiver, new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"));
+                    loadSharedConfigGestureReceiver, new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"));
             registerReceiver(enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"));
             registerReceiver(
-                serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"));
+                    serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"));
             registerReceiver(
-                serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
+                    serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+//            registerReceiver(clipboardReceiver, new IntentFilter("COPY_TO_CLIPBOARD"));
         }
     }
 
@@ -296,19 +335,21 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         backgroundExecutor = Executors.newSingleThreadExecutor();
 
         backgroundExecutor.execute(
-            () -> {
-                facelandmarkerHelper = new FaceLandmarkerHelper();
-                facelandmarkerHelper.setFrontCameraOrientation(CameraHelper.checkFrontCameraOrientation(this));
-                facelandmarkerHelper.setRotation(windowManager.getDefaultDisplay().getRotation());
-                facelandmarkerHelper.start();
-                facelandmarkerHelper.init(this);
-            });
+                () -> {
+                    facelandmarkerHelper = new FaceLandmarkerHelper();
+                    facelandmarkerHelper.setFrontCameraOrientation(CameraHelper.checkFrontCameraOrientation(this));
+                    facelandmarkerHelper.setRotation(windowManager.getDefaultDisplay().getRotation());
+                    facelandmarkerHelper.start();
+                    facelandmarkerHelper.init(this);
+                });
 
         setImageAnalyzer();
 
         // Initialize the Handler
         tickFunctionHandler = new Handler();
         tickFunctionHandler.postDelayed(tick, 0);
+
+        createNotificationChannel();
 
         if (isPlatformSignedAndCanInjectEvents()) {
             Log.d(TAG, "Platform signed and can inject events!");
@@ -387,19 +428,23 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP);
     }
 
+    public boolean isDebugSwipeEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE);
+    }
+
     /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
     private ImageAnalysis imageAnalyzer =
-        new ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-            .setResolutionSelector(
-                new ResolutionSelector.Builder()
-                    .setResolutionStrategy(
-                        new ResolutionStrategy(
-                            new Size(IMAGE_ANALYZER_WIDTH, IMAGE_ANALYZER_HEIGHT),
-                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
-                    .build())
-            .build();
+            new ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                    .setResolutionSelector(
+                            new ResolutionSelector.Builder()
+                                    .setResolutionStrategy(
+                                            new ResolutionStrategy(
+                                                    new Size(IMAGE_ANALYZER_WIDTH, IMAGE_ANALYZER_HEIGHT),
+                                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
+                                    .build())
+                    .build();
 
     /**
      * Tick function of the service. This function runs every {@value UI_UPDATE}
@@ -407,142 +452,155 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      * <p>Milliseconds. 1. Update cursor location on screen. 2. Dispatch event. 2. Change status icon.
      */
     private final Runnable tick =
-        new Runnable() {
-            @Override
-            public void run() {
-                if (facelandmarkerHelper == null) {
-                    // Back-off.
-                    tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
-                }
-                switch (serviceState) {
-                    case GLOBAL_STICK:
-                        if (shouldSendScore) {
-                            sendBroadcastScore();
-                        }
-                    case ENABLE:
-                        // Drag drag line if in drag mode.
-                        if (cursorController.isDragging) {
-                            serviceUiManager.updateDragLine(cursorController.getCursorPositionXY());
-                        }
+            new Runnable() {
+                @Override
+                public void run() {
+                    if (facelandmarkerHelper == null) {
+                        // Back-off.
+                        tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
+                    }
+                    switch (serviceState) {
+                        case GLOBAL_STICK:
+                            if (shouldSendScore) {
+                                sendBroadcastScore();
+                            }
+                        case ENABLE:
+                            // Drag drag line if in drag mode.
+                            if (cursorController.isDragging) {
+                                serviceUiManager.updateDragLine(cursorController.getCursorPositionXY());
+                            }
 
-                        // Use for smoothing.
+                            // Use for smoothing.
 //                        int gapFrames =
 //                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
 
-                        cursorController.updateInternalCursorPosition(
-                                facelandmarkerHelper.getHeadCoordXY(false),
-                                facelandmarkerHelper.getNoseCoordXY(false),
-                                facelandmarkerHelper.getPitchYaw(),
-                                new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
-                                new int[]{screenSize.x, screenSize.y}
-                        );
-
-                        // Actually update the UI cursor image.
-                        serviceUiManager.updateCursorImagePositionOnScreen(
-                                cursorController.getCursorPositionXY()
-                        );
-
-                        dispatchEvent();
-
-                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
-                            serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getNoseCoordXY(false),
-                                    facelandmarkerHelper.mpInputWidth,
-                                    facelandmarkerHelper.mpInputHeight
-                            );
-                        } else if (isPitchYawEnabled()) {
-                            serviceUiManager.drawHeadCenter(
+                            cursorController.updateInternalCursorPosition(
                                     facelandmarkerHelper.getHeadCoordXY(false),
-                                    facelandmarkerHelper.mpInputWidth,
-                                    facelandmarkerHelper.mpInputHeight
-                            );
-                        } else {
-                            serviceUiManager.drawHeadCenter(
                                     facelandmarkerHelper.getNoseCoordXY(false),
-                                    facelandmarkerHelper.mpInputWidth,
-                                    facelandmarkerHelper.mpInputHeight
+                                    facelandmarkerHelper.getPitchYaw(),
+                                    new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
+                                    new int[]{screenSize.x, screenSize.y}
                             );
-                        }
 
-                        serviceUiManager.updateDebugTextOverlay(
-                                facelandmarkerHelper.preprocessTimeMs,
-                                facelandmarkerHelper.mediapipeTimeMs,
-                                serviceState == ServiceState.PAUSE
-                        );
-
-                        if (cursorController.isSwiping()) {
-                            serviceUiManager.fullScreenCanvas.invalidate();
-                        }
-
-                        break;
-
-                    case PAUSE:
-                        // In PAUSE state user cannot move cursor
-                        // but still can perform some event from face gesture.
-                        dispatchEvent();
-
-                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
-                            serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getCombinedNoseAndHeadCoords(),
-                                    facelandmarkerHelper.mpInputWidth,
-                                    facelandmarkerHelper.mpInputHeight
+                            // Actually update the UI cursor image.
+                            serviceUiManager.updateCursorImagePositionOnScreen(
+                                    cursorController.getCursorPositionXY()
                             );
-                        } else if (isPitchYawEnabled()) {
-                            serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getHeadCoordXY(false),
-                                    facelandmarkerHelper.mpInputWidth,
-                                    facelandmarkerHelper.mpInputHeight
+
+                            dispatchEvent();
+
+                            if (isPitchYawEnabled() && isNoseTipEnabled()) {
+                                serviceUiManager.drawHeadCenter(
+                                        facelandmarkerHelper.getNoseCoordXY(false),
+                                        facelandmarkerHelper.mpInputWidth,
+                                        facelandmarkerHelper.mpInputHeight
+                                );
+                                serviceUiManager.drawSecondDot(
+                                        facelandmarkerHelper.getHeadCoordXY(false),
+                                        facelandmarkerHelper.mpInputWidth,
+                                        facelandmarkerHelper.mpInputHeight
+                                );
+                            } else if (isPitchYawEnabled()) {
+                                serviceUiManager.drawHeadCenter(
+                                        facelandmarkerHelper.getHeadCoordXY(false),
+                                        facelandmarkerHelper.mpInputWidth,
+                                        facelandmarkerHelper.mpInputHeight
+                                );
+                            } else {
+                                serviceUiManager.drawHeadCenter(
+                                        facelandmarkerHelper.getNoseCoordXY(false),
+                                        facelandmarkerHelper.mpInputWidth,
+                                        facelandmarkerHelper.mpInputHeight
+                                );
+                            }
+
+                            if (isDebugSwipeEnabled()) {
+                                serviceUiManager.updateDebugTextOverlay(
+                                        debugText[0],
+                                        debugText[1],
+                                        serviceState == ServiceState.PAUSE
+                                );
+                            } else {
+                                serviceUiManager.updateDebugTextOverlay(
+                                        "pre: " + facelandmarkerHelper.preprocessTimeMs + "ms",
+                                        "med: " + facelandmarkerHelper.mediapipeTimeMs + "ms",
+                                        serviceState == ServiceState.PAUSE
+                                );
+                            }
+
+                            if (cursorController.isSwiping()) {
+                                serviceUiManager.fullScreenCanvas.invalidate();
+                            }
+
+                            break;
+
+                        case PAUSE:
+                            // In PAUSE state user cannot move cursor
+                            // but still can perform some event from face gesture.
+//                        dispatchEvent();
+//
+//                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
+//                            serviceUiManager.drawHeadCenter(
+//                                    facelandmarkerHelper.getCombinedNoseAndHeadCoords(),
+//                                    facelandmarkerHelper.mpInputWidth,
+//                                    facelandmarkerHelper.mpInputHeight
+//                            );
+//                        } else if (isPitchYawEnabled()) {
+//                            serviceUiManager.drawHeadCenter(
+//                                    facelandmarkerHelper.getHeadCoordXY(false),
+//                                    facelandmarkerHelper.mpInputWidth,
+//                                    facelandmarkerHelper.mpInputHeight
+//                            );
+//                        } else {
+//                            serviceUiManager.drawHeadCenter(
+//                                    facelandmarkerHelper.getNoseCoordXY(false),
+//                                    facelandmarkerHelper.mpInputWidth,
+//                                    facelandmarkerHelper.mpInputHeight
+//                            );
+//                        }
+
+                            serviceUiManager.updateDebugTextOverlay(
+                                    "",
+                                    "",
+                                    getServiceState() == ServiceState.PAUSE
                             );
-                        } else {
-                            serviceUiManager.drawHeadCenter(
-                                    facelandmarkerHelper.getNoseCoordXY(false),
-                                    facelandmarkerHelper.mpInputWidth,
-                                    facelandmarkerHelper.mpInputHeight
-                            );
-                        }
 
-                        serviceUiManager.updateDebugTextOverlay(
-                                facelandmarkerHelper.preprocessTimeMs,
-                                facelandmarkerHelper.mediapipeTimeMs,
-                                getServiceState() == ServiceState.PAUSE
-                        );
+                            break;
 
-                        break;
+                        default:
+                            break;
+                    }
 
-                    default:
-                        break;
+                    serviceUiManager.updateStatusIcon(
+                            serviceState == ServiceState.PAUSE, checkFaceVisibleInFrame()
+                    );
+
+                    tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
                 }
-
-                serviceUiManager.updateStatusIcon(
-                        serviceState == ServiceState.PAUSE, checkFaceVisibleInFrame()
-                );
-
-                tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
-            }
-        };
+            };
 
     /** Assign function to image analyzer to send it to MediaPipe */
     private void setImageAnalyzer() {
         imageAnalyzer.setAnalyzer(
-            backgroundExecutor,
-            imageProxy -> {
-                if ((SystemClock.uptimeMillis() - lastSendMessage) > MIN_PROCESS) {
+                backgroundExecutor,
+                imageProxy -> {
+                    if ((SystemClock.uptimeMillis() - lastSendMessage) > MIN_PROCESS) {
 
-                    // Create a new message and attach image.
-                    Message msg = Message.obtain();
-                    msg.obj = imageProxy;
+                        // Create a new message and attach image.
+                        Message msg = Message.obtain();
+                        msg.obj = imageProxy;
 
-                    if ((facelandmarkerHelper != null) && (facelandmarkerHelper.getHandler() != null)) {
-                        // Send message to the thread to process.
-                        facelandmarkerHelper.getHandler().sendMessage(msg);
-                        lastSendMessage = SystemClock.uptimeMillis();
+                        if ((facelandmarkerHelper != null) && (facelandmarkerHelper.getHandler() != null)) {
+                            // Send message to the thread to process.
+                            facelandmarkerHelper.getHandler().sendMessage(msg);
+                            lastSendMessage = SystemClock.uptimeMillis();
+                        }
+
+                    } else {
+                        // It will be closed by FaceLandmarkHelper.
+                        imageProxy.close();
                     }
-
-                } else {
-                    // It will be closed by FaceLandmarkHelper.
-                    imageProxy.close();
-                }
-            });
+                });
     }
 
     /** Send out blendshape score for visualize in setting page.*/
@@ -644,7 +702,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     /** Enable GameFace service. */
     public void enableService() {
-        Log.i(TAG, "enableService, current: "+serviceState);
+        Log.i(TAG, "enableService, current: " + serviceState);
 
         switch (serviceState) {
             case ENABLE:
@@ -703,15 +761,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // Stop camera.
                 cameraProviderFuture = ProcessCameraProvider.getInstance(this);
                 cameraProviderFuture.addListener(
-                    () -> {
-                        try {
-                            cameraProvider = cameraProviderFuture.get();
-                            cameraProvider.unbindAll();
-                        } catch (ExecutionException | InterruptedException e) {
-                            Log.e(TAG, "cameraProvider failed to get provider future: " + e.getMessage());
-                        }
-                    },
-                    ContextCompat.getMainExecutor(this));
+                        () -> {
+                            try {
+                                cameraProvider = cameraProviderFuture.get();
+                                cameraProvider.unbindAll();
+                            } catch (ExecutionException | InterruptedException e) {
+                                Log.e(TAG, "cameraProvider failed to get provider future: " + e.getMessage());
+                            }
+                        },
+                        ContextCompat.getMainExecutor(this));
                 serviceState = ServiceState.DISABLE;
 
                 break;
@@ -736,6 +794,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         unregisterReceiver(serviceUiManager.flyInWindowReceiver);
         unregisterReceiver(serviceUiManager.flyOutWindowReceiver);
         unregisterReceiver(profileChangeReceiver);
+//        unregisterReceiver(clipboardReceiver);
         cursorController.cleanup();
 
         super.onDestroy();
@@ -746,7 +805,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void dispatchEvent() {
         // Check what event to dispatch.
         BlendshapeEventTriggerConfig.EventType event =
-            cursorController.createCursorEvent(facelandmarkerHelper.getBlendshapes());
+                cursorController.createCursorEvent(facelandmarkerHelper.getBlendshapes());
 
 
         switch (event) {
@@ -762,16 +821,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
 
 
-
         switch (serviceState) {
             case GLOBAL_STICK:
             case ENABLE:
                 // Check event type and dispatch it.
                 DispatchEventHelper.checkAndDispatchEvent(
-                    this,
-                    cursorController,
-                    serviceUiManager,
-                    event);
+                        this,
+                        cursorController,
+                        serviceUiManager,
+                        event);
                 break;
 
             case PAUSE:
@@ -817,7 +875,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorController.prepareDragEnd(0, 0);
         serviceUiManager.fullScreenCanvas.clearDragLine();
 
-        switch (serviceState)  {
+        switch (serviceState) {
             case ENABLE:
             case GLOBAL_STICK:
                 serviceUiManager.showAllWindows();
@@ -831,59 +889,70 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (serviceState != ServiceState.ENABLE) { return; }
+        if (serviceState != ServiceState.ENABLE) {
+            return;
+        }
         checkForKeyboard(event);
     }
 
     private void checkForKeyboard(AccessibilityEvent event) {
 //        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            boolean keyboardFound = false;
-            Rect tempBounds = new Rect();
-            Rect navBarBounds = new Rect();
-            List<AccessibilityWindowInfo> windows = getWindows();
-            for (AccessibilityWindowInfo window : windows) {
-                window.getBoundsInScreen(tempBounds);
+        if (isSwiping) {
+            return;
+        }
+
+        boolean keyboardFound = false;
+        Rect tempBounds = new Rect();
+        Rect navBarBounds = new Rect();
+
+        List<AccessibilityWindowInfo> windows = getWindows();
+        for (AccessibilityWindowInfo window : windows) {
+            window.getBoundsInScreen(tempBounds);
 //                Log.d(TAG, "Window title: " + window.getTitle() + ", type: " + window.getType() + ", bounds: " + tempBounds);
-                if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-                    keyboardFound = true;
-                    window.getBoundsInScreen(keyboardBounds);
-                    if (keyboardBounds.equals(cursorController.getTemporaryBounds())) {
-                        return;
-                    }
-                    Log.d(TAG, "keyboard Found @ : " + window);
-                } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM
-                        && window.getTitle() != null && window.getTitle().equals("Navigation bar")
-                ) {
-                    window.getBoundsInScreen(navBarBounds);
+            if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                keyboardFound = true;
+                window.getBoundsInScreen(keyboardBounds);
+                if (keyboardBounds.equals(cursorController.getTemporaryBounds())) {
+                    return;
                 }
+                Log.d(TAG, "keyboard Found @ : " + window);
+            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM
+                    && window.getTitle() != null && window.getTitle().equals("Navigation bar")
+            ) {
+                window.getBoundsInScreen(navBarBounds);
             }
+        }
 
-            if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
-                return;
+        if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
+            return;
+        }
+        isKeyboardOpen = keyboardFound;
+
+        if (isKeyboardOpen) {
+//            int rotation = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation();
+//            boolean isPortraitMode = rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180;
+//
+//            if (!navBarBounds.isEmpty() && isPortraitMode) {
+//                keyboardBounds.union(navBarBounds); // Expand the bounds to include the navigation bar
+//                Log.d(TAG, "Navigation bar bounds added: " + navBarBounds);
+//            }
+            if (keyboardBounds.top > navBarBounds.top) {
+                keyboardBounds.union(navBarBounds);
             }
-            isKeyboardOpen = keyboardFound;
-
-            if (isKeyboardOpen) {
-                if (!navBarBounds.isEmpty()) {
-                    keyboardBounds.union(navBarBounds); // Expand the bounds to include the navigation bar
-                    Log.d(TAG, "Navigation bar bounds added: " + navBarBounds);
-                }
-                cursorController.setTemporaryBounds(keyboardBounds);
-                Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
-                serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
-            } else {
-                cursorController.clearTemporaryBounds();
-                serviceUiManager.fullScreenCanvas.setRect(null);
-            }
-            serviceUiManager.fullScreenCanvas.invalidate();
-
-            Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
-//        }, 400);
+            cursorController.setTemporaryBounds(keyboardBounds);
+            Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
+            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
+        } else {
+            cursorController.clearTemporaryBounds();
+            serviceUiManager.fullScreenCanvas.setRect(null);
+        }
+        serviceUiManager.fullScreenCanvas.invalidate();
+//        Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
     }
 
-
     @Override
-    public void onInterrupt() {}
+    public void onInterrupt() {
+    }
 
     @NonNull
     @Override
@@ -894,24 +963,31 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-        Log.i(TAG,"Service connected");
+        Log.i(TAG, "Service connected");
     }
 
 
-    private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4);
+    private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_BUTTON_A);
 //    private final List<Integer> validKeyEventActions = Arrays.asList(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP);
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
-        if (serviceState != ServiceState.ENABLE) { return false; }
+        if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
+            return false;
+        }
         if (validKeyEventKeys.contains(event.getKeyCode())) {
             return handleKeyEvent(event);
+        }
+        if (event.getSource() == InputDevice.SOURCE_GAMEPAD) {
+            return true; // TODO: DELETE LATER!
         }
         return false;
     }
 
     private boolean handleKeyEvent(KeyEvent event) {
-        if (serviceState != ServiceState.ENABLE) { return false; }
+        if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
+            return false;
+        }
         int eventAction = event.getAction();
         int keyCode = event.getKeyCode();
         switch (keyCode) {
@@ -919,14 +995,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (eventAction == KeyEvent.ACTION_DOWN) {
                     Log.d(TAG, "SPACE KeyEvent.ACTION_DOWN");
                     DispatchEventHelper.checkAndDispatchEvent(
-                        this,
-                        cursorController,
-                        serviceUiManager,
-                        BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
+                            this,
+                            cursorController,
+                            serviceUiManager,
+                            BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
                 }
                 return true;
             case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_BUTTON_A:
                 if (eventAction == KeyEvent.ACTION_DOWN) {
+                    keyStates.put(keyCode, true);
                     Log.d(TAG, "ENTER KeyEvent.ACTION_DOWN");
                     if (isRealtimeSwipeEnabled()) {
                         startRealtimeSwipe();
@@ -938,6 +1016,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 BlendshapeEventTriggerConfig.EventType.SWIPE_START);
                     }
                 } else if (eventAction == KeyEvent.ACTION_UP) {
+                    keyStates.put(keyCode, false);
                     Log.d(TAG, "ENTER KeyEvent.ACTION_UP");
                     if (isRealtimeSwipeEnabled()) {
                         stopRealtimeSwipe();
@@ -961,6 +1040,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private void startRealtimeSwipe() {
         isSwiping = true;
+        cursorController.isRealtimeSwipe = true;
+        swipePath = new ArrayList<>();
+
         new Thread(() -> {
             startTime = SystemClock.uptimeMillis();
             float[] initialPosition = getCursorPosition();
@@ -976,53 +1058,175 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "MotionEvent.ACTION_DOWN @ (" + initialPosition[0] + ", " + initialPosition[1] + ")");
 //            instrumentation.sendPointerSync(event);
             injectInputEvent(event);
+            swipePath.add(new SwipePoint((int) initialPosition[0], (int) initialPosition[1], 0));
+            debugText[0] = "Swiping";
+            debugText[1] = "X, Y: (" + initialPosition[0] + ", " + initialPosition[1] + ")";
 
+            long lastCheckTime = startTime;
             while (isSwiping) {
                 float[] cursorPosition = getCursorPosition();
-                event = MotionEvent.obtain(
-                        startTime,
-                        SystemClock.uptimeMillis(),
-                        MotionEvent.ACTION_MOVE,
-                        cursorPosition[0],
-                        cursorPosition[1],
-                        0
-                );
+                long now = SystemClock.uptimeMillis();
                 try {
-//                    instrumentation.sendPointerSync(event);
+                    event = MotionEvent.obtain(
+                            startTime,
+                            now,
+                            MotionEvent.ACTION_MOVE,
+                            cursorPosition[0],
+                            cursorPosition[1],
+                            0
+                    );
                     injectInputEvent(event);
-                    Thread.sleep(16); // 60 FPS
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (RuntimeException e) {
-                    // Log the error if sendPointerSync is called from the main thread.
-                    Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error while injecting swipe input event in startRealtimeSwipe: " + e);
                 }
+                swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], now - startTime));
+                debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
+
+                try {
+                    Thread.sleep(16); // 60 FPS
+                } catch (Exception e) {
+                    Log.e(TAG, "Error while sleeping in startRealtimeSwipe: " + e);
+                }
+
+                now = SystemClock.uptimeMillis();
+
+                // Check if the button is still being pressed every 500ms
+                if (isSwiping && (now - lastCheckTime) >= 500) {
+                    if (!isSwipeKeyStillPressed()) {
+                        Log.e(TAG, "Button not pressed, manually ending swipe.");
+                        logToFile.logError(TAG, "Button not pressed, manually ending swipe.");
+                        stopRealtimeSwipe();
+                        break;
+                    }
+                    lastCheckTime = now;
+                }
+
             }
         }).start();
     }
 
     private void stopRealtimeSwipe() {
-        isSwiping = false;
+        endTime = SystemClock.uptimeMillis();
+        float[] cursorPosition = getCursorPosition();
         new Thread(() -> {
-            long endTime = SystemClock.uptimeMillis();
-            float[] cursorPosition = getCursorPosition();
-            MotionEvent event = MotionEvent.obtain(
-                    startTime,
-                    endTime,
-                    MotionEvent.ACTION_UP,
-                    cursorPosition[0],
-                    cursorPosition[1],
-                    0
-            );
             try {
-                Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorPosition[0] + ", " + cursorPosition[1] + ")");
-//                instrumentation.sendPointerSync(event);
+                MotionEvent event = MotionEvent.obtain(
+                        startTime,
+                        endTime,
+                        MotionEvent.ACTION_UP,
+                        cursorPosition[0],
+                        cursorPosition[1],
+                        0
+                );
                 injectInputEvent(event);
-            } catch (RuntimeException e) {
+                Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorPosition[0] + ", " + cursorPosition[1] + ")");
+            } catch (Exception e) {
+                logToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
             }
+            swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], startTime - endTime));
+            isSwiping = false;
+            cursorController.isRealtimeSwipe = false;
+            displaySwipeInfo();
         }).start();
     }
+
+    @SuppressLint("DefaultLocale")
+    public void displaySwipeInfo() {
+        int swipeDurationMs = (int) swipePath.get(swipePath.size() - 1).timestamp;
+        ArrayList<Integer> deltaDurationMs = new ArrayList<>();
+        ArrayList<Integer> deltaX = new ArrayList<>();
+        ArrayList<Integer> deltaY = new ArrayList<>();
+        ArrayList<Integer> deltaX2ndOrder = new ArrayList<>();
+        ArrayList<Integer> deltaY2ndOrder = new ArrayList<>();
+
+        for (int i = 1; i < swipePath.size(); i++) {
+            SwipePoint previousPoint = swipePath.get(i - 1);
+            SwipePoint currentPoint = swipePath.get(i);
+            deltaDurationMs.add((int) (currentPoint.timestamp - previousPoint.timestamp));
+            deltaX.add(Math.abs(currentPoint.x - previousPoint.x));
+            deltaY.add(Math.abs(currentPoint.y - previousPoint.y));
+        }
+        for (int i = 1; i < deltaX.size(); i++) {
+            deltaX2ndOrder.add(Math.abs(deltaX.get(i) - deltaX.get(i - 1)));
+            deltaY2ndOrder.add(Math.abs(deltaY.get(i) - deltaY.get(i - 1)));
+        }
+
+        int maxDeltaX = Collections.max(deltaX);
+        int maxDeltaY = Collections.max(deltaY);
+        double averageDeltaX = deltaX.stream().mapToInt(Integer::intValue).average().orElse(0);
+        double averageDeltaY = deltaY.stream().mapToInt(Integer::intValue).average().orElse(0);
+        int maxDeltaX2ndOrder = Collections.max(deltaX2ndOrder);
+        int maxDeltaY2ndOrder = Collections.max(deltaY2ndOrder);
+        double averageDeltaX2ndOrder = deltaX2ndOrder.stream().mapToInt(Integer::intValue).average().orElse(0);
+        double averageDeltaY2ndOrder = deltaY2ndOrder.stream().mapToInt(Integer::intValue).average().orElse(0);
+
+        boolean swipeInKDBRegion = isKeyboardOpen && swipePath.get(0).y > keyboardBounds.top && swipePath.get(swipePath.size() - 1).y > keyboardBounds.top;
+
+        String swipeInfo = String.format(Locale.getDefault(), "Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy)\n" +
+                        "2nd Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy)\n",
+                maxDeltaX, maxDeltaY, averageDeltaX, averageDeltaY, maxDeltaX2ndOrder, maxDeltaY2ndOrder, averageDeltaX2ndOrder, averageDeltaY2ndOrder);
+
+        debugText[0] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX, maxDeltaY, Math.round(averageDeltaX), Math.round(averageDeltaY));
+        debugText[1] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX2ndOrder, maxDeltaY2ndOrder, Math.round(averageDeltaX2ndOrder), Math.round(averageDeltaY2ndOrder));
+
+        if (swipeInKDBRegion && isDebugSwipeEnabled()) {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("Copied Text", swipeInfo);
+            clipboard.setPrimaryClip(clip);
+            showNotification("Swipe Info", swipeInfo);
+        }
+        swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo;
+        logToFile.log(TAG, swipeInfo);
+        Log.d(TAG, swipeInfo);
+    }
+
+    private boolean isSwipeKeyStillPressed() {
+        return keyStates.get(KeyEvent.KEYCODE_BUTTON_A, false) || keyStates.get(KeyEvent.KEYCODE_ENTER, false);
+    }
+
+    private void showNotification(String title, String message) {
+//        Intent intent = new Intent("COPY_TO_CLIPBOARD");
+//        intent.putExtra("text_to_copy", message);
+//
+//        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // Build the notification
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.icon)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true); // Remove notification after it's clicked (if needed)
+//                .setContentIntent(pendingIntent);
+
+        // Show the notification
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "Permission denied to post notifications.");
+            return;
+        }
+        notificationManager.notify(NOTIFICATION_ID, builder.build());
+    }
+
+    private void createNotificationChannel() {
+        // Only create the channel if we're on Android 8.0 or higher
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "GameFace";
+            int importance = NotificationManager.IMPORTANCE_LOW;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.enableLights(true);
+            channel.setLightColor(android.R.color.holo_blue_dark);
+//            channel.enableVibration(true);
+//            channel.setVibrationPattern(new long[]{100, 200, 100, 200});
+
+            // Register the channel with the system
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private LogToFileHelper logToFile = new LogToFileHelper(this);
 
     private float[] getCursorPosition() {
         int[] cursorPosition = cursorController.getCursorPositionXY();
@@ -1039,220 +1243,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             // INJECT_INPUT_EVENT_MODE_ASYNC is 0
             injectInputEventMethod.invoke(inputManager, event, 0);
         } catch (Exception e) {
+            Log.e(TAG, "Error while injecting input event: " + e);
             e.printStackTrace();
         }
     }
+}
 
+class SwipePoint extends Point {
+    public long timestamp;
 
-    private void simulateSwipe(float startX, float startY, float endX, float endY, long duration) {
-        new Thread(() -> {
-            long startTime = SystemClock.uptimeMillis();
-            long endTime = startTime + duration;
-            float deltaX = endX - startX;
-            float deltaY = endY - startY;
-
-            // Simulate initial touch down event
-            MotionEvent event = MotionEvent.obtain(startTime, startTime, MotionEvent.ACTION_DOWN, startX, startY, 0);
-//            instrumentation.sendPointerSync(event);
-            injectInputEvent(event);
-
-            while (SystemClock.uptimeMillis() < endTime) {
-                long currentTime = SystemClock.uptimeMillis();
-                float progress = (float)(currentTime - startTime) / duration;
-                float currentX = startX + (deltaX * progress);
-                float currentY = startY + (deltaY * progress);
-
-                event = MotionEvent.obtain(startTime, currentTime, MotionEvent.ACTION_MOVE, currentX, currentY, 0);
-//                instrumentation.sendPointerSync(event);
-                injectInputEvent(event);
-
-                try {
-                    Thread.sleep(16); // 60 FPS
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            // Simulate final touch up event
-            event = MotionEvent.obtain(startTime, endTime, MotionEvent.ACTION_UP, endX, endY, 0);
-//            instrumentation.sendPointerSync(event);
-            injectInputEvent(event);
-        }).start();
+    public SwipePoint(int x, int y, long timestamp) {
+        super(x, y);
+        this.timestamp = timestamp;
     }
 
-
-//    OLD REALTIME SWIPE USING GESTURE DESCRIPTION
-
-//    private void simulateTouch(final boolean down) {
-//        handler.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                Path path = new Path();
-//                int[] cursorPosition = cursorController.getCursorPositionXY();
-//
-//                if (down) {
-//                    path.moveTo(cursorPosition[0], cursorPosition[1]);
-//                } else {
-//                    if (lastPoint != null) {
-//                        path.moveTo(lastPoint.x, lastPoint.y);
-//                        path.lineTo(cursorPosition[0], cursorPosition[1]);
-//                    }
-//                }
-//
-//                if (path.isEmpty()) {
-//                    Log.w("CursorAccessibilityService", "Path is empty, skipping gesture dispatch.");
-//                    return;
-//                }
-//
-//                long duration = down ? GESTURE_DURATION : 1;
-//
-//                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-//                        path, 0, duration, down);
-//
-//                GestureDescription gestureDescription = new GestureDescription.Builder()
-//                        .addStroke(stroke)
-//                        .build();
-//
-//                dispatchGesture(gestureDescription, new GestureResultCallback() {
-//                    @Override
-//                    public void onCompleted(GestureDescription gestureDescription) {
-//                        super.onCompleted(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture completed: " + gestureDescription.toString());
-//                        lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                    }
-//
-//                    @Override
-//                    public void onCancelled(GestureDescription gestureDescription) {
-//                        super.onCancelled(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture cancelled: " + gestureDescription.toString());
-//                        lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                    }
-//                }, null);
-//            }
-//        });
-//    }
-//
-//
-//    private void simulateMove() {
-//        handler.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                if (!isRealTimeSwiping) {
-//                    return; // Exit if swipe has been stopped
-//                }
-//
-//                if (gestureInProgress) {
-//                    return; // Skip if a gesture is already in progress
-//                }
-//
-//                int[] cursorPosition = cursorController.getCursorPositionXY();
-//                if (lastPoint == null || (lastPoint.x == cursorPosition[0] && lastPoint.y == cursorPosition[1])) {
-//                    return;
-//                }
-//
-//                Path path = new Path();
-//                List<Point> swipePathPoints = cursorController.getRealtimeSwipePathPoints();
-//
-//                if (swipePathPoints.isEmpty()) {
-//                    path.moveTo(lastPoint.x, lastPoint.y);
-//                    path.lineTo(cursorPosition[0], cursorPosition[1]);
-//                } else {
-//                    Point startPoint = swipePathPoints.get(0);
-//                    path.moveTo(startPoint.x, startPoint.y);
-//                    for (Point point : swipePathPoints) {
-//                        path.lineTo(point.x, point.y);
-//                    }
-//                }
-//
-//                if (path.isEmpty()) {
-//                    Log.w("CursorAccessibilityService", "Path is empty, skipping gesture dispatch.");
-//                    return;
-//                }
-//
-//                long duration = calculateDynamicDuration(swipePathPoints);
-//
-//                gestureInProgress = true;
-//
-//                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-//                        path, 0, duration, isRealTimeSwiping);
-//
-//                GestureDescription gestureDescription = new GestureDescription.Builder()
-//                        .addStroke(stroke)
-//                        .build();
-//
-//                dispatchGesture(gestureDescription, new GestureResultCallback() {
-//                    @Override
-//                    public void onCompleted(GestureDescription gestureDescription) {
-//                        super.onCompleted(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture completed: " + gestureDescription.toString());
-//                        if (!swipePathPoints.isEmpty()) {
-//                            Point lastSwipePoint = swipePathPoints.get(swipePathPoints.size() - 1);
-//                            lastPoint = new Point(lastSwipePoint.x, lastSwipePoint.y);
-//                        } else {
-//                            lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                        }
-//                        cursorController.clearSwipePathPoints();
-//                        gestureInProgress = false; // Mark gesture as completed
-//                        if (isRealTimeSwiping) {
-//                            simulateMove(); // Schedule the next gesture if still swiping
-//                        }
-//                    }
-//
-//                    @Override
-//                    public void onCancelled(GestureDescription gestureDescription) {
-//                        super.onCancelled(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture cancelled: " + gestureDescription.toString());
-//                        if (!swipePathPoints.isEmpty()) {
-//                            Point lastSwipePoint = swipePathPoints.get(swipePathPoints.size() - 1);
-//                            lastPoint = new Point(lastSwipePoint.x, lastSwipePoint.y);
-//                        } else {
-//                            lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                        }
-//                        cursorController.clearSwipePathPoints();
-//                        gestureInProgress = false; // Mark gesture as completed
-//                        if (isRealTimeSwiping) {
-//                            simulateMove(); // Schedule the next gesture if still swiping
-//                        }
-//                    }
-//                }, null);
-//
-//                Log.d("CursorAccessibilityService", "simulateMove: " + lastPoint.x + ", " + lastPoint.y + " -> " + cursorPosition[0] + ", " + cursorPosition[1]);
-//            }
-//        });
-//    }
-//
-//    /**
-//     * Calculate a dynamic duration based on the distance between swipe points.
-//     *
-//     * @param points List of points representing the swipe path.
-//     * @return Calculated duration for the gesture.
-//     */
-//    private long calculateDynamicDuration(List<Point> points) {
-//        if (points.isEmpty()) {
-//            return GESTURE_DURATION; // Default duration if no points
-//        }
-//
-//        float totalDistance = 0;
-//        Point previousPoint = points.get(0);
-//
-//        for (Point point : points) {
-//            totalDistance += calculateDistance(previousPoint, point);
-//            previousPoint = point;
-//        }
-//
-//        // Adjust the duration based on the total distance
-//        Log.d("CursorAccessibilityService", "Math.max(MIN_GESTURE_DURATION, (long) (totalDistance * DURATION_MULTIPLIER)): " + Math.max(MIN_GESTURE_DURATION, (long) (totalDistance * DURATION_MULTIPLIER)));
-//        return Math.max(MIN_GESTURE_DURATION, (long) (totalDistance * DURATION_MULTIPLIER));
-//    }
-//
-//    /**
-//     * Calculate the Euclidean distance between two points.
-//     *
-//     * @param point1 The first point.
-//     * @param point2 The second point.
-//     * @return The distance between the points.
-//     */
-//    private float calculateDistance(Point point1, Point point2) {
-//        return (float) Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
-//    }
+    @Override
+    public String toString() {
+        return "(" + x + ", " + y + ") @ " + timestamp;
+    }
 }

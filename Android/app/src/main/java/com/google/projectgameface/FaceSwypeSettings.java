@@ -44,6 +44,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private Switch realtimeSwipeSwitch;
     private Switch durationPopOutSwitch;
     private Switch directMappingSwitch;
+    private Switch debugSwipeSwitch;
     private Switch noseTipSwitch;
     private Switch pitchYawSwitch;
     private SeekBar holdDurationSeekBar;
@@ -92,6 +93,14 @@ public class FaceSwypeSettings extends AppCompatActivity {
                 cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE));
         realtimeSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             sendValueToService("REALTIME_SWIPE", isChecked);
+        });
+
+        // Debug Swipe
+        debugSwipeSwitch = findViewById(R.id.debugSwipeSwitch);
+        debugSwipeSwitch.setChecked(
+                cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE));
+        debugSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            sendValueToService("DEBUG_SWIPE", isChecked);
         });
 
         // Pop Out Method
@@ -321,6 +330,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
             cursorMovementConfig.updateAllConfigFromSharedPreference();
             // Update UI elements with new profile settings
             realtimeSwipeSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE));
+            debugSwipeSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE));
             durationPopOutSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT));
             directMappingSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DIRECT_MAPPING));
             int edgeHoldDuration = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION);

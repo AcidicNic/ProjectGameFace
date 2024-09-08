@@ -56,6 +56,7 @@ class CursorMovementConfig {
     DIRECT_MAPPING,
     NOSE_TIP,
     PITCH_YAW,
+    DEBUG_SWIPE,
   }
 
   private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
@@ -87,6 +88,7 @@ class CursorMovementConfig {
     public static final int HOLD_TIME_MS = 5;
     public static final int HOLD_RADIUS = 2;
     public static final boolean DEFAULT_REALTIME_SWIPE = true;
+    public static final boolean DEFAULT_DEBUG_SWIPE = false;
     public static final boolean DEFAULT_DURATION_POP_OUT = true;
     public static final boolean DEFAULT_DIRECT_MAPPING = true;
     public static final boolean DEFAULT_ENABLE_FEATURE = false;
@@ -94,7 +96,7 @@ class CursorMovementConfig {
     public static final float HEAD_COORD_SCALE_FACTOR_X = 1.5f;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.5f;
     public static final int AVG_SMOOTHING = 5;
-    public static final boolean DEFAULT_PITCH_YAW = false;
+    public static final boolean DEFAULT_PITCH_YAW = true;
     public static final boolean DEFAULT_NOSE_TIP = true;
 
     private InitialRawValue() {}
@@ -155,6 +157,7 @@ class CursorMovementConfig {
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.DIRECT_MAPPING, InitialRawValue.DEFAULT_DIRECT_MAPPING);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.PITCH_YAW, InitialRawValue.DEFAULT_PITCH_YAW);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.DEFAULT_NOSE_TIP);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEFAULT_DEBUG_SWIPE);
 
     // Register the receiver
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -363,6 +366,15 @@ class CursorMovementConfig {
         break;
       case DIRECT_MAPPING:
         defaultValue = InitialRawValue.DEFAULT_DIRECT_MAPPING;
+        break;
+      case PITCH_YAW:
+        defaultValue = InitialRawValue.DEFAULT_PITCH_YAW;
+        break;
+      case NOSE_TIP:
+        defaultValue = InitialRawValue.DEFAULT_NOSE_TIP;
+        break;
+      case DEBUG_SWIPE:
+        defaultValue = InitialRawValue.DEFAULT_DEBUG_SWIPE;
         break;
       default:
         defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;

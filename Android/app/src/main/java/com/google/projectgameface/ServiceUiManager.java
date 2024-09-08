@@ -598,12 +598,10 @@ public class ServiceUiManager {
   /**
    * If {@value SHOW_DEBUG_TEXT}, Update the information overlay on camera box.
    *
-   * @param preprocessValue Time of the image preprocessing.
-   * @param mediapipeValue Time of the MediaPipe processing.
    */
-  public void updateDebugTextOverlay(long preprocessValue, long mediapipeValue, boolean isPausing) {
+  public void updateDebugTextOverlay(String topTxt, String bottomTxt, boolean isPausing) {
     if (SHOW_DEBUG_TEXT) {
-      cameraBoxOverlay.setOverlayInfo(preprocessValue, mediapipeValue);
+      cameraBoxOverlay.setOverlayInfo(topTxt, bottomTxt);
       cameraBoxOverlay.setPauseIndicator(isPausing);
     }
   }
@@ -617,8 +615,21 @@ public class ServiceUiManager {
    */
   public void drawHeadCenter(float[] headCoord, int mpImageWidth, int mpImageHeight) {
     cameraBoxOverlay.setWhiteDot(
-        headCoord[0] * innerCameraImageView.getWidth() / mpImageWidth,
-        headCoord[1] * innerCameraImageView.getHeight() / mpImageHeight);
+            headCoord[0] * innerCameraImageView.getWidth() / mpImageWidth,
+            headCoord[1] * innerCameraImageView.getHeight() / mpImageHeight);
+  }
+
+  /**
+   * Draw 2nd dot.
+   *
+   * @param dotCoord dot coordinate x, y.
+   * @param mpImageWidth MediaPipe's image width for normalization.
+   * @param mpImageHeight MediaPipe's image height for normalization.
+   */
+  public void drawSecondDot(float[] dotCoord, int mpImageWidth, int mpImageHeight) {
+    cameraBoxOverlay.setOtherDot(
+            dotCoord[0] * innerCameraImageView.getWidth() / mpImageWidth,
+            dotCoord[1] * innerCameraImageView.getHeight() / mpImageHeight);
   }
 
   /** Fly camera box to screen center and hide all buttons (for setting page. ). */

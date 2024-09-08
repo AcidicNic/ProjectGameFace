@@ -79,7 +79,7 @@ public class CursorController {
     private static final int TRAIL_MAX_POINTS = 100;
     private List<float[]> cursorTrail = new LinkedList<>();
     private long edgeHoldStartTime = 0;
-    private boolean isRealtimeSwipe = true;
+    public boolean isRealtimeSwipe = false;
     private List<Point> swipePathPoints = new ArrayList<>();
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
@@ -433,9 +433,6 @@ public class CursorController {
         cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
         cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
 
-        if (isRealtimeSwipe) {
-            updateRealtimeSwipe((float) cursorPositionX, (float) cursorPositionY);
-        }
         if (isSwiping) {
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
             updateTrail((float) cursorPositionX, (float) cursorPositionY);
@@ -456,6 +453,11 @@ public class CursorController {
     }
 
     private void handleCenterOffsetUpdate(float[] pitchYawXY, float[] noseTipXY, int[] inputSize) {
+        // Check if swiping is active, and pause the offset updates
+        if (isRealtimeSwipe) {
+            return; // Skip offset updates while swiping
+        }
+
         // Determine if pitch and yaw are close to center (0 degrees)
         boolean isCenteredX = Math.abs(pitchYawXY[1]) < 2.0f; // Yaw close to 0 degrees
         boolean isCenteredY = Math.abs(pitchYawXY[0]) < 2.0f; // Pitch close to 0 degrees
@@ -629,9 +631,9 @@ public class CursorController {
         return cursorTrail;
     }
 
-    public void updateRealtimeSwipe(float x, float y) {
-        swipePathPoints.add(new Point((int) x, (int) y));
-    }
+//    public void updateRealtimeSwipe(float x, float y) {
+//        swipePathPoints.add(new Point((int) x, (int) y));
+//    }
 
     public boolean isDurationPopOutEnabled() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT);
