@@ -16,6 +16,7 @@
 
 package com.google.projectgameface;
 
+import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
 
@@ -745,7 +746,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /** Disable GameFace service. */
-    public void disableService() {
+    public void disableService() { // TODO: DO SOMETHING LIKE THIS TO PAUSE SERVICE FOR BATTERY LIFE (CAMERA DISABLE)
         Log.i(TAG, "disableService");
         switch (serviceState) {
             case ENABLE:
@@ -892,7 +893,27 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (serviceState != ServiceState.ENABLE) {
             return;
         }
-        checkForKeyboard(event);
+        if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            CharSequence newText = event.getText().toString();
+
+            if (newText != null && newText.length() > 0) {
+                processTypedText(newText);
+            }
+        } else {
+            checkForKeyboard(event);
+        }
+    }
+
+    private StringBuilder typedText = new StringBuilder();
+
+    private void processTypedText(CharSequence newText) {
+        typedText.append(newText);
+        String[] words = typedText.toString().split("\\s+");
+        if (words.length > 0) {
+            String lastWord = words[words.length - 1];
+            logToFile.log(TAG, "Word typed: " + lastWord);
+            Log.d(TAG, "Word typed: " + lastWord);
+        }
     }
 
     private void checkForKeyboard(AccessibilityEvent event) {
@@ -1079,7 +1100,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 } catch (Exception e) {
                     Log.e(TAG, "Error while injecting swipe input event in startRealtimeSwipe: " + e);
                 }
-                swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], now - startTime));
+                if (swipePath.get(swipePath.size() - 1).x == cursorPosition[0] && swipePath.get(swipePath.size() - 1).y == cursorPosition[1]) {
+                    // skipping
+                } else {
+                    swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], now - startTime));
+                }
                 debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
 
                 try {
@@ -1124,7 +1149,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 logToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
             }
-            swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], startTime - endTime));
+            swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], endTime - startTime));
             isSwiping = false;
             cursorController.isRealtimeSwipe = false;
             displaySwipeInfo();
@@ -1139,27 +1164,70 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         ArrayList<Integer> deltaY = new ArrayList<>();
         ArrayList<Integer> deltaX2ndOrder = new ArrayList<>();
         ArrayList<Integer> deltaY2ndOrder = new ArrayList<>();
+        ArrayList<Double> distanceBetween = new ArrayList<>();
+        ArrayList<Double> velocity = new ArrayList<>();
 
+        StringBuilder pathPointsStr = new StringBuilder();
+        StringBuilder indexedPathPointsStr = new StringBuilder();
+
+        int tMaxXDelta = 0;
+        int tMaxYDelta = 0;
+        int maxDeltaX = 0;
+        int maxDeltaY = 0;
+        Log.d(TAG, "x: " + swipePath.get(0).x + ", y: " + swipePath.get(0).y + ", t: " + swipePath.get(0).timestamp);
         for (int i = 1; i < swipePath.size(); i++) {
             SwipePoint previousPoint = swipePath.get(i - 1);
             SwipePoint currentPoint = swipePath.get(i);
             deltaDurationMs.add((int) (currentPoint.timestamp - previousPoint.timestamp));
-            deltaX.add(Math.abs(currentPoint.x - previousPoint.x));
-            deltaY.add(Math.abs(currentPoint.y - previousPoint.y));
+
+            int tDeltaX = currentPoint.x - previousPoint.x;
+            int tDeltaY = currentPoint.y - previousPoint.y;
+            deltaX.add(tDeltaX);
+            deltaY.add(tDeltaY);
+            if (Math.abs(tDeltaX) > tMaxXDelta) {
+                tMaxXDelta = Math.abs(tDeltaX);
+                maxDeltaX = tDeltaX;
+            }
+            if (Math.abs(tDeltaY) > tMaxYDelta) {
+                tMaxYDelta = Math.abs(tDeltaY);
+                maxDeltaY = tDeltaY;
+            }
+
+            distanceBetween.add(getDistanceBetweenPoints(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y));
+            pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d), ", previousPoint.x, previousPoint.y, previousPoint.timestamp));
+            indexedPathPointsStr.append(String.format(Locale.getDefault(), "%d (%d, %d, %d), ", i-1, previousPoint.x, previousPoint.y, previousPoint.timestamp));
+            velocity.add(distanceBetween.get(i - 1) / deltaDurationMs.get(i - 1));
+
+            Log.d(TAG, "x: " + currentPoint.x + ", y: " + currentPoint.y + ", t: " + currentPoint.timestamp);
         }
+
+        pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d)", swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size()-1).timestamp));
+        indexedPathPointsStr.append(String.format(Locale.getDefault(), "%d (%d, %d, %d)", swipePath.size()-1, swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size()-1).timestamp));
+
+        Log.d(TAG, "dx: " + deltaX.get(0) + ", dy: " + deltaY.get(0));
         for (int i = 1; i < deltaX.size(); i++) {
             deltaX2ndOrder.add(Math.abs(deltaX.get(i) - deltaX.get(i - 1)));
             deltaY2ndOrder.add(Math.abs(deltaY.get(i) - deltaY.get(i - 1)));
+
+            Log.d(TAG, "dx: " + deltaX.get(i) + ", dy: " + deltaY.get(i));
         }
 
-        int maxDeltaX = Collections.max(deltaX);
-        int maxDeltaY = Collections.max(deltaY);
+        for (int i = 0; i < deltaX2ndOrder.size(); i++) {
+            Log.d(TAG, "d2x: " + deltaX2ndOrder.get(i) + ", d2y: " + deltaY2ndOrder.get(i));
+        }
+
         double averageDeltaX = deltaX.stream().mapToInt(Integer::intValue).average().orElse(0);
         double averageDeltaY = deltaY.stream().mapToInt(Integer::intValue).average().orElse(0);
+        double averageDistance = distanceBetween.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        double averageDuration = deltaDurationMs.stream().mapToInt(Integer::intValue).average().orElse(0);
         int maxDeltaX2ndOrder = Collections.max(deltaX2ndOrder);
         int maxDeltaY2ndOrder = Collections.max(deltaY2ndOrder);
         double averageDeltaX2ndOrder = deltaX2ndOrder.stream().mapToInt(Integer::intValue).average().orElse(0);
         double averageDeltaY2ndOrder = deltaY2ndOrder.stream().mapToInt(Integer::intValue).average().orElse(0);
+        double averageVelocity = velocity.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        int maxVelocityIndex = velocity.indexOf(Collections.max(velocity));
+        int maxDistanceIndex = distanceBetween.indexOf(Collections.max(distanceBetween));
+        int minDurationIndex = deltaDurationMs.indexOf(Collections.min(deltaDurationMs));
 
         boolean swipeInKDBRegion = isKeyboardOpen && swipePath.get(0).y > keyboardBounds.top && swipePath.get(swipePath.size() - 1).y > keyboardBounds.top;
 
@@ -1170,15 +1238,34 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         debugText[0] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX, maxDeltaY, Math.round(averageDeltaX), Math.round(averageDeltaY));
         debugText[1] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX2ndOrder, maxDeltaY2ndOrder, Math.round(averageDeltaX2ndOrder), Math.round(averageDeltaY2ndOrder));
 
+//        if (swipeInKDBRegion && isDebugSwipeEnabled()) {
+//            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+//            ClipData clip = ClipData.newPlainText("Copied Text", swipeInfo);
+//            clipboard.setPrimaryClip(clip);
+//            showNotification("Swipe Info", swipeInfo);
+//        }
+        String cliffDebugtxt = swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
+                "Distance: AVG " + averageDistance + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
+                "Velocity: AVG " + averageVelocity + "px/ms, Max " + Collections.max(velocity) + "px/ms [index:" + maxVelocityIndex + "]\n" +
+                "Path size: " + swipePath.size() + ", Path Points: " + indexedPathPointsStr + "\n";
+
+        swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo + "Duration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms\n" +
+                "Distance: AVG " + averageDistance + "px, Min " + Collections.min(distanceBetween) + "px, Max " + Collections.max(distanceBetween) + "px\n" +
+                "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
+        logToFile.log(TAG, swipeInfo);
+
         if (swipeInKDBRegion && isDebugSwipeEnabled()) {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("Copied Text", swipeInfo);
             clipboard.setPrimaryClip(clip);
             showNotification("Swipe Info", swipeInfo);
         }
-        swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo;
-        logToFile.log(TAG, swipeInfo);
+
         Log.d(TAG, swipeInfo);
+    }
+
+    public double getDistanceBetweenPoints(double x1, double y1, double x2, double y2) {
+        return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
     }
 
     private boolean isSwipeKeyStillPressed() {
