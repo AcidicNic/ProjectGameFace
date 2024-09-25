@@ -401,7 +401,7 @@ public class CursorController {
         if (tempBoundsSet) {
             int WIGGLE_ROOM = screenHeight / 20;
             if (isCursorOutsideBounds) {
-                regionMaxY =  tempMinY + WIGGLE_ROOM;
+                regionMaxY = tempMinY + WIGGLE_ROOM;
             } else {
                 regionMinY = tempMinY - WIGGLE_ROOM;
             }

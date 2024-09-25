@@ -1231,8 +1231,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         boolean swipeInKDBRegion = isKeyboardOpen && swipePath.get(0).y > keyboardBounds.top && swipePath.get(swipePath.size() - 1).y > keyboardBounds.top;
 
-        String swipeInfo = String.format(Locale.getDefault(), "Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy)\n" +
-                        "2nd Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy)\n",
+        String swipeInfo = String.format(Locale.getDefault(), "Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy); 2nd Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy)",
                 maxDeltaX, maxDeltaY, averageDeltaX, averageDeltaY, maxDeltaX2ndOrder, maxDeltaY2ndOrder, averageDeltaX2ndOrder, averageDeltaY2ndOrder);
 
         debugText[0] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX, maxDeltaY, Math.round(averageDeltaX), Math.round(averageDeltaY));
@@ -1244,21 +1243,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //            clipboard.setPrimaryClip(clip);
 //            showNotification("Swipe Info", swipeInfo);
 //        }
-        String cliffDebugtxt = swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
-                "Distance: AVG " + averageDistance + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
-                "Velocity: AVG " + averageVelocity + "px/ms, Max " + Collections.max(velocity) + "px/ms [index:" + maxVelocityIndex + "]\n" +
+        String swipeInfoClipboard = swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
+                "Distance: AVG " + String.format("%,.1f", averageDistance) + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
+                "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]\n" +
                 "Path size: " + swipePath.size() + ", Path Points: " + indexedPathPointsStr + "\n";
 
-        swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo + "Duration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms\n" +
-                "Distance: AVG " + averageDistance + "px, Min " + Collections.min(distanceBetween) + "px, Max " + Collections.max(distanceBetween) + "px\n" +
+        swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
+                "Distance: AVG " + String.format("%,.1f", averageDistance) + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
+                "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]\n" +
                 "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
         logToFile.log(TAG, swipeInfo);
 
         if (swipeInKDBRegion && isDebugSwipeEnabled()) {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("Copied Text", swipeInfo);
+            ClipData clip = ClipData.newPlainText("Copied Text", swipeInfoClipboard);
             clipboard.setPrimaryClip(clip);
-            showNotification("Swipe Info", swipeInfo);
+            showNotification("Swipe Info", swipeInfoClipboard);
         }
 
         Log.d(TAG, swipeInfo);
