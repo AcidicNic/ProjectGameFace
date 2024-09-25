@@ -49,6 +49,9 @@ public class DispatchEventHelper {
 
     switch (event) {
       case CURSOR_TOUCH:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         parentService.dispatchGesture(
             CursorUtils.createClick(
                 cursorPosition[0] ,
@@ -66,10 +69,16 @@ public class DispatchEventHelper {
         break;
 
       case CURSOR_RESET:
+        if (cursorController.isRealtimeSwipe || cursorController.isDirectMappingEnabled()) {
+          break;
+        }
         cursorController.resetCursorToCenter(false);
         break;
 
       case SWIPE_LEFT:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         parentService.dispatchGesture(
             CursorUtils.createSwipe(
                 cursorPosition[0] + eventOffsetX,
@@ -82,6 +91,9 @@ public class DispatchEventHelper {
         break;
 
       case SWIPE_RIGHT:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         parentService.dispatchGesture(
             CursorUtils.createSwipe(
                 cursorPosition[0] + eventOffsetX,
@@ -94,6 +106,9 @@ public class DispatchEventHelper {
         break;
 
       case SWIPE_UP:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         parentService.dispatchGesture(
             CursorUtils.createSwipe(
                 cursorPosition[0] + eventOffsetX,
@@ -106,6 +121,9 @@ public class DispatchEventHelper {
         break;
 
       case SWIPE_DOWN:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         parentService.dispatchGesture(
             CursorUtils.createSwipe(
                 cursorPosition[0] + eventOffsetX,
@@ -118,11 +136,17 @@ public class DispatchEventHelper {
         break;
 
       case DRAG_TOGGLE:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         dispatchDragOrHold(parentService, cursorController, serviceUiManager,
             eventOffsetX, eventOffsetY);
         break;
 
       case SWIPE_START:
+        if (cursorController.isRealtimeSwipe) {
+          break;
+        }
         cursorController.startSwipe(cursorPosition[0], cursorPosition[1]);
         break;
 
