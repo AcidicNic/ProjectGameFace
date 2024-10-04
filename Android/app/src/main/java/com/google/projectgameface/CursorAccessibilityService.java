@@ -906,11 +906,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private StringBuilder typedText = new StringBuilder();
 
+    private int PHRASE_COOLDOWN = 2500;
+    private long phraseStartTimestamp;
+    private long lastWordTypedTimestamp;
+    private boolean isTyping = false;
+
     private void processTypedText(CharSequence newText) {
         typedText.append(newText);
         String[] words = typedText.toString().split("\\s+");
         if (words.length > 0) {
+//            long now = SystemClock.uptimeMillis();
             String lastWord = words[words.length - 1];
+//            if (now - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
+//
+//            }
             logToFile.log(TAG, "Word typed: " + lastWord);
             Log.d(TAG, "Word typed: " + lastWord);
         }
@@ -1005,6 +1014,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return false;
     }
 
+    private boolean swipeToggle = false;
+
     private boolean handleKeyEvent(KeyEvent event) {
         if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
             return false;
@@ -1013,8 +1024,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int keyCode = event.getKeyCode();
         switch (keyCode) {
             case KeyEvent.KEYCODE_SPACE:
+            case KeyEvent.KEYCODE_2:
                 if (eventAction == KeyEvent.ACTION_DOWN) {
-                    Log.d(TAG, "SPACE KeyEvent.ACTION_DOWN");
+                    Log.d(TAG, "TAP KeyEvent.ACTION_DOWN");
                     DispatchEventHelper.checkAndDispatchEvent(
                             this,
                             cursorController,
@@ -1022,11 +1034,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
                 }
                 return true;
+            case KeyEvent.KEYCODE_1:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_BUTTON_A:
                 if (eventAction == KeyEvent.ACTION_DOWN) {
                     keyStates.put(keyCode, true);
-                    Log.d(TAG, "ENTER KeyEvent.ACTION_DOWN");
+                    Log.d(TAG, "SWIPE KeyEvent.ACTION_DOWN");
                     if (isRealtimeSwipeEnabled()) {
                         startRealtimeSwipe();
                     } else {
@@ -1038,7 +1051,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     }
                 } else if (eventAction == KeyEvent.ACTION_UP) {
                     keyStates.put(keyCode, false);
-                    Log.d(TAG, "ENTER KeyEvent.ACTION_UP");
+                    Log.d(TAG, "SWIPE KeyEvent.ACTION_UP");
                     if (isRealtimeSwipeEnabled()) {
                         stopRealtimeSwipe();
                     } else {
@@ -1050,10 +1063,37 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     }
                 }
                 return true;
-            case KeyEvent.KEYCODE_1:
-            case KeyEvent.KEYCODE_4:
             case KeyEvent.KEYCODE_3:
-            case KeyEvent.KEYCODE_2:
+                if (eventAction == KeyEvent.ACTION_DOWN) {
+                    if (swipeToggle) {
+                        Log.d(TAG, "STOP SWIPE TOGGLE KeyEvent.ACTION_DOWN");
+                        swipeToggle = false;
+                        if (isRealtimeSwipeEnabled()) {
+                            stopRealtimeSwipe();
+                        } else {
+                            DispatchEventHelper.checkAndDispatchEvent(
+                                    this,
+                                    cursorController,
+                                    serviceUiManager,
+                                    BlendshapeEventTriggerConfig.EventType.SWIPE_STOP);
+                        }
+                    } else {
+                        Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
+                        swipeToggle = true;
+                        if (isRealtimeSwipeEnabled()) {
+                            startRealtimeSwipe();
+                        } else {
+                            DispatchEventHelper.checkAndDispatchEvent(
+                                    this,
+                                    cursorController,
+                                    serviceUiManager,
+                                    BlendshapeEventTriggerConfig.EventType.SWIPE_START);
+                        }
+                    }
+
+                }
+                return true;
+            case KeyEvent.KEYCODE_4:
                 return true;
         }
         return false;
@@ -1174,7 +1214,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int tMaxYDelta = 0;
         int maxDeltaX = 0;
         int maxDeltaY = 0;
-        Log.d(TAG, "x: " + swipePath.get(0).x + ", y: " + swipePath.get(0).y + ", t: " + swipePath.get(0).timestamp);
+//        Log.d(TAG, "x: " + swipePath.get(0).x + ", y: " + swipePath.get(0).y + ", t: " + swipePath.get(0).timestamp);
         for (int i = 1; i < swipePath.size(); i++) {
             SwipePoint previousPoint = swipePath.get(i - 1);
             SwipePoint currentPoint = swipePath.get(i);
@@ -1198,22 +1238,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             indexedPathPointsStr.append(String.format(Locale.getDefault(), "%d (%d, %d, %d), ", i-1, previousPoint.x, previousPoint.y, previousPoint.timestamp));
             velocity.add(distanceBetween.get(i - 1) / deltaDurationMs.get(i - 1));
 
-            Log.d(TAG, "x: " + currentPoint.x + ", y: " + currentPoint.y + ", t: " + currentPoint.timestamp);
+//            Log.d(TAG, "x: " + currentPoint.x + ", y: " + currentPoint.y + ", t: " + currentPoint.timestamp);
         }
 
         pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d)", swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size()-1).timestamp));
         indexedPathPointsStr.append(String.format(Locale.getDefault(), "%d (%d, %d, %d)", swipePath.size()-1, swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size()-1).timestamp));
 
-        Log.d(TAG, "dx: " + deltaX.get(0) + ", dy: " + deltaY.get(0));
+//        Log.d(TAG, "dx: " + deltaX.get(0) + ", dy: " + deltaY.get(0));
         for (int i = 1; i < deltaX.size(); i++) {
             deltaX2ndOrder.add(Math.abs(deltaX.get(i) - deltaX.get(i - 1)));
             deltaY2ndOrder.add(Math.abs(deltaY.get(i) - deltaY.get(i - 1)));
 
-            Log.d(TAG, "dx: " + deltaX.get(i) + ", dy: " + deltaY.get(i));
+//            Log.d(TAG, "dx: " + deltaX.get(i) + ", dy: " + deltaY.get(i));
         }
 
         for (int i = 0; i < deltaX2ndOrder.size(); i++) {
-            Log.d(TAG, "d2x: " + deltaX2ndOrder.get(i) + ", d2y: " + deltaY2ndOrder.get(i));
+//            Log.d(TAG, "d2x: " + deltaX2ndOrder.get(i) + ", d2y: " + deltaY2ndOrder.get(i));
         }
 
         double averageDeltaX = deltaX.stream().mapToInt(Integer::intValue).average().orElse(0);
@@ -1269,7 +1309,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     private boolean isSwipeKeyStillPressed() {
-        return keyStates.get(KeyEvent.KEYCODE_BUTTON_A, false) || keyStates.get(KeyEvent.KEYCODE_ENTER, false);
+        return keyStates.get(KeyEvent.KEYCODE_BUTTON_A, false) || keyStates.get(KeyEvent.KEYCODE_ENTER, false) || keyStates.get(KeyEvent.KEYCODE_1, false) || swipeToggle;
     }
 
     private void showNotification(String title, String message) {
