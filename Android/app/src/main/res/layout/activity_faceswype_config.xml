@@ -31,29 +31,18 @@
         android:layout_height="wrap_content"
         android:padding="20dp">
 
-        <TextView
-            android:id="@+id/Description_Cursor"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:text="..."
-            android:visibility="gone"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-
-        <TextView
-            android:id="@+id/FaceSwypeTxt"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="FaceSwype Settings"
-            android:textStyle="bold"
-            android:layout_marginTop="25dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/Description_Cursor" />
+<!--        <TextView-->
+<!--            android:id="@+id/Description_Cursor"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginTop="10dp"-->
+<!--            android:gravity="center"-->
+<!--            android:text="..."-->
+<!--            android:visibility="gone"-->
+<!--            android:textSize="14sp"-->
+<!--            app:layout_constraintEnd_toEndOf="parent"-->
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent" />-->
 
         <Switch
             android:id="@+id/realtimeSwipeSwitch"
@@ -62,7 +51,7 @@
             android:text="Realtime Swipe "
             android:layout_marginTop="10dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/FaceSwypeTxt" />
+            app:layout_constraintTop_toTopOf="@+id/parent" />
 
         <Switch
             android:id="@+id/durationPopOutSwitch"
@@ -396,13 +385,18 @@
             app:layout_constraintTop_toBottomOf="@+id/smoothingLayout" />
 
         <Button
-            android:id="@+id/calibrationBtn"
+            android:id="@+id/debuggingStatsBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Calibration"
-            android:layout_marginTop="10dp"
+            android:layout_marginVertical="10dp"
+            android:paddingVertical="15dp"
+            android:paddingHorizontal="20dp"
+            android:text="Debugging Stats"
+            android:textColor="#444746"
+            android:textAllCaps="false"
+            android:background="@drawable/textview_custom"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/newSwipeSwitch" />
+            app:layout_constraintTop_toBottomOf="@+id/debugSwipeSwitch" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

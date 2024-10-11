@@ -48,6 +48,12 @@ class CursorMovementConfig {
     HEAD_COORD_SCALE_FACTOR_X,
     HEAD_COORD_SCALE_FACTOR_Y,
     AVG_SMOOTHING,
+
+    LATEST_AVG_WPM,
+    AVG_WPM,
+    AVG_WORDS_PER_PHRASE,
+    AVG_SWIPE_DURATION,
+    AVG_PHRASE_LENGTH,
   }
 
   public enum CursorMovementBooleanConfigType {
@@ -99,6 +105,13 @@ class CursorMovementConfig {
     public static final boolean DEFAULT_PITCH_YAW = true;
     public static final boolean DEFAULT_NOSE_TIP = true;
 
+    public static final float LATEST_AVG_WPM = 0.0f;
+    public static final float AVG_WPM = 0.0f;
+    public static final float AVG_WORDS_PER_PHRASE = 0.0f;
+    public static final float AVG_SWIPE_DURATION = 0.0f;
+    public static final float AVG_PHRASE_LENGTH = 0.0f;
+
+
     private InitialRawValue() {}
   }
 
@@ -116,6 +129,12 @@ class CursorMovementConfig {
     public static final float HEAD_COORD_SCALE_FACTOR_X = 1.0f;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.0f;
     public static final float AVG_SMOOTHING = 1.0f;
+
+    public static final float LATEST_AVG_WPM = 1.0f;
+    public static final float AVG_WPM = 1.0f;
+    public static final float AVG_WORDS_PER_PHRASE = 1.0f;
+    public static final float AVG_SWIPE_DURATION = 1.0f;
+    public static final float AVG_PHRASE_LENGTH = 1.0f;
 
     private RawConfigMultiplier() {}
   }
@@ -149,6 +168,13 @@ class CursorMovementConfig {
     rawFloatValueMap = new HashMap<>();
     rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X, InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
     rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y, InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
+
+    rawFloatValueMap.put(CursorMovementConfigType.LATEST_AVG_WPM, InitialRawValue.LATEST_AVG_WPM);
+    rawFloatValueMap.put(CursorMovementConfigType.AVG_WPM, InitialRawValue.AVG_WPM);
+    rawFloatValueMap.put(CursorMovementConfigType.AVG_WORDS_PER_PHRASE, InitialRawValue.AVG_WORDS_PER_PHRASE);
+    rawFloatValueMap.put(CursorMovementConfigType.AVG_SWIPE_DURATION, InitialRawValue.AVG_SWIPE_DURATION);
+    rawFloatValueMap.put(CursorMovementConfigType.AVG_PHRASE_LENGTH, InitialRawValue.AVG_PHRASE_LENGTH);
+
 
     // Initialize default boolean values.
     rawBooleanValueMap = new HashMap<>();
@@ -232,10 +258,11 @@ class CursorMovementConfig {
     if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X) {
       float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : 1.0f;
       return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR_X;
-    }
-    else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
+
+    } else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
       float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : 1.0f;
       return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR_Y;
+
     } else {
       int rawValue = (rawValueMap.get(targetConfig) != null) ? rawValueMap.get(targetConfig) : 0;
       float multiplier;
@@ -271,7 +298,7 @@ class CursorMovementConfig {
           multiplier = RawConfigMultiplier.AVG_SMOOTHING;
           break;
         default:
-          multiplier = 0.f;
+          multiplier = 1.0f;
       }
       return (float) rawValue * multiplier;
     }
@@ -321,6 +348,28 @@ class CursorMovementConfig {
         float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
         setRawFloatValueFromUi(configName, configValueInUi);
         Log.i(TAG, "Set raw float value to: " + configValueInUi);
+
+      } else if (targetConfig == CursorMovementConfigType.LATEST_AVG_WPM) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.LATEST_AVG_WPM);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.AVG_WPM) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_WPM);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.AVG_WORDS_PER_PHRASE) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_WORDS_PER_PHRASE);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.AVG_SWIPE_DURATION) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_SWIPE_DURATION);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.AVG_PHRASE_LENGTH) {
+        float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_PHRASE_LENGTH);
+        setRawFloatValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw float value to: " + configValueInUi);
+
       } else {
         int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);
         if (configValueInUi == PREFERENCE_INT_NOT_FOUND) {

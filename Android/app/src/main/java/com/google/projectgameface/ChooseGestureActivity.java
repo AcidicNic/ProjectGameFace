@@ -242,7 +242,7 @@ public class ChooseGestureActivity extends AppCompatActivity {
                 BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE));
 
 
-        findViewById(R.id.backBtn).setOnClickListener(v -> {
+        findViewById(R.id.refreshBtn).setOnClickListener(v -> {
             Intent intentBack = new Intent(getBaseContext(), CursorBinding.class);
             startActivity(intentBack);
             finish();

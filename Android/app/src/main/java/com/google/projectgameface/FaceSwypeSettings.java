@@ -60,7 +60,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private TextView headCoordScaleFactorYProgress;
     private ConstraintLayout holdDurationLayout;
     private ConstraintLayout headCoordScaleFactorLayout;
-    private Button calibrationButton;
+    private Button debuggingStatsBtn;
 
     private final int[] viewIds = {
             R.id.fasterHoldDuration,
@@ -174,11 +174,14 @@ public class FaceSwypeSettings extends AppCompatActivity {
                 smoothingSeekBar, smoothingProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING)
         );
 
-        calibrationButton = findViewById(R.id.calibrationBtn);
-        calibrationButton.setOnClickListener(new OnClickListener() {
+        debuggingStatsBtn = findViewById(R.id.debuggingStatsBtn);
+        debuggingStatsBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(FaceSwypeSettings.this, CalibrationActivity.class);
+//                Intent intent = new Intent(FaceSwypeSettings.this, CalibrationActivity.class);
+//                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+//                startActivity(intent);
+                Intent intent = new Intent(FaceSwypeSettings.this, DebuggingStatsActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
             }

@@ -26,13 +26,13 @@ import android.annotation.SuppressLint;
 import android.app.Instrumentation;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
@@ -50,15 +50,12 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseBooleanArray;
-import android.view.InputDevice;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.Surface;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityWindowInfo;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
@@ -122,6 +119,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
     private BroadcastReceiver clipboardReceiver;
+    private BroadcastReceiver resetDebuggingStatsReciever;
     private boolean isSwiping = false;
     private static final long GESTURE_DURATION = 100;
     private static final long MIN_GESTURE_DURATION = 100;
@@ -236,6 +234,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 Log.i(TAG, "Profile change detected. Reloading configuration.");
                 cursorController.cursorMovementConfig.reloadSharedPreferences(context);
                 cursorController.blendshapeEventTriggerConfig.updateAllConfigFromSharedPreference();
+            }
+        };
+
+        resetDebuggingStatsReciever = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                phraseStartTimestamp = 0;
+                lastWordTypedTimestamp = 0;
+                wordsPerPhrase = 0;
+                phraseWordsPerMinute.clear();
+                runningWordsPerMinute.clear();
+                runningWordsPerPhrase.clear();
+                runningSwipeDuration.clear();
             }
         };
 
@@ -907,7 +918,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private StringBuilder typedText = new StringBuilder();
 
-    private int PHRASE_COOLDOWN = 5000;
+    private int PHRASE_COOLDOWN = 4000;
     private long phraseStartTimestamp;
     private long lastWordTypedTimestamp;
     private boolean isTyping = false;
@@ -1203,8 +1214,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     private int wordsPerPhrase = 0;
-    private ArrayList<Float> wordSpeeds = new ArrayList<>();
-    private ArrayList<Float> runningWordSpeeds = new ArrayList<>();
+    private ArrayList<Float> phraseWordsPerMinute = new ArrayList<>();
+    private ArrayList<Float> runningWordsPerMinute = new ArrayList<>();
+    private ArrayList<Integer> runningWordsPerPhrase = new ArrayList<>();
+    private ArrayList<Integer> runningSwipeDuration = new ArrayList<>();
+
+    private void updateConfig(String configName, float value) {
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat(configName, value);
+        editor.apply();
+        cursorController.cursorMovementConfig.updateOneConfigFromSharedPreference(configName);
+    }
 
     @SuppressLint("DefaultLocale")
     public void displaySwipeInfo() {
@@ -1316,12 +1338,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         long now = SystemClock.uptimeMillis();
 
         if (swipeInKDBRegion) {
-            Log.d(TAG, "Swipe in KDB region");
-            Float typingSpeed = (float) (60000 / swipeDurationMs);
-            wordSpeeds.add(typingSpeed);
-            runningWordSpeeds.add(typingSpeed);
-            Log.d(TAG, "Typing speed: " + typingSpeed + " wpm");
-            Log.d(TAG, "Running typing speed: " + runningWordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue)) + " wpm");
+//            Log.d(TAG, "Swipe in KDB region");
+            Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
+            phraseWordsPerMinute.add(latestWordsPerMinute);
+            runningWordsPerMinute.add(latestWordsPerMinute);
+            runningSwipeDuration.add(swipeDurationMs);
+//            Log.d(TAG, "Typing speed: " + latestWordsPerMinute + " wpm");
+//            Log.d(TAG, "Running typing speed: " + runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)) + " wpm");
 
             if (phraseStartTimestamp == 0) {
                 // starting phrase
@@ -1334,22 +1357,36 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 wordsPerPhrase += 1;
             } else {
                 // ending phrase
-                logToFile.log(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, global avg words per minute: %.2f",
+                runningWordsPerPhrase.add(wordsPerPhrase);
+                float avgWPM = phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue();
+                updateConfig("wpmLatestAvg", avgWPM);
+                float runningAvgWPM = runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue();
+                updateConfig("wpmAvg", runningAvgWPM);
+                float runningAvgWordsPerPhrase = runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue();
+                updateConfig("wordsPerPhraseAvg", runningAvgWordsPerPhrase);
+                float runningAvgSwipeDuration = runningSwipeDuration.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue();
+                updateConfig("swipeDurationAvg", runningAvgSwipeDuration);
+
+                logToFile.log(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
                         wordsPerPhrase,
                         swipeDurationMs,
-                        wordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue)),
-                        runningWordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue))
+                        avgWPM,
+                        runningAvgWPM,
+                        runningAvgWordsPerPhrase,
+                        runningAvgSwipeDuration
                 ));
-                Log.d(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, global avg words per minute: %.2f",
+                Log.d(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
                         wordsPerPhrase,
                         swipeDurationMs,
-                        wordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue)),
-                        runningWordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue))
+                        avgWPM,
+                        runningAvgWPM,
+                        runningAvgWordsPerPhrase,
+                        runningAvgSwipeDuration
                 ));
                 wordsPerPhrase = 0;
                 phraseStartTimestamp = 0;
                 lastWordTypedTimestamp = 0;
-                wordSpeeds = new ArrayList<>();
+                phraseWordsPerMinute.clear();
             }
         }
 

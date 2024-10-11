@@ -188,7 +188,7 @@ public class GestureSizeActivity extends AppCompatActivity {
 
         });
 
-        findViewById(R.id.backBtn).setOnClickListener(v -> {
+        findViewById(R.id.refreshBtn).setOnClickListener(v -> {
                     finish();
         });
 

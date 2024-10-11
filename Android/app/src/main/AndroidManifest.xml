@@ -91,6 +91,11 @@
             android:parentActivityName=".FaceSwypeSettings" />
 
         <activity
+            android:name=".DebuggingStatsActivity"
+            android:exported="false"
+            android:parentActivityName=".FaceSwypeSettings" />
+
+        <activity
             android:name=".GrantPermissionActivity"
             android:exported="false" />
 

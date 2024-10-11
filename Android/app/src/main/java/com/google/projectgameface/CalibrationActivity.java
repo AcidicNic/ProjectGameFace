@@ -2,7 +2,6 @@ package com.google.projectgameface;
 
 import android.view.MenuItem;
 import android.view.ViewTreeObserver;
-import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -192,7 +191,7 @@ public class CalibrationActivity extends AppCompatActivity {
 
         });
 
-        findViewById(R.id.backBtn).setOnClickListener(v -> {
+        findViewById(R.id.refreshBtn).setOnClickListener(v -> {
             finish();
         });
 
