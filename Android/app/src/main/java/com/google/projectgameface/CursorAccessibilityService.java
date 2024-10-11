@@ -84,6 +84,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /** The cursor service of GameFace app. */
 @SuppressLint("UnprotectedReceiver") // All of the broadcasts can only be sent by system.
@@ -906,7 +907,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private StringBuilder typedText = new StringBuilder();
 
-    private int PHRASE_COOLDOWN = 2500;
+    private int PHRASE_COOLDOWN = 5000;
     private long phraseStartTimestamp;
     private long lastWordTypedTimestamp;
     private boolean isTyping = false;
@@ -915,11 +916,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         typedText.append(newText);
         String[] words = typedText.toString().split("\\s+");
         if (words.length > 0) {
-//            long now = SystemClock.uptimeMillis();
+            long now = SystemClock.uptimeMillis();
             String lastWord = words[words.length - 1];
-//            if (now - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
-//
-//            }
             logToFile.log(TAG, "Word typed: " + lastWord);
             Log.d(TAG, "Word typed: " + lastWord);
         }
@@ -942,6 +940,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
                 keyboardFound = true;
                 window.getBoundsInScreen(keyboardBounds);
+//                for (int i = 0; i < window.getChildCount(); i++) {
+//                    Rect childBounds = new Rect();
+//                    window.getChild(i).getBoundsInScreen(childBounds);
+//                    Log.d(TAG, "child: " + window.getChild(i) + ", title: " + window.getChild(i).getTitle() + ", describeContents: " + window.getChild(i).describeContents() + ", bounds: " + childBounds);
+//                }
                 if (keyboardBounds.equals(cursorController.getTemporaryBounds())) {
                     return;
                 }
@@ -997,7 +1000,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
 
-    private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4, KeyEvent.KEYCODE_BUTTON_A);
+    private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4);
 //    private final List<Integer> validKeyEventActions = Arrays.asList(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP);
 
     @Override
@@ -1008,9 +1011,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (validKeyEventKeys.contains(event.getKeyCode())) {
             return handleKeyEvent(event);
         }
-        if (event.getSource() == InputDevice.SOURCE_GAMEPAD) {
-            return true; // TODO: DELETE LATER!
-        }
+//        if (event.getSource() == InputDevice.SOURCE_GAMEPAD) {
+//            return true; // TODO: DELETE LATER!
+//        }
         return false;
     }
 
@@ -1099,6 +1102,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return false;
     }
 
+    private ArrayList<Long> swipeTimes = new ArrayList<>();
+
     private void startRealtimeSwipe() {
         isSwiping = true;
         cursorController.isRealtimeSwipe = true;
@@ -1120,6 +1125,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //            instrumentation.sendPointerSync(event);
             injectInputEvent(event);
             swipePath.add(new SwipePoint((int) initialPosition[0], (int) initialPosition[1], 0));
+            swipeTimes.add(startTime);
             debugText[0] = "Swiping";
             debugText[1] = "X, Y: (" + initialPosition[0] + ", " + initialPosition[1] + ")";
 
@@ -1196,9 +1202,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }).start();
     }
 
+    private int wordsPerPhrase = 0;
+    private ArrayList<Float> wordSpeeds = new ArrayList<>();
+    private ArrayList<Float> runningWordSpeeds = new ArrayList<>();
+
     @SuppressLint("DefaultLocale")
     public void displaySwipeInfo() {
         int swipeDurationMs = (int) swipePath.get(swipePath.size() - 1).timestamp;
+        Log.d(TAG, "Swipe duration: " + swipeDurationMs);
+
         ArrayList<Integer> deltaDurationMs = new ArrayList<>();
         ArrayList<Integer> deltaX = new ArrayList<>();
         ArrayList<Integer> deltaY = new ArrayList<>();
@@ -1299,6 +1311,46 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             ClipData clip = ClipData.newPlainText("Copied Text", swipeInfoClipboard);
             clipboard.setPrimaryClip(clip);
             showNotification("Swipe Info", swipeInfoClipboard);
+        }
+
+        long now = SystemClock.uptimeMillis();
+
+        if (swipeInKDBRegion) {
+            Log.d(TAG, "Swipe in KDB region");
+            Float typingSpeed = (float) (60000 / swipeDurationMs);
+            wordSpeeds.add(typingSpeed);
+            runningWordSpeeds.add(typingSpeed);
+            Log.d(TAG, "Typing speed: " + typingSpeed + " wpm");
+            Log.d(TAG, "Running typing speed: " + runningWordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue)) + " wpm");
+
+            if (phraseStartTimestamp == 0) {
+                // starting phrase
+                phraseStartTimestamp = now;
+                lastWordTypedTimestamp = now;
+                wordsPerPhrase = 1;
+            } else if (now - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
+                // phrase in progress
+                lastWordTypedTimestamp = now;
+                wordsPerPhrase += 1;
+            } else {
+                // ending phrase
+                logToFile.log(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, global avg words per minute: %.2f",
+                        wordsPerPhrase,
+                        swipeDurationMs,
+                        wordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue)),
+                        runningWordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue))
+                ));
+                Log.d(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, global avg words per minute: %.2f",
+                        wordsPerPhrase,
+                        swipeDurationMs,
+                        wordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue)),
+                        runningWordSpeeds.stream().collect(Collectors.averagingDouble(Float::floatValue))
+                ));
+                wordsPerPhrase = 0;
+                phraseStartTimestamp = 0;
+                lastWordTypedTimestamp = 0;
+                wordSpeeds = new ArrayList<>();
+            }
         }
 
         Log.d(TAG, swipeInfo);

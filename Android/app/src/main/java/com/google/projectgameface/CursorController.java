@@ -335,6 +335,7 @@ public class CursorController {
     private float targetOffsetY = 0f;
     private float appliedOffsetX = 0f;
     private float appliedOffsetY = 0f;
+    private boolean firstOffset = true;
     // Time in milliseconds over which to apply the offset smoothly
     private final long offsetTransitionDuration = 200; // 200ms
     private long lastOffsetUpdateTime = System.currentTimeMillis();
@@ -468,6 +469,11 @@ public class CursorController {
             targetOffsetY = ((float) inputSize[1] / 2) - noseTipXY[1]; // Calculate offset from head center to nose tip
         }
 
+        if (targetOffsetY == 0 && targetOffsetX == 0) {
+            appliedOffsetX = 0;
+            appliedOffsetY = 0;
+            return;
+        }
         // Smoothly apply the offset over time
         long currentTime = System.currentTimeMillis();
         float timeElapsed = (currentTime - lastOffsetUpdateTime) / (float) offsetTransitionDuration;
