@@ -19,7 +19,8 @@ package com.google.projectgameface;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
-import android.util.Log;
+
+import com.google.projectgameface.Utils.CursorUtils;
 
 
 public class DispatchEventHelper {

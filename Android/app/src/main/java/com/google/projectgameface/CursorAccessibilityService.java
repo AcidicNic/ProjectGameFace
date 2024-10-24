@@ -83,6 +83,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import com.google.projectgameface.Utils.WriteToFile;
+import com.google.projectgameface.Utils.SwipePoint;
+
 /** The cursor service of GameFace app. */
 @SuppressLint("UnprotectedReceiver") // All of the broadcasts can only be sent by system.
 public class CursorAccessibilityService extends AccessibilityService implements LifecycleOwner {
@@ -1442,7 +1445,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-    private LogToFileHelper logToFile = new LogToFileHelper(this);
+    private WriteToFile logToFile = new WriteToFile(this);
 
     private float[] getCursorPosition() {
         int[] cursorPosition = cursorController.getCursorPositionXY();
@@ -1462,19 +1465,5 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.e(TAG, "Error while injecting input event: " + e);
             e.printStackTrace();
         }
-    }
-}
-
-class SwipePoint extends Point {
-    public long timestamp;
-
-    public SwipePoint(int x, int y, long timestamp) {
-        super(x, y);
-        this.timestamp = timestamp;
-    }
-
-    @Override
-    public String toString() {
-        return "(" + x + ", " + y + ") @ " + timestamp;
     }
 }

@@ -23,6 +23,8 @@ import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertEquals;
 
+import com.google.projectgameface.Utils.CursorUtils;
+
 @RunWith(AndroidJUnit4.class)
 public class CursorUtilsTest {
   @Test

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.projectgameface;
+package com.google.projectgameface.Utils;
 
 import static androidx.core.math.MathUtils.clamp;
 import static java.lang.Math.max;

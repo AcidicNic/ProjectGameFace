@@ -29,75 +29,114 @@
         android:padding="20dp"
         tools:context=".GestureSizeActivity">
 
-        <LinearLayout
-            android:id="@+id/content"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="vertical"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" >
-
-            <TextView
-                android:id="@+id/wpmLatestAvg"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:text="Latest average words per minute: ..." />
-
-            <TextView
-                android:id="@+id/wpmAvg"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:text="Average words per minute: ..." />
-
-            <TextView
-                android:id="@+id/wordsPerPhraseAvg"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:text="Average words per phrase: ..." />
-
-            <TextView
-                android:id="@+id/swipeDurationAvg"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:text="Average swipe duration: ..." />
+<!--        <LinearLayout-->
+<!--            android:id="@+id/content"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginTop="10dp"-->
+<!--            android:orientation="vertical"-->
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent" >-->
 
 <!--            <TextView-->
-<!--                android:id="@+id/phraseLengthAvg"-->
+<!--                android:id="@+id/wpmLatestAvg"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginBottom="10dp"-->
+<!--                android:text="Latest average words per minute: ..." />-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/wpmAvg"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginBottom="10dp"-->
+<!--                android:text="Average words per minute: ..." />-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/wordsPerPhraseAvg"-->
 <!--                android:layout_width="wrap_content"-->
 <!--                android:layout_height="wrap_content"-->
 <!--                android:layout_marginBottom="10dp"-->
 <!--                android:text="Average words per phrase: ..." />-->
 
+<!--            <TextView-->
+<!--                android:id="@+id/swipeDurationAvg"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginBottom="10dp"-->
+<!--                android:text="Average swipe duration: ..." />-->
+
+<!--&lt;!&ndash;            <TextView&ndash;&gt;-->
+<!--&lt;!&ndash;                android:id="@+id/phraseLengthAvg"&ndash;&gt;-->
+<!--&lt;!&ndash;                android:layout_width="wrap_content"&ndash;&gt;-->
+<!--&lt;!&ndash;                android:layout_height="wrap_content"&ndash;&gt;-->
+<!--&lt;!&ndash;                android:layout_marginBottom="10dp"&ndash;&gt;-->
+<!--&lt;!&ndash;                android:text="Average words per phrase: ..." />&ndash;&gt;-->
+
+<!--        </LinearLayout>-->
+
+        <TextView
+            android:id="@+id/content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:text="..." />
+
+        <LinearLayout
+            android:id="@+id/btnRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/content" >
+
+            <Button
+                android:id="@+id/refreshBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/round_button_w"
+                android:text="Refresh"
+                android:textAllCaps="false"
+                android:textColor="#1967d2" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/viewLogBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/round_button_w"
+                android:text="View Log"
+                android:textAllCaps="false"
+                android:textColor="#1967d2" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/resetBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/round_button"
+                android:text="Reset"
+                android:textAllCaps="false" />
+
         </LinearLayout>
 
-        <Button
-            android:id="@+id/resetBtn"
-            android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/logTxt"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:background="@drawable/round_button"
-            android:text="Reset"
-            android:textAllCaps="false"
-            app:layout_constraintTop_toBottomOf="@+id/content"
-            app:layout_constraintEnd_toEndOf="parent" />
-
-        <Button
-            android:id="@+id/refreshBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/round_button_w"
-            android:text="Refresh"
-            android:textAllCaps="false"
-            android:textColor="#1967d2"
-            app:layout_constraintTop_toBottomOf="@+id/content"
-            app:layout_constraintStart_toStartOf="parent" />
-
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@+id/btnRow"
+            android:text="..." />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
