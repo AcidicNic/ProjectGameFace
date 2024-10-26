@@ -462,6 +462,8 @@ public class CursorController {
         // Determine if pitch and yaw are close to center (0 degrees)
         boolean isCenteredX = Math.abs(pitchYawXY[1]) < 2.0f; // Yaw close to 0 degrees
         boolean isCenteredY = Math.abs(pitchYawXY[0]) < 2.0f; // Pitch close to 0 degrees
+        Log.d(TAG, "Pitch: " + pitchYawXY[0] + " Yaw: " + pitchYawXY[1] + " isCenteredX: " + isCenteredX + " isCenteredY: " + isCenteredY);
+
         if (isCenteredX) {
             targetOffsetX = ((float) inputSize[0] / 2) - noseTipXY[0]; // Calculate offset from head center to nose tip
         }

@@ -1,6 +1,7 @@
 package com.google.projectgameface.utils
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.Environment
 import android.util.Log
 import com.google.gson.Gson
@@ -202,4 +203,15 @@ class WriteToFile(private val context: Context) {
         return current.format(formatter)
     }
 
+    fun saveBitmap(bitmap: Bitmap) {
+        val imageFile: File = File(downloadsDir, "screenshot.png")
+        try {
+            FileOutputStream(imageFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+        } catch (e: IOException) {
+            logError(TAG, "saveBitmap(): " + e.message)
+            e.printStackTrace()
+        }
+    }
 }

@@ -119,6 +119,10 @@
             android:name=".TutorialPhoneStandActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".ScreenCapturePermissionActivity"
+            android:exported="true" />
+
         <service
             android:name=".CursorAccessibilityService"
             android:enabled="true"

@@ -16,6 +16,8 @@
 
 package com.google.projectgameface;
 
+import static android.app.Activity.RESULT_OK;
+import static androidx.core.app.ActivityCompat.startActivityForResult;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
@@ -23,6 +25,7 @@ import static java.lang.Math.round;
 import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.Instrumentation;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -35,9 +38,17 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.hardware.display.DisplayManager;
+import android.hardware.display.VirtualDisplay;
 import android.hardware.input.InputManager;
+import android.media.Image;
+import android.media.ImageReader;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
@@ -48,6 +59,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseBooleanArray;
+import android.view.Display;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -55,6 +67,8 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityWindowInfo;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.resolutionselector.ResolutionSelector;
@@ -70,7 +84,10 @@ import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -120,7 +137,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver loadSharedConfigGestureReceiver;
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
-    private BroadcastReceiver clipboardReceiver;
     private BroadcastReceiver resetDebuggingStatsReciever;
     private boolean isSwiping = false;
     private static final long GESTURE_DURATION = 100;
@@ -161,6 +177,36 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private static final String CHANNEL_ID = "accessibility_service_channel";
     private static final int NOTIFICATION_ID = 1001;
     private String[] debugText = {"", ""};
+
+    private BroadcastReceiver screenCaptureReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT.equals(intent.getAction())) {
+                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
+                Intent data = intent.getParcelableExtra("data");
+
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+                    if (mediaProjection != null) {
+                        mediaProjection.registerCallback(new MediaProjection.Callback() {
+                            @Override
+                            public void onStop() {
+                                super.onStop();
+                                Log.d(TAG, "MediaProjection stopped");
+                                releaseResources();
+                            }
+                        }, backgroundHandler);
+
+                        setupVirtualDisplay();
+                    } else {
+                        Log.e(TAG, "MediaProjection failed to initialize.");
+                    }
+                } else {
+                    Log.e(TAG, "Permission not granted for screen capture.");
+                }
+            }
+        }
+    };
 
     @SuppressLint({"UnspecifiedRegisterReceiverFlag", "ObsoleteSdkInt"})
     private void defineAndRegisterBroadcastMessageReceivers() {
@@ -253,21 +299,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         };
 
-//        clipboardReceiver = new BroadcastReceiver() {
-//            @Override
-//            public void onReceive(Context context, Intent intent) {
-//                String textToCopy = intent.getStringExtra("text_to_copy");
-//
-//                // Copy the text to clipboard
-//                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-//                ClipData clip = ClipData.newPlainText("Copied Text", textToCopy);
-//                clipboard.setPrimaryClip(clip);
-//
-//                // Show a confirmation Toast
-//                Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
-//            }
-//        };
-
 
         if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             registerReceiver(
@@ -298,6 +329,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     RECEIVER_EXPORTED);
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"),
                     RECEIVER_EXPORTED);
+//            registerReceiver(screenCaptureReceiver, new IntentFilter(ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT), RECEIVER_EXPORTED);
         } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
@@ -308,6 +340,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             registerReceiver(serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"));
+//            registerReceiver(screenCaptureReceiver, new IntentFilter(ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT));
         }
     }
 
@@ -808,7 +841,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         unregisterReceiver(serviceUiManager.flyInWindowReceiver);
         unregisterReceiver(serviceUiManager.flyOutWindowReceiver);
         unregisterReceiver(profileChangeReceiver);
-//        unregisterReceiver(clipboardReceiver);
+
+        unregisterReceiver(screenCaptureReceiver);
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+            mediaProjection = null;
+        }
+        if (backgroundHandler != null) {
+            backgroundHandler.getLooper().quitSafely();
+        }
         cursorController.cleanup();
 
         super.onDestroy();
@@ -1010,8 +1051,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     protected void onServiceConnected() {
         super.onServiceConnected();
         Log.i(TAG, "Service connected");
-    }
 
+        startScreenCapture();
+    }
 
     private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4);
 //    private final List<Integer> validKeyEventActions = Arrays.asList(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP);
@@ -1110,6 +1152,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 }
                 return true;
             case KeyEvent.KEYCODE_4:
+                Log.d(TAG, "screenshot");
+                Bitmap screenshot = captureScreenshot();
+                if (screenshot != null) {
+                    WriteToFile writeToFile = new WriteToFile(this);
+                    writeToFile.saveBitmap(screenshot);
+                }
                 return true;
         }
         return false;
@@ -1220,15 +1268,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private ArrayList<Float> runningWordsPerMinute = new ArrayList<>();
     private ArrayList<Integer> runningWordsPerPhrase = new ArrayList<>();
     private ArrayList<Integer> runningSwipeDuration = new ArrayList<>();
-
-    private void updateConfig(String configName, float value) {
-        String profileName = ProfileManager.getCurrentProfile(this);
-        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putFloat(configName, value);
-        editor.apply();
-        cursorController.cursorMovementConfig.updateOneConfigFromSharedPreference(configName);
-    }
 
     @SuppressLint("DefaultLocale")
     public void displaySwipeInfo() {
@@ -1388,4 +1427,114 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             e.printStackTrace();
         }
     }
+
+    // Class variables
+    private MediaProjection mediaProjection;
+    private MediaProjectionManager projectionManager;
+    private ImageReader imageReader;
+    private int screenWidth, screenHeight, screenDensity;
+    private Handler backgroundHandler;
+
+    private void requestScreenCapturePermission() {
+        Intent intent = new Intent(this, ScreenCapturePermissionActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    private void setupImageReader() {
+        WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        int screenWidth = windowManager.getDefaultDisplay().getWidth();
+        int screenHeight = windowManager.getDefaultDisplay().getHeight();
+        int screenDensity = getResources().getDisplayMetrics().densityDpi;
+
+        imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+    }
+
+    private void setupVirtualDisplay() {
+        if (mediaProjection == null || backgroundHandler == null) {
+            Log.e(TAG, "MediaProjection or Handler is invalid");
+            return;
+        }
+
+        try {
+            mediaProjection.createVirtualDisplay(
+                    "ScreenCapture",
+                    imageReader.getWidth(),
+                    imageReader.getHeight(),
+                    getResources().getDisplayMetrics().densityDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(),
+                    null,
+                    backgroundHandler
+            );
+            Log.d(TAG, "VirtualDisplay created successfully.");
+        } catch (SecurityException e) {
+            Log.e(TAG, "SecurityException while creating VirtualDisplay: " + e.getMessage());
+            releaseResources();
+        } catch (Exception e) {
+            Log.e(TAG, "Exception while creating VirtualDisplay: " + e.getMessage());
+            releaseResources();
+        }
+    }
+
+    private void startBackgroundThread() {
+        handlerThread = new HandlerThread("ScreenCaptureThread");
+        handlerThread.start();
+        backgroundHandler = new Handler(handlerThread.getLooper());
+    }
+
+    private Bitmap captureScreenshot() {
+        Image image = imageReader.acquireLatestImage();
+        if (image == null) return null;
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        Image.Plane[] planes = image.getPlanes();
+        ByteBuffer buffer = planes[0].getBuffer();
+        int pixelStride = planes[0].getPixelStride();
+        int rowStride = planes[0].getRowStride();
+        int rowPadding = rowStride - pixelStride * width;
+
+        // Create bitmap with extra padding if needed
+        Bitmap bitmap = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888);
+        bitmap.copyPixelsFromBuffer(buffer);
+
+        image.close();
+        return Bitmap.createBitmap(bitmap, 0, 0, width, height); // Crop out any padding
+    }
+
+    /**
+     * Setup and start screen capture via MediaProjection.
+     */
+    private void startScreenCapture() {
+        projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+
+        startBackgroundThread();
+        setupImageReader();
+
+        IntentFilter filter = new IntentFilter(ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT);
+        if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) registerReceiver(screenCaptureReceiver, filter, Context.RECEIVER_EXPORTED);
+        else registerReceiver(screenCaptureReceiver, filter);
+
+        requestScreenCapturePermission();
+    }
+
+    private void releaseResources() {
+        if (imageReader != null) {
+            imageReader.close();
+            imageReader = null;
+        }
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+            mediaProjection = null;
+        }
+        if (handlerThread != null) {
+            handlerThread.quitSafely();
+            handlerThread = null;
+        }
+        backgroundHandler = null; // Clear the handler reference
+        Log.d(TAG, "Resources released successfully.");
+    }
+
 }
