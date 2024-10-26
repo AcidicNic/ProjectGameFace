@@ -27,8 +27,6 @@ import android.app.Instrumentation;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -83,8 +81,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import com.google.projectgameface.Utils.WriteToFile;
-import com.google.projectgameface.Utils.SwipePoint;
+import com.google.projectgameface.utils.DebuggingStats;
+import com.google.projectgameface.utils.SwipePoint;
+import com.google.projectgameface.utils.WriteToFile;
 
 /** The cursor service of GameFace app. */
 @SuppressLint("UnprotectedReceiver") // All of the broadcasts can only be sent by system.
@@ -137,6 +136,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Handler handler;
     private HandlerThread handlerThread;
     private SparseBooleanArray keyStates = new SparseBooleanArray();
+    private DebuggingStats debuggingStats = new DebuggingStats();
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -271,7 +271,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             registerReceiver(
-                    changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"), RECEIVER_EXPORTED);
+                    changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"),
+                    RECEIVER_EXPORTED);
             registerReceiver(
                     requestServiceStateReceiver,
                     new IntentFilter("REQUEST_SERVICE_STATE"),
@@ -285,29 +286,28 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"),
                     RECEIVER_EXPORTED);
             registerReceiver(
-                    enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"), RECEIVER_EXPORTED);
-            registerReceiver(
-                    serviceUiManager.flyInWindowReceiver,
-                    new IntentFilter("FLY_IN_FLOAT_WINDOW"),
+                    enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"),
                     RECEIVER_EXPORTED);
             registerReceiver(
-                    serviceUiManager.flyOutWindowReceiver,
-                    new IntentFilter("FLY_OUT_FLOAT_WINDOW"),
+                    serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"),
                     RECEIVER_EXPORTED);
-            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
+            registerReceiver(
+                    serviceUiManager.flyOutWindowReceiver,  new IntentFilter("FLY_OUT_FLOAT_WINDOW"),
+                    RECEIVER_EXPORTED);
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"),
+                    RECEIVER_EXPORTED);
+            registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"),
+                    RECEIVER_EXPORTED);
         } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
             registerReceiver(loadSharedConfigBasicReceiver, new IntentFilter("LOAD_SHARED_CONFIG_BASIC"));
-            registerReceiver(
-                    loadSharedConfigGestureReceiver, new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"));
+            registerReceiver(loadSharedConfigGestureReceiver, new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"));
             registerReceiver(enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"));
-            registerReceiver(
-                    serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"));
-            registerReceiver(
-                    serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
+            registerReceiver(serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"));
+            registerReceiver(serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
-//            registerReceiver(clipboardReceiver, new IntentFilter("COPY_TO_CLIPBOARD"));
+            registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"));
         }
     }
 
@@ -364,8 +364,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         // Initialize the Handler
         tickFunctionHandler = new Handler();
         tickFunctionHandler.postDelayed(tick, 0);
-
-        createNotificationChannel();
 
         if (isPlatformSignedAndCanInjectEvents()) {
             Log.d(TAG, "Platform signed and can inject events!");
@@ -921,6 +919,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private StringBuilder typedText = new StringBuilder();
 
+    // TODO: MOVE TO DEBUGGINGSTATS CLASS
     private int PHRASE_COOLDOWN = 4000;
     private long phraseStartTimestamp;
     private long lastWordTypedTimestamp;
@@ -1233,7 +1232,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     @SuppressLint("DefaultLocale")
     public void displaySwipeInfo() {
-        int swipeDurationMs = (int) swipePath.get(swipePath.size() - 1).timestamp;
+        int swipeDurationMs = (int) swipePath.get(swipePath.size() - 1).getTimestamp();
         Log.d(TAG, "Swipe duration: " + swipeDurationMs);
 
         ArrayList<Integer> deltaDurationMs = new ArrayList<>();
@@ -1245,17 +1244,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         ArrayList<Double> velocity = new ArrayList<>();
 
         StringBuilder pathPointsStr = new StringBuilder();
-        StringBuilder indexedPathPointsStr = new StringBuilder();
 
         int tMaxXDelta = 0;
         int tMaxYDelta = 0;
         int maxDeltaX = 0;
         int maxDeltaY = 0;
-//        Log.d(TAG, "x: " + swipePath.get(0).x + ", y: " + swipePath.get(0).y + ", t: " + swipePath.get(0).timestamp);
         for (int i = 1; i < swipePath.size(); i++) {
             SwipePoint previousPoint = swipePath.get(i - 1);
             SwipePoint currentPoint = swipePath.get(i);
-            deltaDurationMs.add((int) (currentPoint.timestamp - previousPoint.timestamp));
+            deltaDurationMs.add((int) (currentPoint.getTimestamp() - previousPoint.getTimestamp()));
 
             int tDeltaX = currentPoint.x - previousPoint.x;
             int tDeltaY = currentPoint.y - previousPoint.y;
@@ -1271,26 +1268,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
 
             distanceBetween.add(getDistanceBetweenPoints(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y));
-            pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d), ", previousPoint.x, previousPoint.y, previousPoint.timestamp));
-            indexedPathPointsStr.append(String.format(Locale.getDefault(), "%d (%d, %d, %d), ", i-1, previousPoint.x, previousPoint.y, previousPoint.timestamp));
+            pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d), ", previousPoint.x, previousPoint.y, previousPoint.getTimestamp()));
             velocity.add(distanceBetween.get(i - 1) / deltaDurationMs.get(i - 1));
-
-//            Log.d(TAG, "x: " + currentPoint.x + ", y: " + currentPoint.y + ", t: " + currentPoint.timestamp);
         }
 
-        pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d)", swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size()-1).timestamp));
-        indexedPathPointsStr.append(String.format(Locale.getDefault(), "%d (%d, %d, %d)", swipePath.size()-1, swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size()-1).timestamp));
+        pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d)", swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size() - 1).getTimestamp()));
 
-//        Log.d(TAG, "dx: " + deltaX.get(0) + ", dy: " + deltaY.get(0));
         for (int i = 1; i < deltaX.size(); i++) {
             deltaX2ndOrder.add(Math.abs(deltaX.get(i) - deltaX.get(i - 1)));
             deltaY2ndOrder.add(Math.abs(deltaY.get(i) - deltaY.get(i - 1)));
-
-//            Log.d(TAG, "dx: " + deltaX.get(i) + ", dy: " + deltaY.get(i));
-        }
-
-        for (int i = 0; i < deltaX2ndOrder.size(); i++) {
-//            Log.d(TAG, "d2x: " + deltaX2ndOrder.get(i) + ", d2y: " + deltaY2ndOrder.get(i));
         }
 
         double averageDeltaX = deltaX.stream().mapToInt(Integer::intValue).average().orElse(0);
@@ -1314,78 +1300,55 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         debugText[0] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX, maxDeltaY, Math.round(averageDeltaX), Math.round(averageDeltaY));
         debugText[1] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX2ndOrder, maxDeltaY2ndOrder, Math.round(averageDeltaX2ndOrder), Math.round(averageDeltaY2ndOrder));
 
-//        if (swipeInKDBRegion && isDebugSwipeEnabled()) {
-//            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-//            ClipData clip = ClipData.newPlainText("Copied Text", swipeInfo);
-//            clipboard.setPrimaryClip(clip);
-//            showNotification("Swipe Info", swipeInfo);
-//        }
-        String swipeInfoClipboard = swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
-                "Distance: AVG " + String.format("%,.1f", averageDistance) + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
-                "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]\n" +
-                "Path size: " + swipePath.size() + ", Path Points: " + indexedPathPointsStr + "\n";
-
         swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
                 "Distance: AVG " + String.format("%,.1f", averageDistance) + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
                 "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]\n" +
                 "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
         logToFile.log(TAG, swipeInfo);
 
-        if (swipeInKDBRegion && isDebugSwipeEnabled()) {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("Copied Text", swipeInfoClipboard);
-            clipboard.setPrimaryClip(clip);
-            showNotification("Swipe Info", swipeInfoClipboard);
-        }
-
         long now = SystemClock.uptimeMillis();
 
         if (swipeInKDBRegion) {
-//            Log.d(TAG, "Swipe in KDB region");
             Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
             phraseWordsPerMinute.add(latestWordsPerMinute);
             runningWordsPerMinute.add(latestWordsPerMinute);
             runningSwipeDuration.add(swipeDurationMs);
-//            Log.d(TAG, "Typing speed: " + latestWordsPerMinute + " wpm");
-//            Log.d(TAG, "Running typing speed: " + runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)) + " wpm");
 
+            // starting phrase
             if (phraseStartTimestamp == 0) {
-                // starting phrase
                 phraseStartTimestamp = now;
                 lastWordTypedTimestamp = now;
                 wordsPerPhrase = 1;
+
+            // phrase in progress
             } else if (now - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
-                // phrase in progress
                 lastWordTypedTimestamp = now;
                 wordsPerPhrase += 1;
-            } else {
-                // ending phrase
-                runningWordsPerPhrase.add(wordsPerPhrase);
-                float avgWPM = phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue();
-                updateConfig("wpmLatestAvg", avgWPM);
-                float runningAvgWPM = runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue();
-                updateConfig("wpmAvg", runningAvgWPM);
-                float runningAvgWordsPerPhrase = runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue();
-                updateConfig("wordsPerPhraseAvg", runningAvgWordsPerPhrase);
-                float runningAvgSwipeDuration = runningSwipeDuration.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue();
-                updateConfig("swipeDurationAvg", runningAvgSwipeDuration);
 
-                logToFile.log(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
-                        wordsPerPhrase,
-                        swipeDurationMs,
-                        avgWPM,
-                        runningAvgWPM,
-                        runningAvgWordsPerPhrase,
-                        runningAvgSwipeDuration
-                ));
-                Log.d(TAG, String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
-                        wordsPerPhrase,
-                        swipeDurationMs,
-                        avgWPM,
-                        runningAvgWPM,
-                        runningAvgWordsPerPhrase,
-                        runningAvgSwipeDuration
-                ));
+            // ending phrase
+            } else {
+                runningWordsPerPhrase.add(wordsPerPhrase);
+
+                // update debugging stats
+                debuggingStats.setWpmLatestAvg(phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
+                debuggingStats.setWpmAvg(runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
+                debuggingStats.setWordsPerPhraseAvg(runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
+                debuggingStats.setSwipeDurationAvg(runningSwipeDuration.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
+                debuggingStats.save(this);
+
+                // log debugging stats to file and console
+                String logStr = String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
+                    wordsPerPhrase,
+                    swipeDurationMs,
+                    debuggingStats.getWpmLatestAvg(),
+                    debuggingStats.getWpmAvg(),
+                    debuggingStats.getWordsPerPhraseAvg(),
+                    debuggingStats.getSwipeDurationAvg()
+                );
+                logToFile.log(TAG, logStr);
+                Log.d(TAG, logStr);
+
+                // clear phrase stats
                 wordsPerPhrase = 0;
                 phraseStartTimestamp = 0;
                 lastWordTypedTimestamp = 0;
@@ -1402,47 +1365,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private boolean isSwipeKeyStillPressed() {
         return keyStates.get(KeyEvent.KEYCODE_BUTTON_A, false) || keyStates.get(KeyEvent.KEYCODE_ENTER, false) || keyStates.get(KeyEvent.KEYCODE_1, false) || swipeToggle;
-    }
-
-    private void showNotification(String title, String message) {
-//        Intent intent = new Intent("COPY_TO_CLIPBOARD");
-//        intent.putExtra("text_to_copy", message);
-//
-//        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        // Build the notification
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.icon)
-                .setContentTitle(title)
-                .setContentText(message)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setAutoCancel(true); // Remove notification after it's clicked (if needed)
-//                .setContentIntent(pendingIntent);
-
-        // Show the notification
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Permission denied to post notifications.");
-            return;
-        }
-        notificationManager.notify(NOTIFICATION_ID, builder.build());
-    }
-
-    private void createNotificationChannel() {
-        // Only create the channel if we're on Android 8.0 or higher
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "GameFace";
-            int importance = NotificationManager.IMPORTANCE_LOW;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.enableLights(true);
-            channel.setLightColor(android.R.color.holo_blue_dark);
-//            channel.enableVibration(true);
-//            channel.setVibrationPattern(new long[]{100, 200, 100, 200});
-
-            // Register the channel with the system
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
     }
 
     private WriteToFile logToFile = new WriteToFile(this);

@@ -85,11 +85,24 @@
                         android:layout_weight="1" />
 
                     <Button
-                        android:id="@+id/resetBtn"
+                        android:id="@+id/wipeLogBtn"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:background="@drawable/round_button"
-                        android:text="Reset"
+                        android:text="Wipe Log"
+                        android:textAllCaps="false" />
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <Button
+                        android:id="@+id/wipeStatsBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/round_button"
+                        android:text="Wipe Stats"
                         android:textAllCaps="false" />
 
                 </LinearLayout>

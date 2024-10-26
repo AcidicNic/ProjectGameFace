@@ -20,7 +20,7 @@ package com.google.projectgameface;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 
-import com.google.projectgameface.Utils.CursorUtils;
+import com.google.projectgameface.utils.CursorUtils;
 
 
 public class DispatchEventHelper {
