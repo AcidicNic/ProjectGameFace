@@ -1,2 +1,7 @@
 gameface-realease/
 .DS_Store
+.idea/caches/deviceStreaming.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/project-gameface.iml
+.idea/vcs.xml
