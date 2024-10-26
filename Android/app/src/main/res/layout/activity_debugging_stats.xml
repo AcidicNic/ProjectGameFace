@@ -15,128 +15,133 @@
  limitations under the License.
 -->
 
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    >
+    android:orientation="vertical">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/gestureSizeLayout"
+    <ScrollView
+        android:id="@+id/logScrollView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="20dp"
-        tools:context=".GestureSizeActivity">
+        android:layout_height="wrap_content"
+        >
+        <LinearLayout
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:orientation="vertical">
 
-<!--        <LinearLayout-->
-<!--            android:id="@+id/content"-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:layout_marginTop="10dp"-->
-<!--            android:orientation="vertical"-->
-<!--            app:layout_constraintStart_toStartOf="parent"-->
-<!--            app:layout_constraintTop_toTopOf="parent" >-->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/gestureSizeLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="10dp"
+                tools:context=".GestureSizeActivity">
 
-<!--            <TextView-->
-<!--                android:id="@+id/wpmLatestAvg"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginBottom="10dp"-->
-<!--                android:text="Latest average words per minute: ..." />-->
+                <TextView
+                    android:id="@+id/content"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    android:text="..." />
 
-<!--            <TextView-->
-<!--                android:id="@+id/wpmAvg"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginBottom="10dp"-->
-<!--                android:text="Average words per minute: ..." />-->
+                <LinearLayout
+                    android:id="@+id/btnRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp"
+                    app:layout_constraintTop_toBottomOf="@+id/content" >
 
-<!--            <TextView-->
-<!--                android:id="@+id/wordsPerPhraseAvg"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginBottom="10dp"-->
-<!--                android:text="Average words per phrase: ..." />-->
+                    <Button
+                        android:id="@+id/refreshBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/round_button_w"
+                        android:text="Refresh"
+                        android:textAllCaps="false"
+                        android:textColor="#1967d2" />
 
-<!--            <TextView-->
-<!--                android:id="@+id/swipeDurationAvg"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginBottom="10dp"-->
-<!--                android:text="Average swipe duration: ..." />-->
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
 
-<!--&lt;!&ndash;            <TextView&ndash;&gt;-->
-<!--&lt;!&ndash;                android:id="@+id/phraseLengthAvg"&ndash;&gt;-->
-<!--&lt;!&ndash;                android:layout_width="wrap_content"&ndash;&gt;-->
-<!--&lt;!&ndash;                android:layout_height="wrap_content"&ndash;&gt;-->
-<!--&lt;!&ndash;                android:layout_marginBottom="10dp"&ndash;&gt;-->
-<!--&lt;!&ndash;                android:text="Average words per phrase: ..." />&ndash;&gt;-->
+                    <Button
+                        android:id="@+id/viewLogBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/round_button_w"
+                        android:text="View Log"
+                        android:textAllCaps="false"
+                        android:textColor="#1967d2" />
 
-<!--        </LinearLayout>-->
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
 
-        <TextView
-            android:id="@+id/content"
+                    <Button
+                        android:id="@+id/resetBtn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/round_button"
+                        android:text="Reset"
+                        android:textAllCaps="false" />
+
+                </LinearLayout>
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <TextView
+                android:id="@+id/logTxt"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="20dp"
+                android:visibility="gone"
+                tools:visibility="visible"
+                app:layout_constraintTop_toBottomOf="@+id/btnRow"
+                android:text="..." />
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:id="@+id/jumpBtnRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="10dp"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintTop_toBottomOf="@+id/content" >
+
+        <Button
+            android:id="@+id/jumpTopBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            android:text="..." />
+            android:layout_weight="1"
+            android:background="@drawable/round_button_w"
+            android:textColor="#1967d2"
+            android:text="Jump To Top"
+            android:textAllCaps="false" />
 
-        <LinearLayout
-            android:id="@+id/btnRow"
-            android:layout_width="match_parent"
+        <Space
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="20dp"
-            app:layout_constraintTop_toBottomOf="@+id/content" >
+            android:layout_weight="2" />
 
-            <Button
-                android:id="@+id/refreshBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/round_button_w"
-                android:text="Refresh"
-                android:textAllCaps="false"
-                android:textColor="#1967d2" />
-
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
-            <Button
-                android:id="@+id/viewLogBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/round_button_w"
-                android:text="View Log"
-                android:textAllCaps="false"
-                android:textColor="#1967d2" />
-
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
-            <Button
-                android:id="@+id/resetBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/round_button"
-                android:text="Reset"
-                android:textAllCaps="false" />
-
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/logTxt"
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/jumpBottomBtn"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:visibility="gone"
-            app:layout_constraintTop_toBottomOf="@+id/btnRow"
-            android:text="..." />
+            android:layout_weight="1"
+            android:background="@drawable/round_button_w"
+            android:textColor="#1967d2"
+            android:text="Jump to Bottom"
+            android:textAllCaps="false" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+    </LinearLayout>
+</LinearLayout>

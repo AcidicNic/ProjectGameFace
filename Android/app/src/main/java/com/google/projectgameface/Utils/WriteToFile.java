@@ -26,6 +26,7 @@ public class WriteToFile {
     private static final String TAG = "WriteToFile";
 
     private Context context;
+    private final Gson gson;
     private File downloadsFolder;
     private File logFile;
     private File errFile;
@@ -36,6 +37,7 @@ public class WriteToFile {
      */
     public WriteToFile(Context context) {
         this.context = context;
+        gson = new Gson();
 
         // Save to external storage (Downloads folder)
         downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -153,7 +155,6 @@ public class WriteToFile {
      * @return true if success, false if fail
      */
     public boolean saveObjToJson(Object data, String fileName) {
-        Gson gson = new Gson(); // Add Gson dependency if not already
         String jsonString = gson.toJson(data);
 
         File jsonFile = new File(downloadsFolder, fileName);
@@ -181,7 +182,6 @@ public class WriteToFile {
             return null;
         }
 
-        Gson gson = new Gson();
         try (Reader reader = new FileReader(jsonFile)) {
             return gson.fromJson(reader, clazz);
         } catch (IOException e) {
