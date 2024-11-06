@@ -1172,6 +1172,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         new Thread(() -> {
             startTime = SystemClock.uptimeMillis();
+            // timeBetweenSwypes = startTime - endTime;
+            // if (timeBetweenSwypes > maxPauseBetweenWords)
+            //      startNewSwypePhrase(startTime);
+            // else
+            //      recordTimeBetweenSwypes(timeBetweenSwypes);
             float[] initialPosition = getCursorPosition();
             MotionEvent event = MotionEvent.obtain(
                     startTime,
@@ -1348,6 +1353,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         long now = SystemClock.uptimeMillis();
 
         if (swipeInKDBRegion) {
+            // To calculate the words per minute for each phrase, you need:
+            //  (1) The total length of time spent swyping.  For a phrase with N words, this is the sum of:
+            //         N swype durations - this can be acccumulated in totalSwypingTime
+            //         (N - 1) pauses between words - this can be acccumulated in totalPausingTime
+            // Float totalPhraseTime = totalSwypingTimen + totalPausingTime;
+            // There are two different ways we want to calculate words per minute:
+            //    (1) Literally counting how many separate words were output (the number N as defined above)
+            //          float nWords = N;
+            //    (2) An average word in English is generally considered to be 5 characters long.  With a space being autmatically output between each word, this gives a value:
+            //          float nFiveLetterWords = totalPhraseTextLength / 6;
+            // Then we would have the following, but this is only calculated at the END of a phrase:
+            // Float latestWordsPerMinute = (float) (nWords / (totalPhraseTime/60000));
+            // Float latestFiveLetterWordsPerMinute = (float) (nFiveLetterWords / (totalPhraseTime/60000));
+            // And for good measure, we can throw in:
+            // Float grandTotalPhraseTime.add(totalPhraseTime);            // Keep track of the total time that the user spends Swyping
+            // runningSwypingDuration.add(swipeDurationMs);
             Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
             phraseWordsPerMinute.add(latestWordsPerMinute);
             runningWordsPerMinute.add(latestWordsPerMinute);
@@ -1360,6 +1381,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 wordsPerPhrase = 1;
 
             // phrase in progress
+                // This should be checking the time from the END of the preceding Swype to the start of this new Swype)
             } else if (now - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
                 lastWordTypedTimestamp = now;
                 wordsPerPhrase += 1;
