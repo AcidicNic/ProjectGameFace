@@ -16,24 +16,18 @@
 
 package com.google.projectgameface;
 
-import static android.app.Activity.RESULT_OK;
-import static androidx.core.app.ActivityCompat.startActivityForResult;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
 
-import android.Manifest;
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Instrumentation;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
@@ -56,10 +50,10 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemClock;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseBooleanArray;
-import android.view.Display;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -67,16 +61,11 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityWindowInfo;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.resolutionselector.ResolutionSelector;
 import androidx.camera.core.resolutionselector.ResolutionStrategy;
 import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
@@ -84,9 +73,8 @@ import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -138,6 +126,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
     private BroadcastReceiver resetDebuggingStatsReciever;
+    private BroadcastReceiver screenCaptureReceiver;
     private boolean isSwiping = false;
     private static final long GESTURE_DURATION = 100;
     private static final long MIN_GESTURE_DURATION = 100;
@@ -145,6 +134,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean gestureInProgress = false;
     public boolean durationPopOut;
     private Rect keyboardBounds = new Rect();
+    private Rect _keyboardBounds = new Rect();
     private boolean isKeyboardOpen = false;
     private long startTime;
     private long endTime;
@@ -177,36 +167,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private static final String CHANNEL_ID = "accessibility_service_channel";
     private static final int NOTIFICATION_ID = 1001;
     private String[] debugText = {"", ""};
-
-    private BroadcastReceiver screenCaptureReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT.equals(intent.getAction())) {
-                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
-                Intent data = intent.getParcelableExtra("data");
-
-                if (resultCode == Activity.RESULT_OK && data != null) {
-                    mediaProjection = projectionManager.getMediaProjection(resultCode, data);
-                    if (mediaProjection != null) {
-                        mediaProjection.registerCallback(new MediaProjection.Callback() {
-                            @Override
-                            public void onStop() {
-                                super.onStop();
-                                Log.d(TAG, "MediaProjection stopped");
-                                releaseResources();
-                            }
-                        }, backgroundHandler);
-
-                        setupVirtualDisplay();
-                    } else {
-                        Log.e(TAG, "MediaProjection failed to initialize.");
-                    }
-                } else {
-                    Log.e(TAG, "Permission not granted for screen capture.");
-                }
-            }
-        }
-    };
 
     @SuppressLint({"UnspecifiedRegisterReceiverFlag", "ObsoleteSdkInt"})
     private void defineAndRegisterBroadcastMessageReceivers() {
@@ -299,6 +259,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         };
 
+        screenCaptureReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.d(TAG, "screenCaptureReceiver: " + intent.getAction());
+                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
+                Intent data = intent.getParcelableExtra("data");
+
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    if (projectionManager == null) projectionManager = getSystemService(MediaProjectionManager.class);
+                    if (mediaProjection != null) mediaProjection.stop();
+
+                    mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+                    attemptScreenCaptureSetup();
+                }
+            }
+        };
 
         if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             registerReceiver(
@@ -329,7 +305,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     RECEIVER_EXPORTED);
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"),
                     RECEIVER_EXPORTED);
-//            registerReceiver(screenCaptureReceiver, new IntentFilter(ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT), RECEIVER_EXPORTED);
+            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"),
+                    RECEIVER_EXPORTED);
         } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
@@ -340,7 +317,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             registerReceiver(serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"));
-//            registerReceiver(screenCaptureReceiver, new IntentFilter(ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT));
+            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"));
         }
     }
 
@@ -755,7 +732,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             case ENABLE:
                 return;
 
-
             case DISABLE:
                 //Start camera.
                 cameraProviderFuture = ProcessCameraProvider.getInstance(this);
@@ -792,7 +768,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /** Disable GameFace service. */
-    public void disableService() { // TODO: DO SOMETHING LIKE THIS TO PAUSE SERVICE FOR BATTERY LIFE (CAMERA DISABLE)
+    public void disableService() {
         Log.i(TAG, "disableService");
         switch (serviceState) {
             case ENABLE:
@@ -817,8 +793,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             }
                         },
                         ContextCompat.getMainExecutor(this));
-                serviceState = ServiceState.DISABLE;
 
+                // stop and cleanup mediaprojection
+                cleanupScreenCapture();
+
+                serviceState = ServiceState.DISABLE;
                 break;
             default:
                 break;
@@ -832,6 +811,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         disableService();
         disableSelf();
         handlerThread.quitSafely();
+        cursorController.cleanup();
+        cleanupScreenCapture();
         // Unregister when the service is destroyed
         unregisterReceiver(changeServiceStateReceiver);
         unregisterReceiver(loadSharedConfigBasicReceiver);
@@ -841,16 +822,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         unregisterReceiver(serviceUiManager.flyInWindowReceiver);
         unregisterReceiver(serviceUiManager.flyOutWindowReceiver);
         unregisterReceiver(profileChangeReceiver);
-
         unregisterReceiver(screenCaptureReceiver);
-        if (mediaProjection != null) {
-            mediaProjection.stop();
-            mediaProjection = null;
-        }
-        if (backgroundHandler != null) {
-            backgroundHandler.getLooper().quitSafely();
-        }
-        cursorController.cleanup();
 
         super.onDestroy();
     }
@@ -960,20 +932,32 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private StringBuilder typedText = new StringBuilder();
 
-    // TODO: MOVE TO DEBUGGINGSTATS CLASS
+    // TO/DO: MOVE TO DEBUGGINGSTATS CLASS
     private int PHRASE_COOLDOWN = 4000;
     private long phraseStartTimestamp;
     private long lastWordTypedTimestamp;
     private boolean isTyping = false;
+    private boolean checkForNewWord = false;
 
     private void processTypedText(CharSequence newText) {
         typedText.append(newText);
         String[] words = typedText.toString().split("\\s+");
         if (words.length > 0) {
-            long now = SystemClock.uptimeMillis();
+            Long now = System.currentTimeMillis();
             String lastWord = words[words.length - 1];
             logToFile.log(TAG, "Word typed: " + lastWord);
             Log.d(TAG, "Word typed: " + lastWord);
+            Log.d(TAG, "processTypedText(): [checkForNewWord==" + checkForNewWord + "] [(lastWordTypedTimestamp + 2000 <= now)==" + (lastWordTypedTimestamp + 2000 <= now) + "]");
+            if (checkForNewWord) {
+                if  (lastWordTypedTimestamp + 2000 <= now) {
+                    Log.d(TAG, "processTypedText(): false alert of word typed. not saving word to stats.");
+                } else {
+                    debuggingStats.addWordTyped(lastWord, now);
+                }
+                checkForNewWord = false;
+            } else {
+                Log.d(TAG, "processTypedText(): checkForNewWord is false, not adding word to stats.");
+            }
         }
     }
 
@@ -993,6 +977,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                Log.d(TAG, "Window title: " + window.getTitle() + ", type: " + window.getType() + ", bounds: " + tempBounds);
             if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
                 keyboardFound = true;
+                window.getBoundsInScreen(_keyboardBounds);
                 window.getBoundsInScreen(keyboardBounds);
 //                for (int i = 0; i < window.getChildCount(); i++) {
 //                    Rect childBounds = new Rect();
@@ -1052,7 +1037,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         super.onServiceConnected();
         Log.i(TAG, "Service connected");
 
-        startScreenCapture();
+        // Set up background thread and image reader
+//        startBackgroundThread();
+//        setupImageReader();
     }
 
     private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4);
@@ -1066,9 +1053,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (validKeyEventKeys.contains(event.getKeyCode())) {
             return handleKeyEvent(event);
         }
-//        if (event.getSource() == InputDevice.SOURCE_GAMEPAD) {
-//            return true; // TODO: DELETE LATER!
-//        }
         return false;
     }
 
@@ -1148,16 +1132,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                     BlendshapeEventTriggerConfig.EventType.SWIPE_START);
                         }
                     }
-
                 }
                 return true;
             case KeyEvent.KEYCODE_4:
-                Log.d(TAG, "screenshot");
-                Bitmap screenshot = captureScreenshot();
-                if (screenshot != null) {
-                    WriteToFile writeToFile = new WriteToFile(this);
-                    writeToFile.saveBitmap(screenshot);
-                }
+//                if (eventAction == KeyEvent.ACTION_DOWN && isKeyboardOpen && cursorController.getCursorPositionXY()[1] > keyboardBounds.top) {
+//                    Log.d(TAG, "SCREENSHOT TEST KEY KeyEvent.ACTION_DOWN");
+//                    saveScreenshot();
+//                }
                 return true;
         }
         return false;
@@ -1173,6 +1154,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         new Thread(() -> {
             startTime = SystemClock.uptimeMillis();
             float[] initialPosition = getCursorPosition();
+            if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
+                // TODO: free up screencapture resources until ^^^
+                Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
+            }
             MotionEvent event = MotionEvent.obtain(
                     startTime,
                     startTime,
@@ -1190,7 +1175,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             debugText[0] = "Swiping";
             debugText[1] = "X, Y: (" + initialPosition[0] + ", " + initialPosition[1] + ")";
 
-            long lastCheckTime = startTime;
+            long lastCheckTime = System.currentTimeMillis();
             while (isSwiping) {
                 float[] cursorPosition = getCursorPosition();
                 long now = SystemClock.uptimeMillis();
@@ -1220,7 +1205,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     Log.e(TAG, "Error while sleeping in startRealtimeSwipe: " + e);
                 }
 
-                now = SystemClock.uptimeMillis();
+                now = System.currentTimeMillis();
 
                 // Check if the button is still being pressed every 500ms
                 if (isSwiping && (now - lastCheckTime) >= 500) {
@@ -1252,6 +1237,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 );
                 injectInputEvent(event);
                 Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorPosition[0] + ", " + cursorPosition[1] + ")");
+
+                // TODO: pause screencapture sometime after it seems like the user has finished swipe-typing.
+
             } catch (Exception e) {
                 logToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
@@ -1345,9 +1333,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
         logToFile.log(TAG, swipeInfo);
 
-        long now = SystemClock.uptimeMillis();
+        long now = System.currentTimeMillis();
 
         if (swipeInKDBRegion) {
+            checkForNewWord = true;
             Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
             phraseWordsPerMinute.add(latestWordsPerMinute);
             runningWordsPerMinute.add(latestWordsPerMinute);
@@ -1430,97 +1419,28 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     // Class variables
     private MediaProjection mediaProjection;
+    private VirtualDisplay virtualDisplay;
     private MediaProjectionManager projectionManager;
     private ImageReader imageReader;
     private int screenWidth, screenHeight, screenDensity;
-    private Handler backgroundHandler;
+    private Handler backgroundHandlerMP;
+    private HandlerThread handlerThreadMP;
 
-    private void requestScreenCapturePermission() {
-        Intent intent = new Intent(this, ScreenCapturePermissionActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-    }
-
-    private void setupImageReader() {
-        WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        int screenWidth = windowManager.getDefaultDisplay().getWidth();
-        int screenHeight = windowManager.getDefaultDisplay().getHeight();
-        int screenDensity = getResources().getDisplayMetrics().densityDpi;
-
-        imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
-    }
-
-    private void setupVirtualDisplay() {
-        if (mediaProjection == null || backgroundHandler == null) {
-            Log.e(TAG, "MediaProjection or Handler is invalid");
-            return;
-        }
-
-        try {
-            mediaProjection.createVirtualDisplay(
-                    "ScreenCapture",
-                    imageReader.getWidth(),
-                    imageReader.getHeight(),
-                    getResources().getDisplayMetrics().densityDpi,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    imageReader.getSurface(),
-                    null,
-                    backgroundHandler
-            );
-            Log.d(TAG, "VirtualDisplay created successfully.");
-        } catch (SecurityException e) {
-            Log.e(TAG, "SecurityException while creating VirtualDisplay: " + e.getMessage());
-            releaseResources();
-        } catch (Exception e) {
-            Log.e(TAG, "Exception while creating VirtualDisplay: " + e.getMessage());
-            releaseResources();
+    private boolean attemptScreenCaptureSetup() {
+        if (startMediaProjectionBackgroundThread() && setupImageReader() && setupVirtualDisplay()) {
+            Log.d(TAG, "Screen capture setup. testing capture...");
+            return true;
+        } else {
+            cleanupScreenCapture();
+            return false;
         }
     }
 
-    private void startBackgroundThread() {
-        handlerThread = new HandlerThread("ScreenCaptureThread");
-        handlerThread.start();
-        backgroundHandler = new Handler(handlerThread.getLooper());
-    }
-
-    private Bitmap captureScreenshot() {
-        Image image = imageReader.acquireLatestImage();
-        if (image == null) return null;
-
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        Image.Plane[] planes = image.getPlanes();
-        ByteBuffer buffer = planes[0].getBuffer();
-        int pixelStride = planes[0].getPixelStride();
-        int rowStride = planes[0].getRowStride();
-        int rowPadding = rowStride - pixelStride * width;
-
-        // Create bitmap with extra padding if needed
-        Bitmap bitmap = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888);
-        bitmap.copyPixelsFromBuffer(buffer);
-
-        image.close();
-        return Bitmap.createBitmap(bitmap, 0, 0, width, height); // Crop out any padding
-    }
-
-    /**
-     * Setup and start screen capture via MediaProjection.
-     */
-    private void startScreenCapture() {
-        projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-
-        startBackgroundThread();
-        setupImageReader();
-
-        IntentFilter filter = new IntentFilter(ScreenCapturePermissionActivity.ACTION_PERMISSION_RESULT);
-        if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) registerReceiver(screenCaptureReceiver, filter, Context.RECEIVER_EXPORTED);
-        else registerReceiver(screenCaptureReceiver, filter);
-
-        requestScreenCapturePermission();
-    }
-
-    private void releaseResources() {
+    private void cleanupScreenCapture() {
+        if (virtualDisplay != null) {
+            virtualDisplay.release();
+            virtualDisplay = null;
+        }
         if (imageReader != null) {
             imageReader.close();
             imageReader = null;
@@ -1529,12 +1449,184 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             mediaProjection.stop();
             mediaProjection = null;
         }
-        if (handlerThread != null) {
-            handlerThread.quitSafely();
-            handlerThread = null;
+        stopMediaProjectionBackgroundThread();
+    }
+
+    private boolean setupImageReader() {
+        try {
+            DisplayMetrics metrics = new DisplayMetrics();
+            windowManager.getDefaultDisplay().getRealMetrics(metrics);
+            int screenWidth = metrics.widthPixels;
+            int screenHeight = metrics.heightPixels;
+            int screenDensity = metrics.densityDpi;
+            imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
+            return true;
+        } catch (Exception e) {
+            logToFile.logError(TAG, "setupImageReader() failed: " + e);
+            Log.e(TAG, "setupImageReader() failed: " + e);
+            return false;
         }
-        backgroundHandler = null; // Clear the handler reference
-        Log.d(TAG, "Resources released successfully.");
+    }
+
+    /**
+     * Create a virtual display to capture the screen.
+     * @return success: true if the virtual display was successfully created, false otherwise
+     */
+    private boolean setupVirtualDisplay() {
+        if (mediaProjection == null) {
+            Log.e(TAG, "setupVirtualDisplay() failed: mediaProjection is null");
+            return false;
+        }
+        try {
+            // Register the MediaProjection.Callback for cleanup on stop
+            mediaProjection.registerCallback(new MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    Log.d(TAG, "MediaProjection stopped");
+                    cleanupScreenCapture(); // Custom method for cleanup
+                }
+            }, backgroundHandlerMP);
+
+            // Create a virtual display to capture the screen
+            virtualDisplay = mediaProjection.createVirtualDisplay("ScreenCapture",
+                    imageReader.getWidth(), imageReader.getHeight(), getResources().getDisplayMetrics().densityDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(),
+                    new VirtualDisplay.Callback() {
+                        @Override
+                        public void onPaused() {
+                            Log.d(TAG, "VirtualDisplay paused");
+                        }
+
+                        @Override
+                        public void onResumed() {
+                            Log.d(TAG, "VirtualDisplay resumed");
+                        }
+
+                        @Override
+                        public void onStopped() {
+                            Log.d(TAG, "VirtualDisplay stopped");
+                        }
+                    },
+                    backgroundHandlerMP);
+            Log.d(TAG, "setupVirtualDisplay() succeeded");
+            return true;
+        } catch (Exception e) {
+            logToFile.logError(TAG, "setupVirtualDisplay() failed: " + e);
+            Log.e(TAG, "setupVirtualDisplay() failed: " + e);
+            return false;
+        }
+    }
+
+    private boolean startMediaProjectionBackgroundThread() {
+        try {
+            if (backgroundHandlerMP != null) {
+                stopMediaProjectionBackgroundThread();
+            }
+            handlerThreadMP = new HandlerThread("ScreenCaptureThread");
+            handlerThreadMP.start();
+            backgroundHandlerMP = new Handler(handlerThreadMP.getLooper());
+            return true;
+        } catch (Exception e) {
+            logToFile.logError(TAG, "startBackgroundThread() failed: " + e);
+            Log.e(TAG, "startBackgroundThread() failed: " + e);
+            return false;
+        }
+    }
+
+    private void stopMediaProjectionBackgroundThread() {
+        if (handlerThreadMP != null) {
+            handlerThreadMP.quitSafely();
+            try {
+                handlerThreadMP.join();
+                handlerThreadMP = null;
+                backgroundHandlerMP = null;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();  // Restore the interrupt status
+                Log.e(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
+                logToFile.logError(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
+            }
+        }
+    }
+
+    private Bitmap getScreenCaptureBitmap() {
+        Image image = null;
+        try {
+            image = imageReader.acquireLatestImage();
+            if (image == null) return null;
+
+            // Get the necessary information from the image
+            int width = image.getWidth();
+            int height = image.getHeight();
+            Image.Plane[] planes = image.getPlanes();
+            ByteBuffer buffer = planes[0].getBuffer();
+            int pixelStride = planes[0].getPixelStride();
+            int rowStride = planes[0].getRowStride();
+
+            // Create a bitmap with the correct width and height
+            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+            // Handle row padding
+            int rowPadding = rowStride - pixelStride * width;
+            int[] pixels = new int[width * height];
+
+            buffer.rewind();
+            for (int y = 0; y < height; y++) {
+                int offset = y * width;
+                for (int x = 0; x < width; x++) {
+                    int pixel = 0;
+                    pixel |= (buffer.get() & 0xFF) << 16; // Red
+                    pixel |= (buffer.get() & 0xFF) << 8;  // Green
+                    pixel |= (buffer.get() & 0xFF);       // Blue
+                    pixel |= (buffer.get() & 0xFF) << 24; // Alpha
+                    pixels[offset + x] = pixel;
+                }
+                // Skip any padding bytes at the end of the row
+                buffer.position(buffer.position() + rowPadding);
+            }
+
+            // Set pixels in the bitmap
+            bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+
+            // Close the image to prevent memory leaks
+            image.close();
+
+            return bitmap;
+        } catch (Exception e) {
+            logToFile.logError(TAG, "captureScreenshot() failed: " + e);
+            Log.e(TAG, "captureScreenshot() failed: " + e);
+            return null;
+        } finally {
+            if (image != null) {
+                image.close(); // Close image to prevent maxImages limit
+            }
+        }
+    }
+
+    private Bitmap cropBitmapToRect(Bitmap originalBitmap, Rect region) {
+        // Ensure the Rect is within the bounds of the original Bitmap
+        int left = Math.max(0, region.left);
+        int top = Math.max(0, region.top);
+        int right = Math.min(originalBitmap.getWidth(), region.right);
+        int bottom = Math.min(originalBitmap.getHeight(), region.bottom);
+
+        // Check if the cropped area is valid
+        if (left >= right || top >= bottom) {
+            Log.e(TAG, "Invalid crop region");
+            return null;
+        }
+
+        // Create a cropped Bitmap
+        return Bitmap.createBitmap(originalBitmap, left, top, right - left, bottom - top);
+    }
+
+    private void saveScreenshot() {
+        Bitmap screenshot = getScreenCaptureBitmap();
+        Bitmap croppedScreenshot = cropBitmapToRect(screenshot, keyboardBounds);
+        if (croppedScreenshot != null) {
+            WriteToFile writeToFile = new WriteToFile(this);
+            writeToFile.saveBitmap(croppedScreenshot);
+        }
     }
 
 }

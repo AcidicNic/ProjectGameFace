@@ -13,9 +13,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.gson.Gson;
+import com.google.projectgameface.utils.Config;
 import com.google.projectgameface.utils.DebuggingStats;
 import com.google.projectgameface.utils.WriteToFile;
 
+import java.io.File;
 import java.util.Objects;
 
 public class DebuggingStatsActivity extends AppCompatActivity {
@@ -26,6 +29,7 @@ public class DebuggingStatsActivity extends AppCompatActivity {
     private WriteToFile writeToFile;
 
     private TextView content;
+    private TextView debuggingStatsTxt;
     private TextView logTxt;
 
     private Button logBtn;
@@ -50,6 +54,8 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         // textviews
         content = findViewById(R.id.content);
         logTxt = findViewById(R.id.logTxt);
+        debuggingStatsTxt = findViewById(R.id.json);
+
         logBtn = findViewById(R.id.viewLogBtn);
 
         // layout views
@@ -104,6 +110,9 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         String swipeDurationAvgTxt = String.format("Average swipe duration:  %.1f ms", debuggingStats.getSwipeDurationAvg());
 
         content.setText(String.format("%s\n%s\n%s\n%s", wpmLatestAvgTxt, wpmAvgTxt, wordsPerPhraseAvgTxt, swipeDurationAvgTxt));
+        Gson gson = new Gson();
+        String jsonStr = gson.toJson(debuggingStats);
+        debuggingStatsTxt.setText(jsonStr);
     }
 
     private void showLogFile() {

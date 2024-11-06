@@ -204,7 +204,7 @@ class WriteToFile(private val context: Context) {
     }
 
     fun saveBitmap(bitmap: Bitmap) {
-        val imageFile: File = File(downloadsDir, "screenshot.png")
+        val imageFile: File = File(downloadsDir, "screenshot-${getCurrentDateTimeStr()}.png")
         try {
             FileOutputStream(imageFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)

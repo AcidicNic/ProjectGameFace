@@ -15,121 +15,127 @@
  limitations under the License.
 -->
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
     <ScrollView
         android:id="@+id/logScrollView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        >
-        <LinearLayout
-            android:layout_height="wrap_content"
-            android:layout_width="match_parent"
-            android:orientation="vertical">
+        android:layout_height="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/jumpBtnRow" >
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/gestureSizeLayout"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/gestureSizeLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="10dp"
+            tools:context=".GestureSizeActivity">
+
+            <TextView
+                android:id="@+id/content"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                android:text="..." />
+
+            <TextView
+                android:id="@+id/json"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/content"
+                android:text="..." />
+
+            <LinearLayout
+                android:id="@+id/btnRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="20dp"
-                android:paddingVertical="10dp"
-                tools:context=".GestureSizeActivity">
+                android:orientation="horizontal"
+                android:layout_marginTop="10dp"
+                app:layout_constraintTop_toBottomOf="@+id/json" >
 
-                <TextView
-                    android:id="@+id/content"
+                <Button
+                    android:id="@+id/refreshBtn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    android:text="..." />
+                    android:background="@drawable/round_button_w"
+                    android:text="Refresh"
+                    android:textAllCaps="false"
+                    android:textColor="#1967d2" />
 
-                <LinearLayout
-                    android:id="@+id/btnRow"
-                    android:layout_width="match_parent"
+                <Space
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="10dp"
-                    app:layout_constraintTop_toBottomOf="@+id/content" >
+                    android:layout_weight="1" />
 
-                    <Button
-                        android:id="@+id/refreshBtn"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/round_button_w"
-                        android:text="Refresh"
-                        android:textAllCaps="false"
-                        android:textColor="#1967d2" />
+                <Button
+                    android:id="@+id/viewLogBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/round_button_w"
+                    android:text="View Log"
+                    android:textAllCaps="false"
+                    android:textColor="#1967d2" />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
 
-                    <Button
-                        android:id="@+id/viewLogBtn"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/round_button_w"
-                        android:text="View Log"
-                        android:textAllCaps="false"
-                        android:textColor="#1967d2" />
+                <Button
+                    android:id="@+id/wipeLogBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/round_button"
+                    android:text="Wipe Log"
+                    android:textAllCaps="false" />
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
 
-                    <Button
-                        android:id="@+id/wipeLogBtn"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/round_button"
-                        android:text="Wipe Log"
-                        android:textAllCaps="false" />
-
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1" />
-
-                    <Button
-                        android:id="@+id/wipeStatsBtn"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/round_button"
-                        android:text="Wipe Stats"
-                        android:textAllCaps="false" />
-
-                </LinearLayout>
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                <Button
+                    android:id="@+id/wipeStatsBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/round_button"
+                    android:text="Wipe Stats"
+                    android:textAllCaps="false" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/logTxt"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="20dp"
+                android:text="WWWWW\n\n\n\nn\n\n\n\n\n\n\nn\n\n\n\n\n\n\nn\n\n\n\n\n\n\nn\n\n\n\n\n\n\n\n\n\n\n\\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\n\n\n\n\n\"
                 android:visibility="gone"
-                tools:visibility="visible"
                 app:layout_constraintTop_toBottomOf="@+id/btnRow"
-                android:text="..." />
-        </LinearLayout>
+                tools:visibility="visible" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 
     <LinearLayout
         android:id="@+id/jumpBtnRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/logScrollView"
+        app:layout_constraintBottom_toBottomOf="parent"
         android:orientation="horizontal"
         android:paddingHorizontal="20dp"
         android:paddingVertical="10dp"
-        android:visibility="gone"
-        tools:visibility="visible"
-        app:layout_constraintTop_toBottomOf="@+id/content" >
+        tools:visibility="visible" >
 
         <Button
             android:id="@+id/jumpTopBtn"
@@ -157,4 +163,4 @@
             android:textAllCaps="false" />
 
     </LinearLayout>
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -20,6 +20,7 @@ package com.google.projectgameface;
 import static androidx.core.app.ActivityCompat.startActivityForResult;
 
 import android.Manifest;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -30,6 +31,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -50,6 +52,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.EditText;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
@@ -66,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int BLUETOOTH_ADMIN_PERMISSION_CODE = 202;
     private static final int BLUETOOTH_CONNECT_PERMISSION_CODE = 203;
     private static final int POST_NOTIFICATIONS_PERMISSION_CODE = 204;
+    private static final int MEDIA_PROJECTION_PERMISSION_CODE = 333;
     private static final String KEY_FIRST_RUN = "GameFaceFirstRun";
 
     private final String TAG = "MainActivity";
@@ -79,11 +84,26 @@ public class MainActivity extends AppCompatActivity {
     private static final String SELECTED_PROFILE_KEY = "selectedProfile";
     private static final String FIRST_LAUNCH_PREFS = "FirstLaunchPrefs";
 
+    private ActivityResultLauncher<Intent> startMediaProjection;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Handle the splash screen transition.
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
+
+        // Register the result launcher to handle the MediaProjection request
+        startMediaProjection = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Intent intent = new Intent("SCREEN_CAPTURE_PERMISSION_RESULT");
+                        intent.putExtra("resultCode", result.getResultCode());
+                        intent.putExtra("data", result.getData());
+                        sendBroadcast(intent);
+                    }
+                }
+        );
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         setContentView(R.layout.activity_main);
@@ -285,13 +305,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
-
-    private void setupUi(){
-
-
-    }
-
     /**Send broadcast to service request service enable state
      * Service should send back its state via SERVICE_STATE message*/
     public void checkIfServiceEnabled() {
@@ -309,12 +322,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         checkIfServiceEnabled();
-
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
 
     }
 
@@ -395,8 +402,6 @@ public class MainActivity extends AppCompatActivity {
         return firstLaunchPrefs.getBoolean(KEY_FIRST_RUN, true);
     }
 
-
-
     public void wakeUpService(){
         Log.i(TAG, "MainActivity wakeUpService");
         findViewById(R.id.gameFaceToggleSwitch).setEnabled(false);
@@ -411,10 +416,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-
         // Run onStartCommand in service, currently doing nothing.
         cursorServiceIntent = new Intent(this, CursorAccessibilityService.class);
         startService(cursorServiceIntent);
+
+        MediaProjectionManager mediaProjectionManager = getSystemService(MediaProjectionManager.class);
+        startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent());
 
         // Send broadcast to wake up service.
         Intent intent = new Intent("CHANGE_SERVICE_STATE");
@@ -437,7 +444,6 @@ public class MainActivity extends AppCompatActivity {
         }
         cursorServiceIntent = null;
         findViewById(R.id.gameFaceToggleSwitch).setEnabled(true);
-
     }
 
     public boolean checkAccessibilityPermission() {
@@ -515,13 +521,6 @@ public class MainActivity extends AppCompatActivity {
                         POST_NOTIFICATIONS_PERMISSION_CODE);
             }
         }
-    }
-
-    private final int REQUEST_MEDIA_PROJECTION = 666;
-
-    private void screenCaptureTest() {
-        MediaProjectionManager manager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
 
 }
