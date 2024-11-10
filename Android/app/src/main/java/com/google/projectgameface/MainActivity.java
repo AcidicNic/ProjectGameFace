@@ -322,7 +322,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         checkIfServiceEnabled();
-
     }
 
     private void CameraDialog() {

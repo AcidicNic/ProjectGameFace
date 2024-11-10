@@ -89,6 +89,7 @@ import java.util.stream.Collectors;
 import com.google.projectgameface.utils.DebuggingStats;
 import com.google.projectgameface.utils.SwipePoint;
 import com.google.projectgameface.utils.WriteToFile;
+import android.graphics.Color;
 
 /** The cursor service of GameFace app. */
 @SuppressLint("UnprotectedReceiver") // All of the broadcasts can only be sent by system.
@@ -552,7 +553,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 );
                             }
 
-                            if (cursorController.isSwiping()) {
+                            if (checkForWordTyped && !previousWordPredictionCheckRunning) {
+                                checkForWordPrediction();
+                            }
+
+                            if (updateCanvas) {
+                                serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
+                                updateCanvas = false;
+                            }
+
+                            if (cursorController.isSwiping() || previousWordPredictionCheckRunning) {
                                 serviceUiManager.fullScreenCanvas.invalidate();
                             }
 
@@ -1013,12 +1023,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
             cursorController.setTemporaryBounds(keyboardBounds);
             Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
-            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
+//            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
         } else {
             cursorController.clearTemporaryBounds();
-            serviceUiManager.fullScreenCanvas.setRect(null);
+//            serviceUiManager.fullScreenCanvas.setRect(null);
         }
-        serviceUiManager.fullScreenCanvas.invalidate();
 //        Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
     }
 
@@ -1135,10 +1144,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 }
                 return true;
             case KeyEvent.KEYCODE_4:
-//                if (eventAction == KeyEvent.ACTION_DOWN && isKeyboardOpen && cursorController.getCursorPositionXY()[1] > keyboardBounds.top) {
-//                    Log.d(TAG, "SCREENSHOT TEST KEY KeyEvent.ACTION_DOWN");
-//                    saveScreenshot();
-//                }
+                if (eventAction == KeyEvent.ACTION_DOWN && isKeyboardOpen && cursorController.getCursorPositionXY()[1] > keyboardBounds.top) {
+                    Log.d(TAG, "SCREENSHOT TEST KEY KeyEvent.ACTION_DOWN");
+                    saveScreenshot();
+                }
                 return true;
         }
         return false;
@@ -1155,6 +1164,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             startTime = SystemClock.uptimeMillis();
             float[] initialPosition = getCursorPosition();
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
+                checkForWordTyped = true;
                 // TODO: free up screencapture resources until ^^^
                 Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
             }
@@ -1225,6 +1235,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void stopRealtimeSwipe() {
         endTime = SystemClock.uptimeMillis();
         float[] cursorPosition = getCursorPosition();
+        serviceUiManager.clearPreviewBitmap();
         new Thread(() -> {
             try {
                 MotionEvent event = MotionEvent.obtain(
@@ -1247,6 +1258,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], endTime - startTime));
             isSwiping = false;
             cursorController.isRealtimeSwipe = false;
+            if (checkForWordTyped) {
+                checkForNewWord = true;
+                checkForWordTyped = false;
+                previousWordPredictionBitmap = null;
+                predictionBounds = null;
+            }
             displaySwipeInfo();
         }).start();
     }
@@ -1336,7 +1353,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         long now = System.currentTimeMillis();
 
         if (swipeInKDBRegion) {
-            checkForNewWord = true;
+//            checkForNewWord = true;
             Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
             phraseWordsPerMinute.add(latestWordsPerMinute);
             runningWordsPerMinute.add(latestWordsPerMinute);
@@ -1428,7 +1445,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private boolean attemptScreenCaptureSetup() {
         if (startMediaProjectionBackgroundThread() && setupImageReader() && setupVirtualDisplay()) {
-            Log.d(TAG, "Screen capture setup. testing capture...");
+            Log.d(TAG, "Screen capture setup.");
             return true;
         } else {
             cleanupScreenCapture();
@@ -1565,7 +1582,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             // Create a bitmap with the correct width and height
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-
+            bitmap.copyPixelsFromBuffer(buffer);
             // Handle row padding
             int rowPadding = rowStride - pixelStride * width;
             int[] pixels = new int[width * height];
@@ -1620,6 +1637,29 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return Bitmap.createBitmap(originalBitmap, left, top, right - left, bottom - top);
     }
 
+    public static Bitmap replaceColorWithTransparent(Bitmap original) {
+        // Get the color of the top-left pixel (0,0)
+        int targetColor = original.getPixel(0, 0);
+
+        // Create a mutable copy of the original bitmap
+        Bitmap resultBitmap = original.copy(Bitmap.Config.ARGB_8888, true);
+
+        // Iterate over each pixel in the bitmap
+        for (int x = 0; x < resultBitmap.getWidth(); x++) {
+            for (int y = 0; y < resultBitmap.getHeight(); y++) {
+                // Get the current pixel color
+                int pixelColor = resultBitmap.getPixel(x, y);
+
+                // Replace the target color with transparent
+                if (pixelColor == targetColor) {
+                    resultBitmap.setPixel(x, y, Color.TRANSPARENT);
+                }
+            }
+        }
+
+        return resultBitmap;
+    }
+
     private void saveScreenshot() {
         Bitmap screenshot = getScreenCaptureBitmap();
         Bitmap croppedScreenshot = cropBitmapToRect(screenshot, keyboardBounds);
@@ -1629,4 +1669,61 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
+    private Bitmap previousWordPredictionBitmap = null;
+    private Rect predictionBounds = new Rect();
+    private boolean previousWordPredictionCheckRunning = false;
+
+    private void checkForWordPrediction() {
+        WriteToFile writeToFile = new WriteToFile(this);
+        // Example: Stop the task after 10 seconds
+        new Thread(() -> {
+            try {
+                while (checkForWordTyped) {
+                    previousWordPredictionCheckRunning = true;
+                    int[] cursorPosition = cursorController.getCursorPositionXY();
+                    Bitmap screenshot = getScreenCaptureBitmap();
+                    Rect cropWordPredictionRegion = new Rect(
+                            keyboardBounds.right / 4,
+                            keyboardBounds.top,
+                            keyboardBounds.right - (keyboardBounds.right / 4),
+                            keyboardBounds.top + (keyboardBounds.height() / 6)
+                    );
+                    // if cursorPosition is within the word prediction region, stop the task
+                    if (cursorPosition[0] >= cropWordPredictionRegion.left && cursorPosition[0] <= cropWordPredictionRegion.right && cursorPosition[1] >= cropWordPredictionRegion.top && cursorPosition[1] <= cropWordPredictionRegion.bottom) {
+                        Log.d(TAG, "Cursor is within word prediction region.");
+                        break;
+                    }
+                    Bitmap croppedScreenshot = replaceColorWithTransparent(cropBitmapToRect(screenshot, cropWordPredictionRegion));
+                    if (previousWordPredictionBitmap != null && previousWordPredictionBitmap.sameAs(croppedScreenshot)) {
+                        Log.d(TAG, "Word prediction bitmap is the same as previous.");
+                        break;
+                    }
+                    previousWordPredictionBitmap = croppedScreenshot;
+                    Rect showPredictionRegion = new Rect(
+                            0,
+                            keyboardBounds.top + (keyboardBounds.height() / 3) - croppedScreenshot.getHeight(),
+                            keyboardBounds.width(),
+                            keyboardBounds.top + (keyboardBounds.height() / 3) + croppedScreenshot.getHeight()
+                    );
+                    Log.d(TAG, "Showing word prediction region: " + showPredictionRegion);
+                    predictionBounds = showPredictionRegion;
+                    updateCanvas = true;
+//                    writeToFile.saveBitmap(croppedScreenshot);
+
+                    Thread.sleep(1);
+                }
+                previousWordPredictionBitmap = null;
+                previousWordPredictionCheckRunning = false;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.e(TAG, "Thread interrupted while waiting to stop task: " + e);
+                writeToFile.logError(TAG, "Thread interrupted while waiting to stop task: " + e);
+                previousWordPredictionBitmap = null;
+                previousWordPredictionCheckRunning = false;
+            }
+        }).start();
+    }
+
+    private boolean checkForWordTyped = false;
+    private boolean updateCanvas = false;
 }

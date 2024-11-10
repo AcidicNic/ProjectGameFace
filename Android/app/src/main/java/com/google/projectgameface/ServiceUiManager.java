@@ -22,8 +22,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.net.VpnProfileState;
 import android.util.Log;
 import android.view.Gravity;
@@ -591,8 +593,18 @@ public class ServiceUiManager {
 
   public void updateDragLine(int[] cursorPosition) {
     fullScreenCanvas.updateDragLine(
-        cursorPosition[0] + avoidNavBarX,
-        cursorPosition[1] + avoidNavBarY);
+            cursorPosition[0] + avoidNavBarX,
+            cursorPosition[1] + avoidNavBarY);
+  }
+
+  public void updatePreviewBitmap(Bitmap previewBitmap, Rect region) {
+    fullScreenCanvas.setPreviewBitmap(
+            previewBitmap,
+            region);
+  }
+
+  public void clearPreviewBitmap() {
+    fullScreenCanvas.clearPreviewBitmap();
   }
 
   /**

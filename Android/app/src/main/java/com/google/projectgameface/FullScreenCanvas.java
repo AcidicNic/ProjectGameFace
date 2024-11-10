@@ -17,6 +17,7 @@
 package com.google.projectgameface;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -38,6 +39,7 @@ public class FullScreenCanvas extends View {
     private final Paint dragLinePaint;
     private final Paint holdCirclePaint;
     private final Paint trailPaint;
+    private final Paint opacityPaint;
 
     private boolean isShowingDrag = false;
     private float dragStartX = 0;
@@ -48,8 +50,9 @@ public class FullScreenCanvas extends View {
     private boolean isShowingTouch = false;
     private CursorController cursorController;
 
-    private boolean showRect = false;
     private Rect rectCoords;
+    private Bitmap previewBitmap = null;
+    private Rect previewRegion = null;
 
     public FullScreenCanvas(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -70,6 +73,9 @@ public class FullScreenCanvas extends View {
         trailPaint = new Paint();
         trailPaint.setStrokeWidth(15);
         trailPaint.setColor(Color.parseColor("#04DE71"));
+
+        opacityPaint = new Paint();
+        opacityPaint.setAlpha(128);
     }
 
     public void initialize(CursorController cursorController) {
@@ -79,6 +85,10 @@ public class FullScreenCanvas extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+
+        if (previewBitmap != null && previewRegion != null) {
+            canvas.drawBitmap(previewBitmap, null, previewRegion, opacityPaint);
+        }
 
         if (isShowingTouch) {
             canvas.drawCircle(drawX, drawY, 25, touchCirclePaint);
@@ -95,8 +105,8 @@ public class FullScreenCanvas extends View {
             drawCursorTrail(canvas);
         }
 
-        if (showRect) {
-            canvas.drawRect(rectCoords.left, rectCoords.top, rectCoords.right, rectCoords.bottom, holdCirclePaint);
+        if (rectCoords != null) {
+//            canvas.drawRect(rectCoords.left, rectCoords.top, rectCoords.right, rectCoords.bottom, holdCirclePaint);
         }
     }
 
@@ -146,12 +156,20 @@ public class FullScreenCanvas extends View {
     }
 
     public void setRect(Rect rect) {
-        if (rect == null) {
-            rectCoords = null;
-            showRect = false;
-            return;
-        }
         rectCoords = rect;
-        showRect = true;
+    }
+
+    public void setPreviewBitmap(Bitmap bitmap, Rect region) {
+        Log.d("FullScreenCanvas", "Setting preview bitmap");
+        previewBitmap = bitmap;
+        previewRegion = region;
+        invalidate();
+    }
+
+    public void clearPreviewBitmap() {
+        Log.d("FullScreenCanvas", "Clearing preview bitmap");
+        previewBitmap = null;
+        previewRegion = null;
+        invalidate();
     }
 }
