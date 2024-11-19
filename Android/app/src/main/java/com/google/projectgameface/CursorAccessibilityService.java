@@ -567,15 +567,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 );
                             }
 
-<<<<<<< Updated upstream
-                            if (checkForWordTyped && !previousWordPredictionCheckRunning) {
-                                checkForWordPrediction();
-                            }
-
-                            if (updateCanvas) {
-                                serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
-                                updateCanvas = false;
-=======
                             if (mediaProjection != null && currentKeyboard == "GBoard") {
                                 if (checkForWordTyped && !previousWordPredictionCheckRunning) {
                                     checkForWordPrediction();
@@ -584,7 +575,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                     serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
                                     updateCanvas = false;
                                 }
->>>>>>> Stashed changes
                             }
 
                             if (cursorController.isSwiping() || previousWordPredictionCheckRunning) {
