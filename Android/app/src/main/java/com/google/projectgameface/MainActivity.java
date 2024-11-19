@@ -419,8 +419,20 @@ public class MainActivity extends AppCompatActivity {
         cursorServiceIntent = new Intent(this, CursorAccessibilityService.class);
         startService(cursorServiceIntent);
 
+<<<<<<< Updated upstream
         MediaProjectionManager mediaProjectionManager = getSystemService(MediaProjectionManager.class);
         startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent());
+=======
+        // Request MediaProjection permission
+//        String currentKeyboardStr = Settings.Secure.getString(
+//                getContentResolver(),
+//                Settings.Secure.DEFAULT_INPUT_METHOD
+//        );
+//        if (currentKeyboardStr.contains("google")) {
+            MediaProjectionManager mediaProjectionManager = getSystemService(MediaProjectionManager.class);
+            startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent());
+//        }
+>>>>>>> Stashed changes
 
         // Send broadcast to wake up service.
         Intent intent = new Intent("CHANGE_SERVICE_STATE");
@@ -521,5 +533,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-
 }

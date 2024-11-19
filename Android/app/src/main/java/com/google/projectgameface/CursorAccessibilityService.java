@@ -50,6 +50,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemClock;
+import android.provider.Settings;
+import android.util.ArrayMap;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
@@ -74,13 +76,14 @@ import androidx.lifecycle.LifecycleRegistry;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -143,7 +146,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Handler handler;
     private HandlerThread handlerThread;
     private SparseBooleanArray keyStates = new SparseBooleanArray();
-    private DebuggingStats debuggingStats = new DebuggingStats();
+    private DebuggingStats gboardDebuggingStats = new DebuggingStats("GBoard");
+    private DebuggingStats openboardDebuggingStats = new DebuggingStats("OpenBoard");
+    private DebuggingStats debuggingStats = gboardDebuggingStats;
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -257,6 +262,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 runningWordsPerMinute.clear();
                 runningWordsPerPhrase.clear();
                 runningSwipeDuration.clear();
+
+                checkForKeyboardType();
+                gboardDebuggingStats.load(context);
+                openboardDebuggingStats.load(context);
+                debuggingStats.load(context);
             }
         };
 
@@ -379,6 +389,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (isPlatformSignedAndCanInjectEvents()) {
             Log.d(TAG, "Platform signed and can inject events!");
         }
+
+        gboardDebuggingStats.load(this);
+        openboardDebuggingStats.load(this);
+        checkForKeyboardType();
     }
 
     private boolean isPlatformSigned() {
@@ -553,6 +567,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 );
                             }
 
+<<<<<<< Updated upstream
                             if (checkForWordTyped && !previousWordPredictionCheckRunning) {
                                 checkForWordPrediction();
                             }
@@ -560,6 +575,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             if (updateCanvas) {
                                 serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
                                 updateCanvas = false;
+=======
+                            if (mediaProjection != null && currentKeyboard == "GBoard") {
+                                if (checkForWordTyped && !previousWordPredictionCheckRunning) {
+                                    checkForWordPrediction();
+                                }
+                                if (updateCanvas) {
+                                    serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
+                                    updateCanvas = false;
+                                }
+>>>>>>> Stashed changes
                             }
 
                             if (cursorController.isSwiping() || previousWordPredictionCheckRunning) {
@@ -936,7 +961,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 processTypedText(newText);
             }
         } else {
-            checkForKeyboard(event);
+            checkForKeyboardBounds(event);
         }
     }
 
@@ -971,7 +996,28 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-    private void checkForKeyboard(AccessibilityEvent event) {
+    private String currentKeyboard = "Unknown";
+
+    private void checkForKeyboardType() {
+        String currentKeyboardStr = Settings.Secure.getString(
+                getContentResolver(),
+                Settings.Secure.DEFAULT_INPUT_METHOD
+        );
+        if (currentKeyboardStr.toLowerCase().contains("openboard")) {
+//                Log.d(TAG, "OpenBoard keyboard detected");
+            currentKeyboard = "OpenBoard";
+            debuggingStats = openboardDebuggingStats;
+        } else if (currentKeyboardStr.toLowerCase().contains("google")) {
+//                Log.d(TAG, "GBoard keyboard detected");
+            currentKeyboard = "GBoard";
+            debuggingStats = gboardDebuggingStats;
+        } else {
+//                Log.d(TAG, "Unknown keyboard detected: " + currentKeyboardStr);
+            currentKeyboard = "Unknown";
+        }
+    }
+
+    private void checkForKeyboardBounds(AccessibilityEvent event) {
 //        new Handler(Looper.getMainLooper()).postDelayed(() -> {
         if (isSwiping) {
             return;
@@ -1023,6 +1069,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
             cursorController.setTemporaryBounds(keyboardBounds);
             Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
+
+            checkForKeyboardType();
 //            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
         } else {
             cursorController.clearTemporaryBounds();
@@ -1375,6 +1423,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 runningWordsPerPhrase.add(wordsPerPhrase);
 
                 // update debugging stats
+
                 debuggingStats.setWpmLatestAvg(phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
                 debuggingStats.setWpmAvg(runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
                 debuggingStats.setWordsPerPhraseAvg(runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
@@ -1672,12 +1721,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Bitmap previousWordPredictionBitmap = null;
     private Rect predictionBounds = new Rect();
     private boolean previousWordPredictionCheckRunning = false;
+    private int WORD_PREDICTION_DELAY = 500;
 
     private void checkForWordPrediction() {
         WriteToFile writeToFile = new WriteToFile(this);
         // Example: Stop the task after 10 seconds
         new Thread(() -> {
             try {
+                Thread.sleep(WORD_PREDICTION_DELAY);
                 while (checkForWordTyped) {
                     previousWordPredictionCheckRunning = true;
                     int[] cursorPosition = cursorController.getCursorPositionXY();

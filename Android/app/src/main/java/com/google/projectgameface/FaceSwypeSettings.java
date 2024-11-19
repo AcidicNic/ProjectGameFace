@@ -16,6 +16,7 @@
 
 package com.google.projectgameface;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -23,10 +24,12 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager.LayoutParams;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.Switch;
@@ -60,11 +63,12 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private TextView headCoordScaleFactorYProgress;
     private ConstraintLayout holdDurationLayout;
     private ConstraintLayout headCoordScaleFactorLayout;
+    private Button switchKeyboardBtn;
     private Button debuggingStatsBtn;
 
     private final int[] viewIds = {
-            R.id.fasterHoldDuration,
-            R.id.slowerHoldDuration,
+            R.id.holdDurationFaster,
+            R.id.holdDurationSlower,
             R.id.headCoordScaleFactorXSlower,
             R.id.headCoordScaleFactorXFaster,
             R.id.headCoordScaleFactorYSlower,
@@ -174,6 +178,20 @@ public class FaceSwypeSettings extends AppCompatActivity {
                 smoothingSeekBar, smoothingProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING)
         );
 
+        // Switch Keyboard
+        switchKeyboardBtn = findViewById(R.id.switchKeyboardBtn);
+        switchKeyboardBtn.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Allows the user to quickly select another keyboard in-app (without going to settings)
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.showInputMethodPicker();
+
+                // Fully opens the settings app to switch keyboards
+                // startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS));
+            }
+        });
+
         debuggingStatsBtn = findViewById(R.id.debuggingStatsBtn);
         debuggingStatsBtn.setOnClickListener(new OnClickListener() {
             @Override
@@ -201,10 +219,10 @@ public class FaceSwypeSettings extends AppCompatActivity {
                     int newValue = 0;
                     boolean isFaster = true; // False means slower
 
-                    if (v.getId() == R.id.fasterHoldDuration) {
+                    if (v.getId() == R.id.holdDurationFaster) {
                         currentValue = holdDurationSeekBar.getProgress();
                         newValue = currentValue + 1;
-                    } else if (v.getId() == R.id.slowerHoldDuration) {
+                    } else if (v.getId() == R.id.holdDurationSlower) {
                         currentValue = holdDurationSeekBar.getProgress();
                         newValue = currentValue - 1;
                     } else if (v.getId() == R.id.headCoordScaleFactorXFaster) {
@@ -222,7 +240,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
                     }
 
                     if ((isFaster && newValue < 15) || (!isFaster && newValue >= 0)) {
-                        if (v.getId() == R.id.fasterHoldDuration || v.getId() == R.id.slowerHoldDuration) {
+                        if (v.getId() == R.id.holdDurationFaster || v.getId() == R.id.holdDurationSlower) {
                             holdDurationSeekBar.setProgress(newValue);
                             int duration = (newValue + 1) * 200;
                             sendValueToService("EDGE_HOLD_DURATION", duration);
@@ -361,19 +379,21 @@ public class FaceSwypeSettings extends AppCompatActivity {
         }
     };
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
     protected void onResume() {
         super.onResume();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
-        } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
+        } else {
+            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+
         unregisterReceiver(profileChangeReceiver);
     }
 

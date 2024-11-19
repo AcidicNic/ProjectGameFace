@@ -3,7 +3,7 @@ package com.google.projectgameface.utils
 import android.content.Context
 import android.util.Log
 
-class DebuggingStats() : TimestampAware {
+class DebuggingStats(val name: String) : TimestampAware {
     val TAG = "DebuggingStats"
 
     var created: Long = System.currentTimeMillis()
@@ -49,7 +49,7 @@ class DebuggingStats() : TimestampAware {
     fun save(context: Context) {
         Log.d(TAG, "save(): ...")
         val writeToFile = WriteToFile(context)
-        writeToFile.saveObjToJson(this, Config.STATS_FILE)
+        writeToFile.saveObjToJson(this, name + Config.STATS_FILE)
         Log.d(TAG, "save(): success!")
     }
 
@@ -58,7 +58,7 @@ class DebuggingStats() : TimestampAware {
         Log.d(TAG, "load(): old ${this}")
 
         val writeToFile = WriteToFile(context)
-        val stats = writeToFile.loadObjFromJson(Config.STATS_FILE, DebuggingStats::class.java) as? DebuggingStats
+        val stats = writeToFile.loadObjFromJson(name + Config.STATS_FILE, DebuggingStats::class.java) as? DebuggingStats
         if (stats == null) {
             Log.d(TAG, "load(): load failed! stats is null")
             return

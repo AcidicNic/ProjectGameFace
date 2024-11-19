@@ -2,6 +2,7 @@ package com.google.projectgameface;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager.LayoutParams;
@@ -25,7 +26,7 @@ public class DebuggingStatsActivity extends AppCompatActivity {
 
     private static final String TAG = "DebuggingStats"; // TODO: remove unnecessary "Activity" from the end of the tags.
 
-    private DebuggingStats debuggingStats = new DebuggingStats();
+    private DebuggingStats debuggingStats;
     private WriteToFile writeToFile;
 
     private TextView content;
@@ -63,7 +64,17 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         logScrollView = findViewById(R.id.logScrollView);
 
         // get stats
-        debuggingStats = new DebuggingStats();
+        String currentKeyboardStr = Settings.Secure.getString(
+            getContentResolver(),
+            Settings.Secure.DEFAULT_INPUT_METHOD
+        );
+        if (currentKeyboardStr.toLowerCase().contains("google")) {
+            debuggingStats = new DebuggingStats("GBoard");
+        } else if (currentKeyboardStr.toLowerCase().contains("openboard")) {
+            debuggingStats = new DebuggingStats("OpenBoard");
+        } else {
+            debuggingStats = new DebuggingStats("");
+        }
         debuggingStats.load(this);
 
         displayStats();
@@ -92,7 +103,17 @@ public class DebuggingStatsActivity extends AppCompatActivity {
     }
 
     private void wipeStats() {
-        debuggingStats = new DebuggingStats();
+        String currentKeyboardStr = Settings.Secure.getString(
+                getContentResolver(),
+                Settings.Secure.DEFAULT_INPUT_METHOD
+        );
+        if (currentKeyboardStr.toLowerCase().contains("google")) {
+            debuggingStats = new DebuggingStats("GBoard");
+        } else if (currentKeyboardStr.toLowerCase().contains("openboard")) {
+            debuggingStats = new DebuggingStats("OpenBoard");
+        } else {
+            debuggingStats = new DebuggingStats("");
+        }
         debuggingStats.save(this);
         displayStats();
         sendIntentToService("RESET_DEBUGGING_STATS");

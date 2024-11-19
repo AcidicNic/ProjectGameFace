@@ -105,7 +105,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/holdDurationTxt" />
             <TextView
-                android:id="@+id/slowerHoldDuration"
+                android:id="@+id/holdDurationSlower"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -119,7 +119,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/holdDurationSeekBar" />
             <TextView
-                android:id="@+id/fasterHoldDuration"
+                android:id="@+id/holdDurationFaster"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -385,6 +385,33 @@
             app:layout_constraintTop_toBottomOf="@+id/smoothingLayout" />
 
         <Button
+            android:id="@+id/switchKeyboardBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="10dp"
+            android:paddingVertical="15dp"
+            android:paddingHorizontal="20dp"
+            android:text="Switch Keyboards"
+            android:textColor="#444746"
+            android:textAllCaps="false"
+            android:background="@drawable/textview_custom"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/debugSwipeSwitch" />
+
+        <TextView
+            android:id="@+id/Description_Cursor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="..."
+            android:layout_marginVertical="10dp"
+            android:padding="15dp"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintStart_toEndOf="@+id/switchKeyboardBtn"
+            app:layout_constraintTop_toBottomOf="@+id/debugSwipeSwitch" />
+
+        <Button
             android:id="@+id/debuggingStatsBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -396,7 +423,7 @@
             android:textAllCaps="false"
             android:background="@drawable/textview_custom"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/debugSwipeSwitch" />
+            app:layout_constraintTop_toBottomOf="@+id/switchKeyboardBtn" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>
