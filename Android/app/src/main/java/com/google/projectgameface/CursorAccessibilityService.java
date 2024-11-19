@@ -1184,7 +1184,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             case KeyEvent.KEYCODE_4:
                 if (eventAction == KeyEvent.ACTION_DOWN && isKeyboardOpen && cursorController.getCursorPositionXY()[1] > keyboardBounds.top) {
                     Log.d(TAG, "SCREENSHOT TEST KEY KeyEvent.ACTION_DOWN");
-                    saveScreenshot();
+//                    saveScreenshot();
                 }
                 return true;
         }
@@ -1604,10 +1604,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         }
     }
-
+    private Image image = null;
     private Bitmap getScreenCaptureBitmap() {
-        Image image = null;
         try {
+            if (image != null) {
+                image.close();
+                image = null;
+            }
             image = imageReader.acquireLatestImage();
             if (image == null) return null;
 
@@ -1646,6 +1649,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             // Close the image to prevent memory leaks
             image.close();
+            image = null;
 
             return bitmap;
         } catch (Exception e) {
@@ -1655,6 +1659,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } finally {
             if (image != null) {
                 image.close(); // Close image to prevent maxImages limit
+                image = null;
             }
         }
     }
@@ -1723,6 +1728,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     previousWordPredictionCheckRunning = true;
                     int[] cursorPosition = cursorController.getCursorPositionXY();
                     Bitmap screenshot = getScreenCaptureBitmap();
+                    if (screenshot == null) {
+                        Log.e(TAG, "Screenshot is null.");
+                        continue;
+                    }
                     Rect cropWordPredictionRegion = new Rect(
                             keyboardBounds.right / 4,
                             keyboardBounds.top,
@@ -1732,12 +1741,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     // if cursorPosition is within the word prediction region, stop the task
                     if (cursorPosition[0] >= cropWordPredictionRegion.left && cursorPosition[0] <= cropWordPredictionRegion.right && cursorPosition[1] >= cropWordPredictionRegion.top && cursorPosition[1] <= cropWordPredictionRegion.bottom) {
                         Log.d(TAG, "Cursor is within word prediction region.");
-                        break;
+                        continue;
                     }
                     Bitmap croppedScreenshot = replaceColorWithTransparent(cropBitmapToRect(screenshot, cropWordPredictionRegion));
                     if (previousWordPredictionBitmap != null && previousWordPredictionBitmap.sameAs(croppedScreenshot)) {
                         Log.d(TAG, "Word prediction bitmap is the same as previous.");
-                        break;
+                        continue;
                     }
                     previousWordPredictionBitmap = croppedScreenshot;
                     Rect showPredictionRegion = new Rect(
@@ -1759,6 +1768,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 Thread.currentThread().interrupt();
                 Log.e(TAG, "Thread interrupted while waiting to stop task: " + e);
                 writeToFile.logError(TAG, "Thread interrupted while waiting to stop task: " + e);
+                previousWordPredictionBitmap = null;
+                previousWordPredictionCheckRunning = false;
+            } catch (Exception e) {
+                Log.e(TAG, "Error while checking for word prediction: " + e);
+                writeToFile.logError(TAG, "Error while checking for word prediction: " + e);
                 previousWordPredictionBitmap = null;
                 previousWordPredictionCheckRunning = false;
             }
