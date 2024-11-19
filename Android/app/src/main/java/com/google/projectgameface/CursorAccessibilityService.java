@@ -569,7 +569,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                             if (mediaProjection != null && currentKeyboard == "GBoard") {
                                 if (checkForWordTyped && !previousWordPredictionCheckRunning) {
-                                    checkForWordPrediction();
+                                    if (checkForNewWordTime + 500 <= System.currentTimeMillis()) {
+                                        checkForWordPrediction();
+                                    }
                                 }
                                 if (updateCanvas) {
                                     serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
@@ -1203,6 +1205,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             float[] initialPosition = getCursorPosition();
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
                 checkForWordTyped = true;
+                checkForNewWordTime = System.currentTimeMillis();
                 // TODO: free up screencapture resources until ^^^
                 Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
             }
@@ -1720,12 +1723,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private void checkForWordPrediction() {
         WriteToFile writeToFile = new WriteToFile(this);
-        // Example: Stop the task after 10 seconds
+
         new Thread(() -> {
             try {
-                Thread.sleep(WORD_PREDICTION_DELAY);
+                previousWordPredictionCheckRunning = true;
                 while (checkForWordTyped) {
-                    previousWordPredictionCheckRunning = true;
                     int[] cursorPosition = cursorController.getCursorPositionXY();
                     Bitmap screenshot = getScreenCaptureBitmap();
                     if (screenshot == null) {
@@ -1780,5 +1782,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     private boolean checkForWordTyped = false;
+    private long checkForNewWordTime = 0;
     private boolean updateCanvas = false;
 }
