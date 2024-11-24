@@ -84,7 +84,7 @@
 
     <!-- Gesture floating preview text parameters -->
     <dimen name="config_gesture_floating_preview_text_size">24dp</dimen>
-    <dimen name="config_gesture_floating_preview_text_offset">73dp</dimen>
+    <dimen name="config_gesture_floating_preview_text_offset">20dp</dimen>
     <dimen name="config_gesture_floating_preview_horizontal_padding">24dp</dimen>
     <dimen name="config_gesture_floating_preview_vertical_padding">16dp</dimen>
     <dimen name="config_gesture_floating_preview_round_radius">2dp</dimen>

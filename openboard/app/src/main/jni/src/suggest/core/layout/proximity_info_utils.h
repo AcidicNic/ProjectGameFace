@@ -68,17 +68,17 @@ class ProximityInfoUtils {
                     keyCount, x, y, primaryKey, locale, codeToKeyMap, proximities);
         }
 
-        if (DEBUG_PROXIMITY_CHARS) {
-            for (int i = 0; i < inputSize; ++i) {
-                AKLOGI("---");
-                for (int j = 0; j < MAX_PROXIMITY_CHARS_SIZE; ++j) {
-                    int proximityChar =
-                            inputProximities[i * MAX_PROXIMITY_CHARS_SIZE + j];
-                    proximityChar += 0;
-                    AKLOGI("--- (%d)%c", i, proximityChar);
-                }
-            }
-        }
+//        if (DEBUG_PROXIMITY_CHARS) {
+//            for (int i = 0; i < inputSize; ++i) {
+//                AKLOGI("---");
+//                for (int j = 0; j < MAX_PROXIMITY_CHARS_SIZE; ++j) {
+//                    int proximityChar =
+//                            inputProximities[i * MAX_PROXIMITY_CHARS_SIZE + j];
+//                    proximityChar += 0;
+//                    AKLOGI("--- (%d)%c", i, proximityChar);
+//                }
+//            }
+//        }
     }
 
     static AK_FORCE_INLINE int getStartIndexFromCoordinates(const int x, const int y,
