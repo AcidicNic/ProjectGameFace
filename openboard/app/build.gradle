@@ -50,9 +50,6 @@ android {
     androidResources {
         noCompress 'dict'
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-    }
 }
 
 dependencies {
