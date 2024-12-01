@@ -123,13 +123,16 @@ public class DebuggingStatsActivity extends AppCompatActivity {
     }
 
     private void displayStats() {
-        String wpmLatestAvgTxt = String.format("Average words per minute of latest phrase: %.1f words/min", debuggingStats.getWpmLatestAvg());
-        String wpmAvgTxt = String.format("Average words per minute:  %.1f words/min", debuggingStats.getWordsPerMinAvg());
-        String wordsPerPhraseAvgTxt = String.format("Average words per phrase:  %.1f words/phrase", debuggingStats.getWordsPerSessionAvg());
-        String swipeDurationAvgTxt = String.format("Average swipe duration:  %.1f ms", debuggingStats.getSwipeDurationAvg());
-        String timeBetwenSwipesAvgTxt = String.format("Average swipe duration:  %.1f ms", debuggingStats.getTimeBetweenWordsAvg());
+        String wpmAvgTxt = String.format("Words per minute global avg:  %.1f words/min", debuggingStats.getWordsPerMinAvg());
+        String cpmAvgTxt = String.format("Chars per minute global avg:  %.1f chars/min", debuggingStats.getCharsPerMinAvg());
 
-        content.setText(String.format("%s\n%s\n%s\n%s", wpmLatestAvgTxt, wpmAvgTxt, wordsPerPhraseAvgTxt, swipeDurationAvgTxt, timeBetwenSwipesAvgTxt));
+        String wpmSessionAvgTxt = String.format("Words per minute session average:  %.1f words/phrase", debuggingStats.getWordsPerSessionAvg());
+        String cpmSessionAvgTxt = String.format("Chars per minute global average:  %.1f words/phrase", debuggingStats.getCharsPerSessionAvg());
+
+        String swipeDurationAvgTxt = String.format("Swipe duration avg:  %.1f ms", debuggingStats.getSwipeDurationAvg());
+        String timeBetweenSwipesAvgTxt = String.format("Time between swipes avg:  %.1f ms", debuggingStats.getTimeBetweenWordsAvg());
+
+        content.setText(String.format("%s\n%s\n%s\n%s", wpmAvgTxt, cpmAvgTxt, wpmSessionAvgTxt, cpmSessionAvgTxt, swipeDurationAvgTxt, timeBetweenSwipesAvgTxt));
         Gson gson = new Gson();
         String jsonStr = gson.toJson(debuggingStats);
         debuggingStatsTxt.setText(jsonStr);

@@ -9,9 +9,6 @@ data class DebuggingStats(val name: String) : TimestampAware {
     var created: Long = System.currentTimeMillis()
     var lastModified: Long = created
 
-    var cpmLatestAvg: Float = 0.0f
-    var wpmLatestAvg: Float = 0.0f
-
     var charsPerMinAvg: Float = 0.0f
     var wordsPerMinAvg: Float = 0.0f
 
@@ -23,7 +20,6 @@ data class DebuggingStats(val name: String) : TimestampAware {
 
     var wordsSwiped: ArrayList<WordSwiped> = ArrayList()
     var sessions: ArrayList<Session> = ArrayList()
-
 
     override fun updateTimestamp() {
         lastModified = System.currentTimeMillis()
@@ -140,13 +136,22 @@ data class DebuggingStats(val name: String) : TimestampAware {
         if (stats == null) {
             Log.d(TAG, "load(): load failed! stats is null")
             return
+            charsPerMinAvg = 0.0f
+            wordsPerMinAvg = 0.0f
+
+            charsPerSessionAvg = 0.0f
+            wordsPerSessionAvg = 0.0f
+
+            swipeDurationAvg = 0.0f
+            timeBetweenWordsAvg = 0.0f
+
+            wordsSwiped = ArrayList<WordSwiped>()
+            sessions = ArrayList<Session>()
         }
 
         created = stats.created
         lastModified = stats.lastModified
 
-        cpmLatestAvg = stats.cpmLatestAvg
-        wpmLatestAvg = stats.wpmLatestAvg
         charsPerMinAvg = stats.charsPerMinAvg
         wordsPerMinAvg = stats.wordsPerMinAvg
         charsPerSessionAvg = stats.charsPerSessionAvg
