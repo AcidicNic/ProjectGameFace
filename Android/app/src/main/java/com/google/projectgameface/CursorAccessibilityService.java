@@ -983,10 +983,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (lastWord == null) {
                     lastWord = words[0];
                 }
+
                 lastWord = newWord;
                 newWord = words[words.length - 1];
-//                logNewWordSwipe(lastWord);
-                debuggingStats.addWordSwiped(lastWord, startTime, endTime);
+
+                if (newWord != null) {
+                    debuggingStats.addWordSwiped(newWord, startTime, endTime);
+                }
                 checkForNewWord = false;
             } else {
                 Log.d(TAG, "processTypedText(): checkForNewWord is false, not adding word to stats.");

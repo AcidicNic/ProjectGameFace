@@ -127,7 +127,7 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         String cpmAvgTxt = String.format("Chars per minute global avg:  %.1f chars/min", debuggingStats.getCharsPerMinAvg());
 
         String wpmSessionAvgTxt = String.format("Words per minute session average:  %.1f words/phrase", debuggingStats.getWordsPerSessionAvg());
-        String cpmSessionAvgTxt = String.format("Chars per minute global average:  %.1f words/phrase", debuggingStats.getCharsPerSessionAvg());
+        String cpmSessionAvgTxt = String.format("Chars per minute session average:  %.1f words/phrase", debuggingStats.getCharsPerSessionAvg());
 
         String swipeDurationAvgTxt = String.format("Swipe duration avg:  %.1f ms", debuggingStats.getSwipeDurationAvg());
         String timeBetweenSwipesAvgTxt = String.format("Time between swipes avg:  %.1f ms", debuggingStats.getTimeBetweenWordsAvg());
