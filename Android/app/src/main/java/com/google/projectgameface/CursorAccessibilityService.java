@@ -1444,7 +1444,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                 // update debugging stats
 
-                debuggingStats.setWpmLatestAvg(phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
+//                debuggingStats.setWpmLatestAvg(phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
                 debuggingStats.setWordsPerMinAvg(runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
                 debuggingStats.setWordsPerSessionAvg(runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
                 debuggingStats.setSwipeDurationAvg(runningSwipeDuration.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
@@ -1454,7 +1454,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 String logStr = String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
                     wordsPerPhrase,
                     swipeDurationMs,
-                    debuggingStats.getWpmLatestAvg(),
+//                    debuggingStats.getWpmLatestAvg(),
                     debuggingStats.getWordsPerMinAvg(),
                     debuggingStats.getWordsPerSessionAvg(),
                     debuggingStats.getSwipeDurationAvg()
