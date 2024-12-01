@@ -3,7 +3,7 @@ package com.google.projectgameface.utils
 import android.content.Context
 import android.util.Log
 
-class DebuggingStats(val name: String) : TimestampAware {
+data class DebuggingStats(val name: String) : TimestampAware {
     val TAG = "DebuggingStats"
 
     var created: Long = System.currentTimeMillis()
@@ -12,38 +12,116 @@ class DebuggingStats(val name: String) : TimestampAware {
     var cpmLatestAvg: Float = 0.0f
     var wpmLatestAvg: Float = 0.0f
 
-    var cpmAvg: Float = 0.0f
-    var wpmAvg: Float = 0.0f
+    var charsPerMinAvg: Float = 0.0f
+    var wordsPerMinAvg: Float = 0.0f
 
-    var charsPerPhraseAvg: Float = 0.0f
-    var wordsPerPhraseAvg: Float = 0.0f
+    var charsPerSessionAvg: Float = 0.0f
+    var wordsPerSessionAvg: Float = 0.0f
 
     var swipeDurationAvg: Float = 0.0f
+    var timeBetweenWordsAvg: Float = 0.0f
 
-    var wordsTyped: ArrayList<WordTyped> = ArrayList()
+    var wordsSwiped: ArrayList<WordSwiped> = ArrayList()
+    var sessions: ArrayList<Session> = ArrayList()
 
-//    override fun toString(): String {
-//        val sb = StringBuilder("${this::class.simpleName}(")
-//        val properties = this::class.memberProperties
-//        for ((index, property) in properties.withIndex()) {
-//            sb.append("${property.name}=${property.get(this)}")
-//            if (index < properties.size - 1) {
-//                sb.append(", ")
-//            }
-//        }
-//        sb.append(")")
-//        return sb.toString()
-//    }
 
     override fun updateTimestamp() {
         lastModified = System.currentTimeMillis()
     }
 
-    fun addWordTyped(word: String, timestamp: Long? = null) {
-        Log.d(TAG, "addWordTyped(): $word")
+    fun addWordSwiped(word: String, startTime: Long, endTime: Long) {
+        Log.d(TAG, "addWordTyped(word=$word, startTime=$startTime, endTime=$endTime)")
 
-        if (timestamp == null) wordsTyped.add(WordTyped(word))
-        else wordsTyped.add(WordTyped(word, timestamp))
+        // Create the new WordSwiped
+        val newWord = WordSwiped(word, startTime, endTime).apply {
+            index = wordsSwiped.size // Index is the current size of wordsSwiped
+        }
+
+        // Add new word to wordsSwiped
+        wordsSwiped.add(newWord)
+
+        // Handle sessions
+        if (wordsSwiped.size == 1) {
+            // If this is the first word, create the first session
+            createSession(0, 1)
+        } else {
+            // Get the previous word
+            val previousWord = wordsSwiped[wordsSwiped.size - 2]
+
+            // Check if a new session needs to be created
+            if (startTime - previousWord.endTime > Config.TIME_BETWEEN_WORDS) {
+                // Create a new session starting at the current word
+                createSession(wordsSwiped.size - 1, wordsSwiped.size)
+            } else {
+                // Update the last session's endIndex
+                val lastSession = sessions.last()
+                lastSession.endIndex = wordsSwiped.size
+            }
+        }
+
+        // Update the current session
+        updateSession(sessions.size - 1)
+
+        // Update global stats
+        updateGlobalStats()
+
+        // Update the timestamp
+        updateTimestamp()
+    }
+
+    fun createSession(startIndex: Int, endIndex: Int) {
+        Log.d(TAG, "createSession(startIndex=$startIndex, endIndex=$endIndex)")
+        val newSession = Session(startIndex, endIndex).apply {
+            index = sessions.size // Assign the index based on the current size of sessions
+        }
+        sessions.add(newSession)
+    }
+
+    fun updateSession(sessionIndex: Int) {
+        Log.d(TAG, "updateSession(sessionIndex=$sessionIndex)")
+        sessions[sessionIndex].update(this)
+    }
+
+    fun updateGlobalStats() {
+        val totalChars = wordsSwiped.sumOf { it.word.length }
+        val totalWords = wordsSwiped.size
+        val totalSwipeDuration = wordsSwiped.sumOf { it.duration }
+        val totalTimeBetweenWords = wordsSwiped.zipWithNext { prev, curr -> curr.startTime - prev.endTime }.sum()
+
+        val totalSessions = sessions.size
+        val totalSessionDurations = sessions.sumOf { it.endIndex - it.startIndex }
+
+        // Average characters per minute
+        charsPerMinAvg = if (totalSessionDurations > 0) {
+            (totalChars / (totalSessionDurations / 60000.0)).toFloat()
+        } else 0.0f
+
+        // Average words per minute
+        wordsPerMinAvg = if (totalSessionDurations > 0) {
+            (totalWords / (totalSessionDurations / 60000.0)).toFloat()
+        } else 0.0f
+
+        // Average characters per session
+        charsPerSessionAvg = if (totalSessions > 0) {
+            (totalChars / totalSessions.toFloat())
+        } else 0.0f
+
+        // Average words per session
+        wordsPerSessionAvg = if (totalSessions > 0) {
+            (totalWords / totalSessions.toFloat())
+        } else 0.0f
+
+        // Average swipe duration
+        swipeDurationAvg = if (wordsSwiped.isNotEmpty()) {
+            (totalSwipeDuration / wordsSwiped.size.toDouble()).toFloat()
+        } else 0.0f
+
+        // Average time between words
+        timeBetweenWordsAvg = if (wordsSwiped.size > 1) {
+            (totalTimeBetweenWords / (wordsSwiped.size - 1).toDouble()).toFloat()
+        } else 0.0f
+
+        Log.d(TAG, "Global stats updated: charsPerMinAvg=$charsPerMinAvg, wordsPerMinAvg=$wordsPerMinAvg, charsPerSessionAvg=$charsPerSessionAvg, wordsPerSessionAvg=$wordsPerSessionAvg, swipeDurationAvg=$swipeDurationAvg, timeBetweenWordsAvg=$timeBetweenWordsAvg")
     }
 
     fun save(context: Context) {
@@ -69,11 +147,14 @@ class DebuggingStats(val name: String) : TimestampAware {
 
         cpmLatestAvg = stats.cpmLatestAvg
         wpmLatestAvg = stats.wpmLatestAvg
-        cpmAvg = stats.cpmAvg
-        wpmAvg = stats.wpmAvg
-        charsPerPhraseAvg = stats.charsPerPhraseAvg
-        wordsPerPhraseAvg = stats.wordsPerPhraseAvg
+        charsPerMinAvg = stats.charsPerMinAvg
+        wordsPerMinAvg = stats.wordsPerMinAvg
+        charsPerSessionAvg = stats.charsPerSessionAvg
+        wordsPerSessionAvg = stats.wordsPerSessionAvg
         swipeDurationAvg = stats.swipeDurationAvg
+
+        wordsSwiped = stats.wordsSwiped
+        sessions = stats.sessions
 
         Log.d(TAG, "load(): success!")
         Log.d(TAG, "load(): new ${this}")

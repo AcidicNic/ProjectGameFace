@@ -15,11 +15,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.gson.Gson;
-import com.google.projectgameface.utils.Config;
 import com.google.projectgameface.utils.DebuggingStats;
 import com.google.projectgameface.utils.WriteToFile;
 
-import java.io.File;
 import java.util.Objects;
 
 public class DebuggingStatsActivity extends AppCompatActivity {
@@ -126,11 +124,12 @@ public class DebuggingStatsActivity extends AppCompatActivity {
 
     private void displayStats() {
         String wpmLatestAvgTxt = String.format("Average words per minute of latest phrase: %.1f words/min", debuggingStats.getWpmLatestAvg());
-        String wpmAvgTxt = String.format("Average words per minute:  %.1f words/min", debuggingStats.getWpmAvg());
-        String wordsPerPhraseAvgTxt = String.format("Average words per phrase:  %.1f words/phrase", debuggingStats.getWordsPerPhraseAvg());
+        String wpmAvgTxt = String.format("Average words per minute:  %.1f words/min", debuggingStats.getWordsPerMinAvg());
+        String wordsPerPhraseAvgTxt = String.format("Average words per phrase:  %.1f words/phrase", debuggingStats.getWordsPerSessionAvg());
         String swipeDurationAvgTxt = String.format("Average swipe duration:  %.1f ms", debuggingStats.getSwipeDurationAvg());
+        String timeBetwenSwipesAvgTxt = String.format("Average swipe duration:  %.1f ms", debuggingStats.getTimeBetweenWordsAvg());
 
-        content.setText(String.format("%s\n%s\n%s\n%s", wpmLatestAvgTxt, wpmAvgTxt, wordsPerPhraseAvgTxt, swipeDurationAvgTxt));
+        content.setText(String.format("%s\n%s\n%s\n%s", wpmLatestAvgTxt, wpmAvgTxt, wordsPerPhraseAvgTxt, swipeDurationAvgTxt, timeBetwenSwipesAvgTxt));
         Gson gson = new Gson();
         String jsonStr = gson.toJson(debuggingStats);
         debuggingStatsTxt.setText(jsonStr);

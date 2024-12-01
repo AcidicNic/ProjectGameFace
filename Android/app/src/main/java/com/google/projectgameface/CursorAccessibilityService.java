@@ -51,7 +51,6 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemClock;
 import android.provider.Settings;
-import android.util.ArrayMap;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
@@ -80,10 +79,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -568,8 +565,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             }
 
                             if (mediaProjection != null && currentKeyboard == "GBoard") {
-                                if (checkForWordTyped && !previousWordPredictionCheckRunning) {
-                                    if (checkForNewWordTime + 500 <= System.currentTimeMillis()) {
+                                if (checkForPrediction && !previousWordPredictionCheckRunning) {
+                                    if (startTime + 500 <= System.currentTimeMillis()) {
                                         checkForWordPrediction();
                                     }
                                 }
@@ -965,22 +962,31 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private long lastWordTypedTimestamp;
     private boolean isTyping = false;
     private boolean checkForNewWord = false;
+    private String lastWord;
+    private String newWord;
 
     private void processTypedText(CharSequence newText) {
         typedText.append(newText);
         String[] words = typedText.toString().split("\\s+");
         if (words.length > 0) {
             Long now = System.currentTimeMillis();
-            String lastWord = words[words.length - 1];
             logToFile.log(TAG, "Word typed: " + lastWord);
             Log.d(TAG, "Word typed: " + lastWord);
             Log.d(TAG, "processTypedText(): [checkForNewWord==" + checkForNewWord + "] [(lastWordTypedTimestamp + 2000 <= now)==" + (lastWordTypedTimestamp + 2000 <= now) + "]");
             if (checkForNewWord) {
-                if  (lastWordTypedTimestamp + 2000 <= now) {
-                    Log.d(TAG, "processTypedText(): false alert of word typed. not saving word to stats.");
-                } else {
-                    debuggingStats.addWordTyped(lastWord, now);
+                // TODO: MOVE THIS TO MAIN LOOP CHECK EVERY TICK INSTEAD OF HERE
+//                if  (lastWordTypedTimestamp + 1000 <= now) {
+//                    // TODO: CLEAR FLAGS AND RESET TIMESTAMPS
+//                    Log.d(TAG, "processTypedText(): false alert of word typed. not saving word to stats.");
+//                }
+
+                if (lastWord == null) {
+                    lastWord = words[0];
                 }
+                lastWord = newWord;
+                newWord = words[words.length - 1];
+//                logNewWordSwipe(lastWord);
+                debuggingStats.addWordSwiped(lastWord, startTime, endTime);
                 checkForNewWord = false;
             } else {
                 Log.d(TAG, "processTypedText(): checkForNewWord is false, not adding word to stats.");
@@ -1202,10 +1208,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         new Thread(() -> {
             startTime = SystemClock.uptimeMillis();
+            // timeBetweenSwypes = startTime - endTime;
+            // if (timeBetweenSwypes > maxPauseBetweenWords)
+            //      startNewSwypePhrase(startTime);
+            // else
+            //      recordTimeBetweenSwypes(timeBetweenSwypes);
             float[] initialPosition = getCursorPosition();
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
-                checkForWordTyped = true;
-                checkForNewWordTime = System.currentTimeMillis();
+                checkForPrediction = true;
                 // TODO: free up screencapture resources until ^^^
                 Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
             }
@@ -1299,13 +1309,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], endTime - startTime));
             isSwiping = false;
             cursorController.isRealtimeSwipe = false;
-            if (checkForWordTyped) {
+            if (checkForPrediction) {
                 checkForNewWord = true;
-                checkForWordTyped = false;
+                checkForPrediction = false;
                 previousWordPredictionBitmap = null;
                 predictionBounds = null;
             }
-            displaySwipeInfo();
+//            displaySwipeInfo();
         }).start();
     }
 
@@ -1387,14 +1397,30 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
                 "Distance: AVG " + String.format("%,.1f", averageDistance) + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
-                "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]\n" +
-                "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
+                "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]";
+//                "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
         logToFile.log(TAG, swipeInfo);
 
         long now = System.currentTimeMillis();
 
         if (swipeInKDBRegion) {
-//            checkForNewWord = true;
+            // To calculate the words per minute for each phrase, you need:
+            //  (1) The total length of time spent swyping.  For a phrase with N words, this is the sum of:
+            //         N swype durations - this can be acccumulated in totalSwypingTime
+            //         (N - 1) pauses between words - this can be acccumulated in totalPausingTime
+            // Float totalPhraseTime = totalSwypingTimen + totalPausingTime;
+            // There are two different ways we want to calculate words per minute:
+            //    (1) Literally counting how many separate words were output (the number N as defined above)
+            //          float nWords = N;
+            //    (2) An average word in English is generally considered to be 5 characters long.  With a space being autmatically output between each word, this gives a value:
+            //          float nFiveLetterWords = totalPhraseTextLength / 6;
+            // Then we would have the following, but this is only calculated at the END of a phrase:
+            // Float latestWordsPerMinute = (float) (nWords / (totalPhraseTime/60000));
+            // Float latestFiveLetterWordsPerMinute = (float) (nFiveLetterWords / (totalPhraseTime/60000));
+            // And for good measure, we can throw in:
+            // Float grandTotalPhraseTime.add(totalPhraseTime);            // Keep track of the total time that the user spends Swyping
+            // runningSwypingDuration.add(swipeDurationMs);
+
             Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
             phraseWordsPerMinute.add(latestWordsPerMinute);
             runningWordsPerMinute.add(latestWordsPerMinute);
@@ -1402,13 +1428,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             // starting phrase
             if (phraseStartTimestamp == 0) {
-                phraseStartTimestamp = now;
-                lastWordTypedTimestamp = now;
+                phraseStartTimestamp = startTime;
+                lastWordTypedTimestamp = endTime;
                 wordsPerPhrase = 1;
 
             // phrase in progress
-            } else if (now - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
-                lastWordTypedTimestamp = now;
+                // This should be checking the time from the END of the preceding Swype to the start of this new Swype)
+            } else if (startTime - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
+                lastWordTypedTimestamp = endTime;
                 wordsPerPhrase += 1;
 
             // ending phrase
@@ -1418,8 +1445,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // update debugging stats
 
                 debuggingStats.setWpmLatestAvg(phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
-                debuggingStats.setWpmAvg(runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
-                debuggingStats.setWordsPerPhraseAvg(runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
+                debuggingStats.setWordsPerMinAvg(runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
+                debuggingStats.setWordsPerSessionAvg(runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
                 debuggingStats.setSwipeDurationAvg(runningSwipeDuration.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
                 debuggingStats.save(this);
 
@@ -1428,8 +1455,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     wordsPerPhrase,
                     swipeDurationMs,
                     debuggingStats.getWpmLatestAvg(),
-                    debuggingStats.getWpmAvg(),
-                    debuggingStats.getWordsPerPhraseAvg(),
+                    debuggingStats.getWordsPerMinAvg(),
+                    debuggingStats.getWordsPerSessionAvg(),
                     debuggingStats.getSwipeDurationAvg()
                 );
                 logToFile.log(TAG, logStr);
@@ -1727,7 +1754,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         new Thread(() -> {
             try {
                 previousWordPredictionCheckRunning = true;
-                while (checkForWordTyped) {
+                while (checkForPrediction) {
                     int[] cursorPosition = cursorController.getCursorPositionXY();
                     Bitmap screenshot = getScreenCaptureBitmap();
                     if (screenshot == null) {
@@ -1781,7 +1808,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }).start();
     }
 
-    private boolean checkForWordTyped = false;
-    private long checkForNewWordTime = 0;
+    private boolean checkForPrediction = false;
     private boolean updateCanvas = false;
 }
