@@ -4,7 +4,8 @@ import android.content.Context
 import android.util.Log
 
 data class DebuggingStats(val name: String) : TimestampAware {
-    val TAG = "DebuggingStats"
+    val TAG = name + "DebuggingStats"
+    var version: Int = 1
 
     var created: Long = System.currentTimeMillis()
     var lastModified: Long = created
@@ -29,9 +30,7 @@ data class DebuggingStats(val name: String) : TimestampAware {
         Log.d(TAG, "addWordTyped(word=$word, startTime=$startTime, endTime=$endTime)")
 
         // Create the new WordSwiped
-        val newWord = WordSwiped(word, startTime, endTime).apply {
-            index = wordsSwiped.size // Index is the current size of wordsSwiped
-        }
+        val newWord = WordSwiped(word, startTime, endTime)
 
         // Add new word to wordsSwiped
         wordsSwiped.add(newWord)
@@ -67,9 +66,7 @@ data class DebuggingStats(val name: String) : TimestampAware {
 
     fun createSession(startIndex: Int, endIndex: Int) {
         Log.d(TAG, "createSession(startIndex=$startIndex, endIndex=$endIndex)")
-        val newSession = Session(startIndex, endIndex).apply {
-            index = sessions.size // Assign the index based on the current size of sessions
-        }
+        val newSession = Session(startIndex, endIndex)
         sessions.add(newSession)
     }
 
@@ -82,10 +79,21 @@ data class DebuggingStats(val name: String) : TimestampAware {
         val totalChars = wordsSwiped.sumOf { it.word.length }
         val totalWords = wordsSwiped.size
         val totalSwipeDuration = wordsSwiped.sumOf { it.duration }
-        val totalTimeBetweenWords = wordsSwiped.zipWithNext { prev, curr -> curr.startTime - prev.endTime }.sum()
+
+        // Calculate time between words within sessions only
+        val totalTimeBetweenWords = sessions.sumOf { session ->
+            val sessionWords = wordsSwiped.subList(session.startIndex, session.endIndex)
+            sessionWords.zipWithNext { prev, curr ->
+                curr.startTime - prev.endTime
+            }.sum()
+        }
 
         val totalSessions = sessions.size
-        val totalSessionDurations = sessions.sumOf { it.endIndex - it.startIndex }
+        val totalSessionDurations = sessions.sumOf { session ->
+            val startTime = wordsSwiped.getOrNull(session.startIndex)?.startTime ?: 0L
+            val endTime = wordsSwiped.getOrNull(session.endIndex - 1)?.endTime ?: 0L
+            endTime - startTime
+        }
 
         // Average characters per minute
         charsPerMinAvg = if (totalSessionDurations > 0) {
@@ -112,14 +120,38 @@ data class DebuggingStats(val name: String) : TimestampAware {
             (totalSwipeDuration / wordsSwiped.size.toDouble()).toFloat()
         } else 0.0f
 
-        // Average time between words
+        // Average time between words (within sessions)
         timeBetweenWordsAvg = if (wordsSwiped.size > 1) {
-            (totalTimeBetweenWords / (wordsSwiped.size - 1).toDouble()).toFloat()
+            (totalTimeBetweenWords / (wordsSwiped.size - sessions.size).toDouble()).toFloat()
         } else 0.0f
 
-        Log.d(TAG, "Global stats updated: charsPerMinAvg=$charsPerMinAvg, wordsPerMinAvg=$wordsPerMinAvg, charsPerSessionAvg=$charsPerSessionAvg, wordsPerSessionAvg=$wordsPerSessionAvg, swipeDurationAvg=$swipeDurationAvg, timeBetweenWordsAvg=$timeBetweenWordsAvg")
+        Log.d(
+            TAG, "Global stats updated: charsPerMinAvg=$charsPerMinAvg, wordsPerMinAvg=$wordsPerMinAvg, " +
+                    "charsPerSessionAvg=$charsPerSessionAvg, wordsPerSessionAvg=$wordsPerSessionAvg, " +
+                    "swipeDurationAvg=$swipeDurationAvg, timeBetweenWordsAvg=$timeBetweenWordsAvg"
+        )
     }
 
+    fun updateAllSessions() {
+        Log.d(TAG, "updateAllSessions(): Starting to update all sessions...")
+
+        // Iterate through all sessions and update them
+        sessions.forEachIndexed { index, session ->
+            try {
+                session.update(this) // Update the session with the current state of DebuggingStats
+                Log.d(TAG, "updateAllSessions(): Updated session at index $index")
+            } catch (e: Exception) {
+                Log.e(TAG, "updateAllSessions(): Error updating session at index $index: ${e.message}")
+            }
+        }
+
+        // Optionally, recalculate global stats after updating all sessions
+        updateGlobalStats()
+
+        Log.d(TAG, "updateAllSessions(): Finished updating all sessions")
+    }
+
+    /** Save stats to json file. **/
     fun save(context: Context) {
         Log.d(TAG, "save(): ...")
         val writeToFile = WriteToFile(context)
@@ -127,41 +159,57 @@ data class DebuggingStats(val name: String) : TimestampAware {
         Log.d(TAG, "save(): success!")
     }
 
+    /** Load stats from json file. **/
     fun load(context: Context) {
-        Log.d(TAG, "load(): ...")
-        Log.d(TAG, "load(): old ${this}")
+        Log.d(TAG, "load(): old $this")
 
         val writeToFile = WriteToFile(context)
-        val stats = writeToFile.loadObjFromJson(name + Config.STATS_FILE, DebuggingStats::class.java) as? DebuggingStats
-        if (stats == null) {
-            Log.d(TAG, "load(): load failed! stats is null")
+        val loadedStats = writeToFile.loadObjFromJson(name + Config.STATS_FILE, DebuggingStats::class.java) as? DebuggingStats
+
+        if (loadedStats == null) {
+            Log.d(TAG, "load(): Loaded stats is null")
             return
-            charsPerMinAvg = 0.0f
-            wordsPerMinAvg = 0.0f
-
-            charsPerSessionAvg = 0.0f
-            wordsPerSessionAvg = 0.0f
-
-            swipeDurationAvg = 0.0f
-            timeBetweenWordsAvg = 0.0f
-
-            wordsSwiped = ArrayList<WordSwiped>()
-            sessions = ArrayList<Session>()
         }
 
-        created = stats.created
-        lastModified = stats.lastModified
+        // Migrate the loadedStats to ensure compatibility
+        migrate(loadedStats)
 
-        charsPerMinAvg = stats.charsPerMinAvg
-        wordsPerMinAvg = stats.wordsPerMinAvg
-        charsPerSessionAvg = stats.charsPerSessionAvg
-        wordsPerSessionAvg = stats.wordsPerSessionAvg
-        swipeDurationAvg = stats.swipeDurationAvg
-
-        wordsSwiped = stats.wordsSwiped
-        sessions = stats.sessions
+        // Use reflection to dynamically copy all fields
+        val fields = this::class.java.declaredFields
+        for (field in fields) {
+            try {
+                field.isAccessible = true
+                val value = field.get(loadedStats)
+                field.set(this, value)
+            } catch (e: Exception) {
+                Log.e(TAG, "load(): Error updating field ${field.name}: ${e.message}")
+            }
+        }
 
         Log.d(TAG, "load(): success!")
-        Log.d(TAG, "load(): new ${this}")
+        Log.d(TAG, "load(): new $this")
+    }
+
+    fun wipe() {
+        Log.d(TAG, "wipe(): Wiping stats...")
+        wordsSwiped.clear()
+        sessions.clear()
+        updateGlobalStats()
+        updateTimestamp()
+        Log.d(TAG, "wipe(): success!")
+    }
+
+    /** Migrate stats to the latest version. **/
+    fun migrate(stats: DebuggingStats) {
+        if (stats.version == 0) {
+            // recalculate all session and global stats if loading from an old stats file
+            stats.updateAllSessions()
+            stats.version = 1
+        }
+        /* Implement migration here if needed in the future */
+//        if (stats.version == 1) {
+//            // stats.newProperty = calculateFromOldProperties(stats.oldProperty)
+//            stats.version = 2
+//        }
     }
 }

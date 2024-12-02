@@ -1,12 +1,9 @@
 package com.google.projectgameface.utils
 
+
 data class Session(var startIndex: Int, var endIndex: Int) {
-    val TAG = "Session"
     private val _createdTime: Long = System.currentTimeMillis()
     private var _updatedTime: Long = _createdTime
-
-    /** Index in DebuggingStats `sessions` (ArrayList<`Session`>) **/
-    var index: Int = -1
 
     /** Session characters per minute average. **/
     var cpmAvg: Float = 0.0f
@@ -25,9 +22,7 @@ data class Session(var startIndex: Int, var endIndex: Int) {
         _updatedTime = System.currentTimeMillis()
 
         // Filter words in the session range
-        val sessionWords = debuggingStats.wordsSwiped.filter { word ->
-            word.startTime >= startIndex && word.endTime <= endIndex
-        }.sortedBy { it.startTime }
+        val sessionWords = debuggingStats.wordsSwiped.subList(startIndex, endIndex)
 
         // Calculate average time between words
         val timeDifferences = sessionWords.zipWithNext { previous, current ->
@@ -38,7 +33,8 @@ data class Session(var startIndex: Int, var endIndex: Int) {
         val totalCharacters = sessionWords.sumOf { it.word.length }
 
         // Calculate total duration of the session in minutes
-        val sessionDurationMinutes = (endIndex - startIndex) / 60000.0
+        val sessionDurationMinutes = ((sessionWords.lastOrNull()?.endTime ?: 0L) -
+                (sessionWords.firstOrNull()?.startTime ?: 0L)) / 60000.0
 
         // Calculate CPM (Characters Per Minute)
         cpmAvg = if (sessionDurationMinutes > 0) {

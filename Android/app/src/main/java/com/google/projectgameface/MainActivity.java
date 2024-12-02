@@ -84,26 +84,24 @@ public class MainActivity extends AppCompatActivity {
     private static final String SELECTED_PROFILE_KEY = "selectedProfile";
     private static final String FIRST_LAUNCH_PREFS = "FirstLaunchPrefs";
 
-    private ActivityResultLauncher<Intent> startMediaProjection;
+    // Register the result launcher to handle the MediaProjection request
+    private ActivityResultLauncher<Intent> startMediaProjection = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    Intent intent = new Intent("SCREEN_CAPTURE_PERMISSION_RESULT");
+                    intent.putExtra("resultCode", result.getResultCode());
+                    intent.putExtra("data", result.getData());
+                    sendBroadcast(intent);
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Handle the splash screen transition.
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
-
-        // Register the result launcher to handle the MediaProjection request
-        startMediaProjection = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                        Intent intent = new Intent("SCREEN_CAPTURE_PERMISSION_RESULT");
-                        intent.putExtra("resultCode", result.getResultCode());
-                        intent.putExtra("data", result.getData());
-                        sendBroadcast(intent);
-                    }
-                }
-        );
 
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         setContentView(R.layout.activity_main);

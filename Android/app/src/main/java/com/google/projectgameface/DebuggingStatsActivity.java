@@ -3,6 +3,7 @@ package com.google.projectgameface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager.LayoutParams;
@@ -15,9 +16,11 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.gson.Gson;
+import com.google.projectgameface.utils.Config;
 import com.google.projectgameface.utils.DebuggingStats;
 import com.google.projectgameface.utils.WriteToFile;
 
+import java.io.File;
 import java.util.Objects;
 
 public class DebuggingStatsActivity extends AppCompatActivity {
@@ -85,7 +88,8 @@ public class DebuggingStatsActivity extends AppCompatActivity {
             wipeStats();
         });
         findViewById(R.id.wipeLogBtn).setOnClickListener(v -> {
-            writeToFile.clearLogFile();
+            writeToFile.clearLogFile(false);
+            writeToFile.clearErrFile(false);
             hideLogFile();
         });
         findViewById(R.id.jumpTopBtn).setOnClickListener(v -> {
@@ -112,9 +116,10 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         } else {
             debuggingStats = new DebuggingStats("");
         }
+        debuggingStats.wipe();
         debuggingStats.save(this);
-        displayStats();
         sendIntentToService("RESET_DEBUGGING_STATS");
+        displayStats();
     }
 
     private void refreshStats() {
@@ -126,25 +131,31 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         String wpmAvgTxt = String.format("Words per minute global avg:  %.1f words/min", debuggingStats.getWordsPerMinAvg());
         String cpmAvgTxt = String.format("Chars per minute global avg:  %.1f chars/min", debuggingStats.getCharsPerMinAvg());
 
-        String wpmSessionAvgTxt = String.format("Words per minute session average:  %.1f words/phrase", debuggingStats.getWordsPerSessionAvg());
-        String cpmSessionAvgTxt = String.format("Chars per minute session average:  %.1f words/phrase", debuggingStats.getCharsPerSessionAvg());
+        String wpmSessionAvgTxt = String.format("Words per minute session average:  %.1f words/session", debuggingStats.getWordsPerSessionAvg());
+        String cpmSessionAvgTxt = String.format("Chars per minute session average:  %.1f chars/session", debuggingStats.getCharsPerSessionAvg());
 
         String swipeDurationAvgTxt = String.format("Swipe duration avg:  %.1f ms", debuggingStats.getSwipeDurationAvg());
         String timeBetweenSwipesAvgTxt = String.format("Time between swipes avg:  %.1f ms", debuggingStats.getTimeBetweenWordsAvg());
 
-        content.setText(String.format("%s\n%s\n%s\n%s", wpmAvgTxt, cpmAvgTxt, wpmSessionAvgTxt, cpmSessionAvgTxt, swipeDurationAvgTxt, timeBetweenSwipesAvgTxt));
-        Gson gson = new Gson();
-        String jsonStr = gson.toJson(debuggingStats);
-        debuggingStatsTxt.setText(jsonStr);
+        content.setText(String.format("%s\n%s\n%s\n%s\n%s\n%s", wpmAvgTxt, cpmAvgTxt, wpmSessionAvgTxt, cpmSessionAvgTxt, swipeDurationAvgTxt, timeBetweenSwipesAvgTxt));
+//        Gson gson = new Gson();
+//        String jsonStr = gson.toJson(debuggingStats);
+//        debuggingStatsTxt.setText(jsonStr);
     }
 
     private void showLogFile() {
-        isLogVisible = true;
-        String logStr = writeToFile.getStringFromFile(writeToFile.getLogFile());
-        logTxt.setText(logStr);
-        logTxt.setVisibility(View.VISIBLE);
-        jumpBtnLayout.setVisibility(View.VISIBLE);
-        logBtn.setText("Hide Log");
+        try {
+            isLogVisible = true;
+            String logStr = writeToFile.getStringFromFile(writeToFile.getLogFile());
+            String statsStr = writeToFile.getStringFromFile(new File(writeToFile.getStatsDir(), debuggingStats.getName() + Config.STATS_FILE));
+            logTxt.setText(statsStr + "\n\n" + logStr);
+            logTxt.setVisibility(View.VISIBLE);
+            jumpBtnLayout.setVisibility(View.VISIBLE);
+            logBtn.setText("Hide Log");
+        } catch (Exception e) {
+            writeToFile.logError(TAG, "Error showing log file: " + e.getMessage());
+            hideLogFile();
+        }
     }
 
     private void hideLogFile() {

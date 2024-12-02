@@ -2,14 +2,12 @@ package com.google.projectgameface.utils
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.Environment
 import android.util.Log
 import com.google.gson.Gson
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
 import java.io.FileReader
-import java.io.FileWriter
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.time.LocalDateTime
@@ -20,22 +18,16 @@ import java.util.Locale
 class WriteToFile(private val context: Context) {
     val TAG: String = "WriteToFile"
 
-    private val gson: Gson
-    private val downloadsDir: File
-    private var hiddenDir: File?
-    private var logFile: File
-    private var errFile: File
+    private val gson: Gson = Gson()
+    val statsDir: File = File(Config.FILES_DIR, Config.STATS_DIR)
+    val logsDir: File = File(Config.FILES_DIR, Config.LOGS_DIR)
+    var hiddenDir: File = File(logsDir, Config.ARCHIVED_DIR)
+
+    private var logFile: File = File(logsDir, Config.LOG_FILE)
+    private var errFile: File = File(logsDir, Config.ERR_LOG_FILE)
 
     init {
-        gson = Gson()
-        downloadsDir =
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        hiddenDir = File(downloadsDir, Config.HIDDEN_DIR)
-        if (!hiddenDir!!.exists()) {
-            if (!hiddenDir!!.mkdirs()) hiddenDir = null
-        }
-        logFile = File(downloadsDir, Config.LOG_FILE)
-        errFile = File(downloadsDir, Config.ERR_LOG_FILE)
+        createDirsAndFiles()
     }
 
     /**
@@ -63,7 +55,7 @@ class WriteToFile(private val context: Context) {
         val currentDateTime = Date(currentTimeMs)
 
         writeToLogFile("{" + sdf.format(currentDateTime) + "} [" + tag + "]: " + message, errFile!!)
-        Log.d(tag, message)
+        Log.e(tag, message)
     }
 
     /**
@@ -112,7 +104,8 @@ class WriteToFile(private val context: Context) {
                 }
             }
         } catch (e: IOException) {
-            throw RuntimeException(e)
+            logError(TAG, "IOException in getStringFromFile(): " + e.message)
+            return ""
         }
         return stringBuilder.toString().trim { it <= ' ' }
     }
@@ -128,26 +121,54 @@ class WriteToFile(private val context: Context) {
     /**
      * Clear log file
      */
-    fun clearLogFile() {
-        // no log file exists
+    fun clearLogFile(actuallyDelete: Boolean) {
+        // No log file exists
         if (!logFile!!.exists()) return
 
-        // hidden dir does not exist
-        if (hiddenDir == null) {
+        // Actually delete log file
+        if (actuallyDelete) {
             logFile!!.delete()
             return
         }
 
-        // move log file to hidden dir
-        logFile!!.renameTo(File(hiddenDir, getCurrentDateTimeStr() + "gameface.log"))
+        if (!hiddenDir.exists()) {
+            hiddenDir.mkdirs()
+        }
+
+        // Move log file to hidden dir
+        val archivedLogFile = File(hiddenDir, getCurrentDateTimeStr() + "-gameface.log")
+        logFile!!.renameTo(archivedLogFile)
+
+        // Ensure the original logFile can be reused
+        if (!logFile!!.exists()) {
+            logFile!!.createNewFile()
+        }
     }
 
     /**
      * Clear err file
      */
-    fun clearErrFile() {
-        if (errFile!!.exists()) {
+    fun clearErrFile(actuallyDelete: Boolean) {
+        // No log file exists
+        if (!errFile!!.exists()) return
+
+        // Actually delete log file
+        if (actuallyDelete) {
             errFile!!.delete()
+            return
+        }
+
+        if (!hiddenDir.exists()) {
+            hiddenDir.mkdirs()
+        }
+
+        // Move log file to hidden dir
+        val archivedLogFile = File(hiddenDir, getCurrentDateTimeStr() + "-gameface-err.log")
+        errFile!!.renameTo(archivedLogFile)
+
+        // Ensure the original logFile can be reused
+        if (!errFile!!.exists()) {
+            errFile!!.createNewFile()
         }
     }
 
@@ -157,17 +178,29 @@ class WriteToFile(private val context: Context) {
      * @param fileName JSON file name
      * @return true if success, false if fail
      */
-    fun saveObjToJson(data: Any?, fileName: String?): Boolean {
-        val jsonString = gson!!.toJson(data)
+    fun saveObjToJson(data: Any?, fileName: String): Boolean {
+        val jsonString = gson.toJson(data)
+        val jsonFile = File(statsDir, fileName)
 
-        val jsonFile = File(downloadsDir, fileName)
+        // Ensure the parent directory exists
+        jsonFile.parentFile?.let {
+            if (!it.exists())
+                it.mkdirs()
+        }
+
+        // Create the file if it doesn't exist
+        if (jsonFile.createNewFile())
+            log(TAG, "saveObjToJson: File created: " + jsonFile.path)
+        else
+            log(TAG, "saveObjToJson: File already exists: " + jsonFile.path)
 
         try {
-            FileWriter(jsonFile).use { file ->
-                file.write(jsonString)
-                return true
+            // Write the JSON data to the file
+            jsonFile.outputStream().use { output ->
+                output.write(jsonString.toByteArray())
             }
-        } catch (e: IOException) {
+            return true
+        } catch (e: Exception) {
             logError(TAG, "saveObjToJson: " + e.message)
             return false
         }
@@ -179,8 +212,8 @@ class WriteToFile(private val context: Context) {
      * @param clazz Class of the Object to load
      * @return Object loaded from JSON file
      */
-    fun loadObjFromJson(fileName: String?, clazz: Class<*>?): Any? {
-        val jsonFile = File(downloadsDir, fileName)
+    fun loadObjFromJson(fileName: String, clazz: Class<*>?): Any? {
+        val jsonFile = File(statsDir, fileName)
 
         if (!jsonFile.exists()) {
             logError(TAG,"loadObjFromJson - json file path does not exist: " + jsonFile.path)
@@ -204,7 +237,7 @@ class WriteToFile(private val context: Context) {
     }
 
     fun saveBitmap(bitmap: Bitmap) {
-        val imageFile: File = File(downloadsDir, "screenshot-${getCurrentDateTimeStr()}.png")
+        val imageFile: File = File(Config.FILES_DIR, "screenshot-${getCurrentDateTimeStr()}.png")
         try {
             FileOutputStream(imageFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
@@ -212,6 +245,35 @@ class WriteToFile(private val context: Context) {
         } catch (e: IOException) {
             logError(TAG, "saveBitmap(): " + e.message)
             e.printStackTrace()
+        }
+    }
+
+    fun createDirsAndFiles() {
+        // Create directories if they don't exist
+        if (!statsDir.exists()) {
+            statsDir.mkdirs()
+        }
+        if (!logsDir.exists()) {
+            logsDir.mkdirs()
+        }
+        if (!hiddenDir.exists()) {
+            hiddenDir.mkdirs()
+        }
+
+        // Create log files if they don't exist
+        if (!logFile.exists()) {
+            try {
+                logFile.createNewFile()
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
+        if (!errFile.exists()) {
+            try {
+                errFile.createNewFile()
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
         }
     }
 }

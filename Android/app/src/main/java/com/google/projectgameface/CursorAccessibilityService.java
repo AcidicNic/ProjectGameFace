@@ -76,19 +76,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 import com.google.projectgameface.utils.DebuggingStats;
-import com.google.projectgameface.utils.SwipePoint;
 import com.google.projectgameface.utils.WriteToFile;
+import com.google.projectgameface.utils.Config;
 import android.graphics.Color;
 
 /** The cursor service of GameFace app. */
@@ -129,23 +124,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver resetDebuggingStatsReciever;
     private BroadcastReceiver screenCaptureReceiver;
     private boolean isSwiping = false;
-    private static final long GESTURE_DURATION = 100;
-    private static final long MIN_GESTURE_DURATION = 100;
-    private static final float DURATION_MULTIPLIER = 2.0f;
-    private boolean gestureInProgress = false;
-    public boolean durationPopOut;
     private Rect keyboardBounds = new Rect();
     private Rect _keyboardBounds = new Rect();
     private boolean isKeyboardOpen = false;
+    private long startUptime;
     private long startTime;
+    private long endUptime;
     private long endTime;
     private Instrumentation instrumentation;
-    private Handler handler;
     private HandlerThread handlerThread;
     private SparseBooleanArray keyStates = new SparseBooleanArray();
     private DebuggingStats gboardDebuggingStats = new DebuggingStats("GBoard");
     private DebuggingStats openboardDebuggingStats = new DebuggingStats("OpenBoard");
     private DebuggingStats debuggingStats = gboardDebuggingStats;
+    private WriteToFile writeToFile;
 
     /** This is state of cursor. */
     public enum ServiceState {
@@ -166,9 +158,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     /** Should we send blendshape score to front-end or not. */
     private boolean shouldSendScore = false;
-    private ArrayList<SwipePoint> swipePath = null;
-    private static final String CHANNEL_ID = "accessibility_service_channel";
-    private static final int NOTIFICATION_ID = 1001;
     private String[] debugText = {"", ""};
 
     @SuppressLint({"UnspecifiedRegisterReceiverFlag", "ObsoleteSdkInt"})
@@ -252,14 +241,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         resetDebuggingStatsReciever = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                phraseStartTimestamp = 0;
-                lastWordTypedTimestamp = 0;
-                wordsPerPhrase = 0;
-                phraseWordsPerMinute.clear();
-                runningWordsPerMinute.clear();
-                runningWordsPerPhrase.clear();
-                runningSwipeDuration.clear();
-
                 checkForKeyboardType();
                 gboardDebuggingStats.load(context);
                 openboardDebuggingStats.load(context);
@@ -347,6 +328,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
 //        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY);
 
+
         instrumentation = new Instrumentation();
         handlerThread = new HandlerThread("MotionEventThread");
         handlerThread.start();
@@ -386,6 +368,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (isPlatformSignedAndCanInjectEvents()) {
             Log.d(TAG, "Platform signed and can inject events!");
         }
+        writeToFile = new WriteToFile(this);
 
         gboardDebuggingStats.load(this);
         openboardDebuggingStats.load(this);
@@ -957,40 +940,24 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private StringBuilder typedText = new StringBuilder();
 
     // TO/DO: MOVE TO DEBUGGINGSTATS CLASS
-    private int PHRASE_COOLDOWN = 4000;
-    private long phraseStartTimestamp;
-    private long lastWordTypedTimestamp;
-    private boolean isTyping = false;
     private boolean checkForNewWord = false;
-    private String lastWord;
+    private long checkForNewWordTimeStamp = 0;
     private String newWord;
 
     private void processTypedText(CharSequence newText) {
         typedText.append(newText);
         String[] words = typedText.toString().split("\\s+");
+        Log.d(TAG, "processTypedText(): [words==" + words + "] [words.length==" + words.length + "]");
         if (words.length > 0) {
             Long now = System.currentTimeMillis();
-            logToFile.log(TAG, "Word typed: " + lastWord);
-            Log.d(TAG, "Word typed: " + lastWord);
-            Log.d(TAG, "processTypedText(): [checkForNewWord==" + checkForNewWord + "] [(lastWordTypedTimestamp + 2000 <= now)==" + (lastWordTypedTimestamp + 2000 <= now) + "]");
-            if (checkForNewWord) {
-                // TODO: MOVE THIS TO MAIN LOOP CHECK EVERY TICK INSTEAD OF HERE
-//                if  (lastWordTypedTimestamp + 1000 <= now) {
-//                    // TODO: CLEAR FLAGS AND RESET TIMESTAMPS
-//                    Log.d(TAG, "processTypedText(): false alert of word typed. not saving word to stats.");
-//                }
-
-                if (lastWord == null) {
-                    lastWord = words[0];
-                }
-
-                lastWord = newWord;
-                newWord = words[words.length - 1];
-
+            newWord = words[words.length - 1];
+            Log.d(TAG, "processTypedText(): [newWord==" + newWord + "] [checkForNewWord==" + checkForNewWord + "] [(checkForNewWordTimeStamp + 1000 >= now)==" + (checkForNewWordTimeStamp + 1000 >= now) + "]");
+            if (checkForNewWord && (checkForNewWordTimeStamp + 1000 >= now)) {
                 if (newWord != null) {
                     debuggingStats.addWordSwiped(newWord, startTime, endTime);
+                    debuggingStats.save(this);
+                    checkForNewWord = false;
                 }
-                checkForNewWord = false;
             } else {
                 Log.d(TAG, "processTypedText(): checkForNewWord is false, not adding word to stats.");
             }
@@ -1094,21 +1061,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     protected void onServiceConnected() {
         super.onServiceConnected();
         Log.i(TAG, "Service connected");
-
-        // Set up background thread and image reader
-//        startBackgroundThread();
-//        setupImageReader();
     }
 
-    private final List<Integer> validKeyEventKeys = Arrays.asList(KeyEvent.KEYCODE_1, KeyEvent.KEYCODE_2, KeyEvent.KEYCODE_3, KeyEvent.KEYCODE_4);
-//    private final List<Integer> validKeyEventActions = Arrays.asList(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP);
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
         if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
             return false;
         }
-        if (validKeyEventKeys.contains(event.getKeyCode())) {
+        if (Config.VALID_KEY_EVENT_KEYS.contains(event.getKeyCode())) {
             return handleKeyEvent(event);
         }
         return false;
@@ -1202,15 +1163,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return false;
     }
 
-    private ArrayList<Long> swipeTimes = new ArrayList<>();
+//    private ArrayList<Long> swipeTimes = new ArrayList<>();
 
     private void startRealtimeSwipe() {
         isSwiping = true;
         cursorController.isRealtimeSwipe = true;
-        swipePath = new ArrayList<>();
+//        swipePath = new ArrayList<>();
 
         new Thread(() -> {
-            startTime = SystemClock.uptimeMillis();
+            startUptime = SystemClock.uptimeMillis();
+            startTime = System.currentTimeMillis();
+
             // timeBetweenSwypes = startTime - endTime;
             // if (timeBetweenSwypes > maxPauseBetweenWords)
             //      startNewSwypePhrase(startTime);
@@ -1223,8 +1186,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
             }
             MotionEvent event = MotionEvent.obtain(
-                    startTime,
-                    startTime,
+                    startUptime,
+                    startUptime,
                     MotionEvent.ACTION_DOWN,
                     initialPosition[0],
                     initialPosition[1],
@@ -1234,8 +1197,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "MotionEvent.ACTION_DOWN @ (" + initialPosition[0] + ", " + initialPosition[1] + ")");
 //            instrumentation.sendPointerSync(event);
             injectInputEvent(event);
-            swipePath.add(new SwipePoint((int) initialPosition[0], (int) initialPosition[1], 0));
-            swipeTimes.add(startTime);
+//            swipePath.add(new SwipePoint((int) initialPosition[0], (int) initialPosition[1], 0));
+//            swipeTimes.add(startUptime);
             debugText[0] = "Swiping";
             debugText[1] = "X, Y: (" + initialPosition[0] + ", " + initialPosition[1] + ")";
 
@@ -1245,7 +1208,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 long now = SystemClock.uptimeMillis();
                 try {
                     event = MotionEvent.obtain(
-                            startTime,
+                            startUptime,
                             now,
                             MotionEvent.ACTION_MOVE,
                             cursorPosition[0],
@@ -1256,13 +1219,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 } catch (Exception e) {
                     Log.e(TAG, "Error while injecting swipe input event in startRealtimeSwipe: " + e);
                 }
-                if (swipePath.get(swipePath.size() - 1).x == cursorPosition[0] && swipePath.get(swipePath.size() - 1).y == cursorPosition[1]) {
-                    // skipping
-                } else {
-                    swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], now - startTime));
-                }
                 debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
-
                 try {
                     Thread.sleep(16); // 60 FPS
                 } catch (Exception e) {
@@ -1275,7 +1232,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (isSwiping && (now - lastCheckTime) >= 500) {
                     if (!isSwipeKeyStillPressed()) {
                         Log.e(TAG, "Button not pressed, manually ending swipe.");
-                        logToFile.logError(TAG, "Button not pressed, manually ending swipe.");
+                        writeToFile.logError(TAG, "Button not pressed, manually ending swipe.");
                         stopRealtimeSwipe();
                         break;
                     }
@@ -1287,14 +1244,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     private void stopRealtimeSwipe() {
-        endTime = SystemClock.uptimeMillis();
+        endUptime = SystemClock.uptimeMillis();
+        endTime = System.currentTimeMillis();
         float[] cursorPosition = getCursorPosition();
         serviceUiManager.clearPreviewBitmap();
         new Thread(() -> {
             try {
                 MotionEvent event = MotionEvent.obtain(
-                        startTime,
-                        endTime,
+                        startUptime,
+                        endUptime,
                         MotionEvent.ACTION_UP,
                         cursorPosition[0],
                         cursorPosition[1],
@@ -1306,174 +1264,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // TODO: pause screencapture sometime after it seems like the user has finished swipe-typing.
 
             } catch (Exception e) {
-                logToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
+                writeToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
             }
-            swipePath.add(new SwipePoint((int) cursorPosition[0], (int) cursorPosition[1], endTime - startTime));
             isSwiping = false;
             cursorController.isRealtimeSwipe = false;
             if (checkForPrediction) {
                 checkForNewWord = true;
+                checkForNewWordTimeStamp = endTime;
                 checkForPrediction = false;
                 previousWordPredictionBitmap = null;
                 predictionBounds = null;
             }
 //            displaySwipeInfo();
         }).start();
-    }
-
-    private int wordsPerPhrase = 0;
-    private ArrayList<Float> phraseWordsPerMinute = new ArrayList<>();
-    private ArrayList<Float> runningWordsPerMinute = new ArrayList<>();
-    private ArrayList<Integer> runningWordsPerPhrase = new ArrayList<>();
-    private ArrayList<Integer> runningSwipeDuration = new ArrayList<>();
-
-    @SuppressLint("DefaultLocale")
-    public void displaySwipeInfo() {
-        int swipeDurationMs = (int) swipePath.get(swipePath.size() - 1).getTimestamp();
-        Log.d(TAG, "Swipe duration: " + swipeDurationMs);
-
-        ArrayList<Integer> deltaDurationMs = new ArrayList<>();
-        ArrayList<Integer> deltaX = new ArrayList<>();
-        ArrayList<Integer> deltaY = new ArrayList<>();
-        ArrayList<Integer> deltaX2ndOrder = new ArrayList<>();
-        ArrayList<Integer> deltaY2ndOrder = new ArrayList<>();
-        ArrayList<Double> distanceBetween = new ArrayList<>();
-        ArrayList<Double> velocity = new ArrayList<>();
-
-        StringBuilder pathPointsStr = new StringBuilder();
-
-        int tMaxXDelta = 0;
-        int tMaxYDelta = 0;
-        int maxDeltaX = 0;
-        int maxDeltaY = 0;
-        for (int i = 1; i < swipePath.size(); i++) {
-            SwipePoint previousPoint = swipePath.get(i - 1);
-            SwipePoint currentPoint = swipePath.get(i);
-            deltaDurationMs.add((int) (currentPoint.getTimestamp() - previousPoint.getTimestamp()));
-
-            int tDeltaX = currentPoint.x - previousPoint.x;
-            int tDeltaY = currentPoint.y - previousPoint.y;
-            deltaX.add(tDeltaX);
-            deltaY.add(tDeltaY);
-            if (Math.abs(tDeltaX) > tMaxXDelta) {
-                tMaxXDelta = Math.abs(tDeltaX);
-                maxDeltaX = tDeltaX;
-            }
-            if (Math.abs(tDeltaY) > tMaxYDelta) {
-                tMaxYDelta = Math.abs(tDeltaY);
-                maxDeltaY = tDeltaY;
-            }
-
-            distanceBetween.add(getDistanceBetweenPoints(previousPoint.x, previousPoint.y, currentPoint.x, currentPoint.y));
-            pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d), ", previousPoint.x, previousPoint.y, previousPoint.getTimestamp()));
-            velocity.add(distanceBetween.get(i - 1) / deltaDurationMs.get(i - 1));
-        }
-
-        pathPointsStr.append(String.format(Locale.getDefault(), "(%d, %d, %d)", swipePath.get(swipePath.size()-1).x, swipePath.get(swipePath.size()-1).y, swipePath.get(swipePath.size() - 1).getTimestamp()));
-
-        for (int i = 1; i < deltaX.size(); i++) {
-            deltaX2ndOrder.add(Math.abs(deltaX.get(i) - deltaX.get(i - 1)));
-            deltaY2ndOrder.add(Math.abs(deltaY.get(i) - deltaY.get(i - 1)));
-        }
-
-        double averageDeltaX = deltaX.stream().mapToInt(Integer::intValue).average().orElse(0);
-        double averageDeltaY = deltaY.stream().mapToInt(Integer::intValue).average().orElse(0);
-        double averageDistance = distanceBetween.stream().mapToDouble(Double::doubleValue).average().orElse(0);
-        double averageDuration = deltaDurationMs.stream().mapToInt(Integer::intValue).average().orElse(0);
-        int maxDeltaX2ndOrder = Collections.max(deltaX2ndOrder);
-        int maxDeltaY2ndOrder = Collections.max(deltaY2ndOrder);
-        double averageDeltaX2ndOrder = deltaX2ndOrder.stream().mapToInt(Integer::intValue).average().orElse(0);
-        double averageDeltaY2ndOrder = deltaY2ndOrder.stream().mapToInt(Integer::intValue).average().orElse(0);
-        double averageVelocity = velocity.stream().mapToDouble(Double::doubleValue).average().orElse(0);
-        int maxVelocityIndex = velocity.indexOf(Collections.max(velocity));
-        int maxDistanceIndex = distanceBetween.indexOf(Collections.max(distanceBetween));
-        int minDurationIndex = deltaDurationMs.indexOf(Collections.min(deltaDurationMs));
-
-        boolean swipeInKDBRegion = isKeyboardOpen && swipePath.get(0).y > keyboardBounds.top && swipePath.get(swipePath.size() - 1).y > keyboardBounds.top;
-
-        String swipeInfo = String.format(Locale.getDefault(), "Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy); 2nd Delta: MAX(%dx, %dy) AVG(%.1fx, %.1fy)",
-                maxDeltaX, maxDeltaY, averageDeltaX, averageDeltaY, maxDeltaX2ndOrder, maxDeltaY2ndOrder, averageDeltaX2ndOrder, averageDeltaY2ndOrder);
-
-        debugText[0] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX, maxDeltaY, Math.round(averageDeltaX), Math.round(averageDeltaY));
-        debugText[1] = String.format("MX %dx %dy AV %dx %dy", maxDeltaX2ndOrder, maxDeltaY2ndOrder, Math.round(averageDeltaX2ndOrder), Math.round(averageDeltaY2ndOrder));
-
-        swipeInfo = "[" + (swipeInKDBRegion ? "KBD" : "NAV") + "]\n" + swipeInfo + "\nDuration: " + swipeDurationMs + "ms, AVG Duration: " + averageDuration + "ms, MIN Duration: " + Collections.min(deltaDurationMs) + " [index: " + minDurationIndex + "]\n" +
-                "Distance: AVG " + String.format("%,.1f", averageDistance) + "px, Max " + Collections.max(distanceBetween) + "px [index:" + maxDistanceIndex + "]\n" +
-                "Velocity: AVG " + String.format("%,.1f", averageVelocity) + "px/ms, Max " + String.format("%,.1f", Collections.max(velocity)) + "px/ms [index:" + maxVelocityIndex + "]";
-//                "Path size: " + swipePath.size() + ", Path Points: " + pathPointsStr + "\n";
-        logToFile.log(TAG, swipeInfo);
-
-        long now = System.currentTimeMillis();
-
-        if (swipeInKDBRegion) {
-            // To calculate the words per minute for each phrase, you need:
-            //  (1) The total length of time spent swyping.  For a phrase with N words, this is the sum of:
-            //         N swype durations - this can be acccumulated in totalSwypingTime
-            //         (N - 1) pauses between words - this can be acccumulated in totalPausingTime
-            // Float totalPhraseTime = totalSwypingTimen + totalPausingTime;
-            // There are two different ways we want to calculate words per minute:
-            //    (1) Literally counting how many separate words were output (the number N as defined above)
-            //          float nWords = N;
-            //    (2) An average word in English is generally considered to be 5 characters long.  With a space being autmatically output between each word, this gives a value:
-            //          float nFiveLetterWords = totalPhraseTextLength / 6;
-            // Then we would have the following, but this is only calculated at the END of a phrase:
-            // Float latestWordsPerMinute = (float) (nWords / (totalPhraseTime/60000));
-            // Float latestFiveLetterWordsPerMinute = (float) (nFiveLetterWords / (totalPhraseTime/60000));
-            // And for good measure, we can throw in:
-            // Float grandTotalPhraseTime.add(totalPhraseTime);            // Keep track of the total time that the user spends Swyping
-            // runningSwypingDuration.add(swipeDurationMs);
-
-            Float latestWordsPerMinute = (float) (60000 / swipeDurationMs);
-            phraseWordsPerMinute.add(latestWordsPerMinute);
-            runningWordsPerMinute.add(latestWordsPerMinute);
-            runningSwipeDuration.add(swipeDurationMs);
-
-            // starting phrase
-            if (phraseStartTimestamp == 0) {
-                phraseStartTimestamp = startTime;
-                lastWordTypedTimestamp = endTime;
-                wordsPerPhrase = 1;
-
-            // phrase in progress
-                // This should be checking the time from the END of the preceding Swype to the start of this new Swype)
-            } else if (startTime - lastWordTypedTimestamp < PHRASE_COOLDOWN) {
-                lastWordTypedTimestamp = endTime;
-                wordsPerPhrase += 1;
-
-            // ending phrase
-            } else {
-                runningWordsPerPhrase.add(wordsPerPhrase);
-
-                // update debugging stats
-
-//                debuggingStats.setWpmLatestAvg(phraseWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
-                debuggingStats.setWordsPerMinAvg(runningWordsPerMinute.stream().collect(Collectors.averagingDouble(Float::floatValue)).floatValue());
-                debuggingStats.setWordsPerSessionAvg(runningWordsPerPhrase.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
-                debuggingStats.setSwipeDurationAvg(runningSwipeDuration.stream().collect(Collectors.averagingDouble(Integer::intValue)).floatValue());
-                debuggingStats.save(this);
-
-                // log debugging stats to file and console
-                String logStr = String.format("# of words in phrase: %d, phrase typing time: %d, avg words per minute: %.2f, running avg words per minute: %.2f, running avg words per phrase: %.2f, running avg swipe duration: %.2f",
-                    wordsPerPhrase,
-                    swipeDurationMs,
-//                    debuggingStats.getWpmLatestAvg(),
-                    debuggingStats.getWordsPerMinAvg(),
-                    debuggingStats.getWordsPerSessionAvg(),
-                    debuggingStats.getSwipeDurationAvg()
-                );
-                logToFile.log(TAG, logStr);
-                Log.d(TAG, logStr);
-
-                // clear phrase stats
-                wordsPerPhrase = 0;
-                phraseStartTimestamp = 0;
-                lastWordTypedTimestamp = 0;
-                phraseWordsPerMinute.clear();
-            }
-        }
-
-        Log.d(TAG, swipeInfo);
     }
 
     public double getDistanceBetweenPoints(double x1, double y1, double x2, double y2) {
@@ -1484,7 +1288,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return keyStates.get(KeyEvent.KEYCODE_BUTTON_A, false) || keyStates.get(KeyEvent.KEYCODE_ENTER, false) || keyStates.get(KeyEvent.KEYCODE_1, false) || swipeToggle;
     }
 
-    private WriteToFile logToFile = new WriteToFile(this);
 
     private float[] getCursorPosition() {
         int[] cursorPosition = cursorController.getCursorPositionXY();
@@ -1551,7 +1354,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
             return true;
         } catch (Exception e) {
-            logToFile.logError(TAG, "setupImageReader() failed: " + e);
+            writeToFile.logError(TAG, "setupImageReader() failed: " + e);
             Log.e(TAG, "setupImageReader() failed: " + e);
             return false;
         }
@@ -1601,7 +1404,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "setupVirtualDisplay() succeeded");
             return true;
         } catch (Exception e) {
-            logToFile.logError(TAG, "setupVirtualDisplay() failed: " + e);
+            writeToFile.logError(TAG, "setupVirtualDisplay() failed: " + e);
             Log.e(TAG, "setupVirtualDisplay() failed: " + e);
             return false;
         }
@@ -1617,7 +1420,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             backgroundHandlerMP = new Handler(handlerThreadMP.getLooper());
             return true;
         } catch (Exception e) {
-            logToFile.logError(TAG, "startBackgroundThread() failed: " + e);
+            writeToFile.logError(TAG, "startBackgroundThread() failed: " + e);
             Log.e(TAG, "startBackgroundThread() failed: " + e);
             return false;
         }
@@ -1633,7 +1436,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();  // Restore the interrupt status
                 Log.e(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
-                logToFile.logError(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
+                writeToFile.logError(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
             }
         }
     }
@@ -1686,7 +1489,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             return bitmap;
         } catch (Exception e) {
-            logToFile.logError(TAG, "captureScreenshot() failed: " + e);
+            writeToFile.logError(TAG, "captureScreenshot() failed: " + e);
             Log.e(TAG, "captureScreenshot() failed: " + e);
             return null;
         } finally {
@@ -1741,7 +1544,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Bitmap screenshot = getScreenCaptureBitmap();
         Bitmap croppedScreenshot = cropBitmapToRect(screenshot, keyboardBounds);
         if (croppedScreenshot != null) {
-            WriteToFile writeToFile = new WriteToFile(this);
             writeToFile.saveBitmap(croppedScreenshot);
         }
     }
@@ -1752,7 +1554,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private int WORD_PREDICTION_DELAY = 500;
 
     private void checkForWordPrediction() {
-        WriteToFile writeToFile = new WriteToFile(this);
 
         new Thread(() -> {
             try {

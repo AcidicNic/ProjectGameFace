@@ -118,7 +118,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="20dp"
-                android:text="WWWWW\n\n\n\nn\n\n\n\n\n\n\nn\n\n\n\n\n\n\nn\n\n\n\n\n\n\nn\n\n\n\n\n\n\n\n\n\n\n\\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\\n\n\n\n\n\"
+                android:text=""
                 android:visibility="gone"
                 app:layout_constraintTop_toBottomOf="@+id/btnRow"
                 tools:visibility="visible" />
