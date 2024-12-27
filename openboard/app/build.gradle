@@ -4,7 +4,11 @@ apply plugin: 'kotlin-android-extensions'
 
 android {
     signingConfigs {
-        release_unsigned {
+        debug {
+            storeFile file("platform.keystore")
+            storePassword "android"
+            keyPassword "android"
+            keyAlias "AndroidDebugKey"
         }
     }
     compileSdkVersion 31
@@ -25,6 +29,7 @@ android {
             jniDebuggable false
             renderscriptDebuggable false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
         release_unsigned {
             minifyEnabled true

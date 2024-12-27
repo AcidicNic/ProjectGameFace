@@ -137,9 +137,6 @@ public class DispatchEventHelper {
         break;
 
       case DRAG_TOGGLE:
-        if (cursorController.isRealtimeSwipe) {
-          break;
-        }
         dispatchDragOrHold(parentService, cursorController, serviceUiManager,
             eventOffsetX, eventOffsetY);
         break;

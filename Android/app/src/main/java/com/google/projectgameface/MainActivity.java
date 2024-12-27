@@ -85,17 +85,17 @@ public class MainActivity extends AppCompatActivity {
     private static final String FIRST_LAUNCH_PREFS = "FirstLaunchPrefs";
 
     // Register the result launcher to handle the MediaProjection request
-    private ActivityResultLauncher<Intent> startMediaProjection = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Intent intent = new Intent("SCREEN_CAPTURE_PERMISSION_RESULT");
-                    intent.putExtra("resultCode", result.getResultCode());
-                    intent.putExtra("data", result.getData());
-                    sendBroadcast(intent);
-                }
-            }
-    );
+//    private ActivityResultLauncher<Intent> startMediaProjection = registerForActivityResult(
+//            new ActivityResultContracts.StartActivityForResult(),
+//            result -> {
+//                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+//                    Intent intent = new Intent("SCREEN_CAPTURE_PERMISSION_RESULT");
+//                    intent.putExtra("resultCode", result.getResultCode());
+//                    intent.putExtra("data", result.getData());
+//                    sendBroadcast(intent);
+//                }
+//            }
+//    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -423,8 +423,8 @@ public class MainActivity extends AppCompatActivity {
 //                Settings.Secure.DEFAULT_INPUT_METHOD
 //        );
 //        if (currentKeyboardStr.contains("google")) {
-            MediaProjectionManager mediaProjectionManager = getSystemService(MediaProjectionManager.class);
-            startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent());
+//            MediaProjectionManager mediaProjectionManager = getSystemService(MediaProjectionManager.class);
+//            startMediaProjection.launch(mediaProjectionManager.createScreenCaptureIntent());
 //        }
 
         // Send broadcast to wake up service.

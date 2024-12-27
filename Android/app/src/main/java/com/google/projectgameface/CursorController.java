@@ -24,7 +24,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Build;
 import android.util.Log;
@@ -80,7 +79,7 @@ public class CursorController {
     private List<float[]> cursorTrail = new LinkedList<>();
     private long edgeHoldStartTime = 0;
     public boolean isRealtimeSwipe = false;
-    private List<Point> swipePathPoints = new ArrayList<>();
+    public List<float[]> swipePathPoints = new ArrayList<float[]>();
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
 
@@ -340,7 +339,6 @@ public class CursorController {
     private final long offsetTransitionDuration = 200; // 200ms
     private long lastOffsetUpdateTime = System.currentTimeMillis();
 
-
     /**
      * Update internal cursor position.
      * @param headTiltXY User head coordinate.
@@ -412,8 +410,6 @@ public class CursorController {
         float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX + (float) (regionMaxX + regionMinX) / 2;
         float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
 
-//        Log.d(TAG, "Normalized: (" + normalizedX + ", " + normalizedY + ") Raw: (" + coordsXY[0] + ", " + coordsXY[1] + ") Centered: (" + centeredX + ", " + centeredY + ") Smoothed-PRE: (" + smoothedCursorPositionX + ", " + smoothedCursorPositionY + ")");
-
         // Smoothing
         float smoothingFactor = getSmoothFactor(0.01f, 0.3f);
         if (smoothedCursorPositionX != smoothedCursorPositionX || smoothedCursorPositionY != smoothedCursorPositionY) {
@@ -435,6 +431,8 @@ public class CursorController {
         cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
 
         if (isSwiping) {
+            // Track path points for the swipe
+            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
             updateSwipe((float) cursorPositionX, (float) cursorPositionY);
             updateTrail((float) cursorPositionX, (float) cursorPositionY);
         }

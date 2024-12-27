@@ -15,7 +15,8 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="org.dslul.openboard.inputmethod.latin">
+        package="org.dslul.openboard.inputmethod.latin"
+        android:sharedUserId="com.headswype.shared">
 
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -38,6 +39,9 @@
          </pre> -->
     <permission android:name="org.dslul.openboard.inputmethod.latin.HIDE_SOFT_INPUT"
                 android:protectionLevel="signature" />
+    <permission
+        android:name="com.headswype.permission.SEND_EVENT"
+        android:protectionLevel="signature" />
 
     <application android:label="@string/english_ime_name"
             android:icon="@mipmap/ic_launcher"
@@ -139,6 +143,15 @@
         <receiver android:name="DictionaryPackInstallBroadcastReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="org.dslul.openboard.inputmethod.dictionarypack.aosp.UNKNOWN_CLIENT" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="org.dslul.openboard.IMEEventReceiver"
+            android:exported="true"
+            android:permission="com.headswype.permission.SEND_EVENT">
+            <intent-filter>
+                <action android:name="com.headswype.ACTION_SEND_EVENT" />
             </intent-filter>
         </receiver>
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -18,7 +19,10 @@ import java.util.Locale
 class WriteToFile(private val context: Context) {
     val TAG: String = "WriteToFile"
 
-    private val gson: Gson = Gson()
+    private val gson: Gson = GsonBuilder()
+        .serializeSpecialFloatingPointValues()
+        .setPrettyPrinting() // Optional: Makes JSON more human-readable
+        .create()
     val statsDir: File = File(Config.FILES_DIR, Config.STATS_DIR)
     val logsDir: File = File(Config.FILES_DIR, Config.LOGS_DIR)
     var hiddenDir: File = File(logsDir, Config.ARCHIVED_DIR)
@@ -179,22 +183,22 @@ class WriteToFile(private val context: Context) {
      * @return true if success, false if fail
      */
     fun saveObjToJson(data: Any?, fileName: String): Boolean {
-        val jsonString = gson.toJson(data)
-        val jsonFile = File(statsDir, fileName)
-
-        // Ensure the parent directory exists
-        jsonFile.parentFile?.let {
-            if (!it.exists())
-                it.mkdirs()
-        }
-
-        // Create the file if it doesn't exist
-        if (jsonFile.createNewFile())
-            log(TAG, "saveObjToJson: File created: " + jsonFile.path)
-        else
-            log(TAG, "saveObjToJson: File already exists: " + jsonFile.path)
-
         try {
+            val jsonString = gson.toJson(data)
+            val jsonFile = File(statsDir, fileName)
+
+            // Ensure the parent directory exists
+            jsonFile.parentFile?.let {
+                if (!it.exists())
+                    it.mkdirs()
+            }
+
+            // Create the file if it doesn't exist
+            if (jsonFile.createNewFile())
+                log(TAG, "saveObjToJson: File created: " + jsonFile.path)
+            else
+                log(TAG, "saveObjToJson: File already exists: " + jsonFile.path)
+
             // Write the JSON data to the file
             jsonFile.outputStream().use { output ->
                 output.write(jsonString.toByteArray())

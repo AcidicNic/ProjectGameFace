@@ -33,6 +33,7 @@ import android.os.Debug;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Process;
+import android.os.SystemClock;
 import android.text.InputType;
 import android.util.Log;
 import android.util.PrintWriterPrinter;
@@ -40,6 +41,7 @@ import android.util.Printer;
 import android.util.SparseArray;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.view.Window;
@@ -48,6 +50,7 @@ import android.view.inputmethod.CompletionInfo;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
 
+import org.dslul.openboard.IMEEventReceiver;
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
 import org.dslul.openboard.inputmethod.annotations.UsedForTesting;
 import org.dslul.openboard.inputmethod.compat.EditorInfoCompatUtils;
@@ -167,6 +170,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     private final BroadcastReceiver mDictionaryDumpBroadcastReceiver =
             new DictionaryDumpBroadcastReceiver(this);
+
+    private IMEEventReceiver imeEventReceiver;
+    private long startUpTime = 0;
 
     final static class HideSoftInputReceiver extends BroadcastReceiver {
         private final InputMethodService mIms;
@@ -662,6 +668,13 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         registerReceiver(mRestartAfterDeviceUnlockReceiver, restartAfterUnlockFilter);
 
         StatsUtils.onCreate(mSettings.getCurrent(), mRichImm);
+
+        // Register the IMEEventReceiver
+//        imeEventReceiver = new IMEEventReceiver();
+//        IntentFilter headSwypeFilter = new IntentFilter("com.headswype.ACTION_SEND_EVENT");
+//        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null);
+
+        Log.d(TAG, "IMEEventReceiver registered.");
     }
 
     // Has to be package-visible for unit tests
@@ -772,7 +785,43 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         unregisterReceiver(mDictionaryDumpBroadcastReceiver);
         unregisterReceiver(mRestartAfterDeviceUnlockReceiver);
         mStatsUtilsManager.onDestroy(this /* context */);
+
+        // Unregister the IMEEventReceiver
+        if (imeEventReceiver != null) {
+            unregisterReceiver(imeEventReceiver);
+            Log.d(TAG, "IMEEventReceiver unregistered.");
+        }
         super.onDestroy();
+    }
+
+
+    // Dispatch MotionEvent within LatinIME
+    public void dispatchMotionEvent(float x, float y, int action) {
+        long eventTime = SystemClock.uptimeMillis();
+        if (action == MotionEvent.ACTION_DOWN) {
+            startUpTime = SystemClock.uptimeMillis();
+            eventTime = startUpTime;
+        }
+        startUpTime = SystemClock.uptimeMillis();
+        MotionEvent event = MotionEvent.obtain(
+                startUpTime > 0 ? startUpTime : SystemClock.uptimeMillis(),
+                eventTime > 0 ? eventTime : SystemClock.uptimeMillis(),
+                action,
+                x,
+                y,
+                0
+        );
+
+        View rootView = getWindow().getWindow().getDecorView(); // Get the root view of the IME
+        if (rootView != null) {
+            rootView.dispatchTouchEvent(event);
+            Log.d(TAG, "MotionEvent dispatched: (" + x + ", " + y + ", action=" + action + ")");
+        } else {
+            startUpTime = 0;
+            Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
+        }
+
+        event.recycle();
     }
 
     @UsedForTesting

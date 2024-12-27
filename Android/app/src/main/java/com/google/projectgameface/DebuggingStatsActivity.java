@@ -134,8 +134,8 @@ public class DebuggingStatsActivity extends AppCompatActivity {
         String wpmSessionAvgTxt = String.format("Words per minute session average:  %.1f words/session", debuggingStats.getWordsPerSessionAvg());
         String cpmSessionAvgTxt = String.format("Chars per minute session average:  %.1f chars/session", debuggingStats.getCharsPerSessionAvg());
 
-        String swipeDurationAvgTxt = String.format("Swipe duration avg:  %.1f ms", debuggingStats.getSwipeDurationAvg());
-        String timeBetweenSwipesAvgTxt = String.format("Time between swipes avg:  %.1f ms", debuggingStats.getTimeBetweenWordsAvg());
+        String swipeDurationAvgTxt = String.format("Swipe duration avg:  %.1f sec", debuggingStats.getSwipeDurationAvg() * 1000);
+        String timeBetweenSwipesAvgTxt = String.format("Time between swipes avg:  %.1f sec", debuggingStats.getTimeBetweenWordsAvg() * 1000);
 
         content.setText(String.format("%s\n%s\n%s\n%s\n%s\n%s", wpmAvgTxt, cpmAvgTxt, wpmSessionAvgTxt, cpmSessionAvgTxt, swipeDurationAvgTxt, timeBetweenSwipesAvgTxt));
 //        Gson gson = new Gson();
