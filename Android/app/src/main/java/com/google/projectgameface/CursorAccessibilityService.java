@@ -255,17 +255,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         screenCaptureReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                Log.d(TAG, "screenCaptureReceiver: " + intent.getAction());
-                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
-                Intent data = intent.getParcelableExtra("data");
-
-                if (resultCode == Activity.RESULT_OK && data != null) {
-                    if (projectionManager == null) projectionManager = getSystemService(MediaProjectionManager.class);
-                    if (mediaProjection != null) mediaProjection.stop();
-
-                    mediaProjection = projectionManager.getMediaProjection(resultCode, data);
-                    attemptScreenCaptureSetup();
-                }
+//                Log.d(TAG, "screenCaptureReceiver: " + intent.getAction());
+//                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
+//                Intent data = intent.getParcelableExtra("data");
+//
+//                if (resultCode == Activity.RESULT_OK && data != null) {
+//                    if (projectionManager == null) projectionManager = getSystemService(MediaProjectionManager.class);
+//                    if (mediaProjection != null) mediaProjection.stop();
+//
+//                    mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+//                    attemptScreenCaptureSetup();
+//                }
             }
         };
 
@@ -298,8 +298,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     RECEIVER_EXPORTED);
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"),
                     RECEIVER_EXPORTED);
-            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"),
-                    RECEIVER_EXPORTED);
+//            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"),
+//                    RECEIVER_EXPORTED);
         } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
@@ -310,7 +310,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             registerReceiver(serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"));
-            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"));
+//            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"));
         }
     }
 
@@ -552,17 +552,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                 );
                             }
 
-                            if (mediaProjection != null && currentKeyboard == "GBoard") {
-                                if (checkForPrediction && !previousWordPredictionCheckRunning) {
-                                    if (startTime + 500 <= System.currentTimeMillis()) {
-                                        checkForWordPrediction();
-                                    }
-                                }
-                                if (updateCanvas) {
-                                    serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
-                                    updateCanvas = false;
-                                }
-                            }
+//                            if (mediaProjection != null && currentKeyboard == "GBoard") {
+//                                if (checkForPrediction && !previousWordPredictionCheckRunning) {
+//                                    if (startTime + 500 <= System.currentTimeMillis()) {
+//                                        checkForWordPrediction();
+//                                    }
+//                                }
+//                                if (updateCanvas) {
+//                                    serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
+//                                    updateCanvas = false;
+//                                }
+//                            }
 
                             if (cursorController.isSwiping() || previousWordPredictionCheckRunning) {
                                 serviceUiManager.fullScreenCanvas.invalidate();

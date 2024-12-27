@@ -16,7 +16,8 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="org.dslul.openboard.inputmethod.latin"
-        android:sharedUserId="com.headswype.shared">
+        android:sharedUserId="com.headswype.shared"
+        android:sharedUserMaxSdkVersion="35">
 
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
