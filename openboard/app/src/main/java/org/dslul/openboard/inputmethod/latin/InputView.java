@@ -19,6 +19,7 @@ package org.dslul.openboard.inputmethod.latin;
 import android.content.Context;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -93,9 +94,28 @@ public final class InputView extends FrameLayout {
 
     @Override
     public boolean onTouchEvent(final MotionEvent me) {
+        Log.d("onTouchEvent", "[333] onTouchEvent TRIGGERED with action: " + me.getActionMasked());
         if (mActiveForwarder == null) {
+            Log.d("onTouchEvent", "[333] IF: (mActiveForwarder == null) return super.onTouchEvent(me);");
             return super.onTouchEvent(me);
         }
+        Log.d("onTouchEvent", "[333] ELSE: mActiveForwarder.onTouchEvent(x, y, me)");
+
+        final Rect rect = mInputViewRect;
+        getGlobalVisibleRect(rect);
+        final int index = me.getActionIndex();
+        final int x = (int)me.getX(index) + rect.left;
+        final int y = (int)me.getY(index) + rect.top;
+        return mActiveForwarder.onTouchEvent(x, y, me);
+    }
+
+    public boolean syntheticEvent(final MotionEvent me) {
+        Log.d("syntheticEvent", "[999] syntheticEvent TRIGGERED with action: " + me.getActionMasked());
+        if (mActiveForwarder == null) {
+            Log.d("syntheticEvent", "[999] IF: (mActiveForwarder == null) return super.onTouchEvent(me);");
+            return super.onTouchEvent(me);
+        }
+        Log.d("syntheticEvent", "[999] ELSE: mActiveForwarder.onTouchEvent(x, y, me)");
 
         final Rect rect = mInputViewRect;
         getGlobalVisibleRect(rect);

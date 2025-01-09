@@ -3,6 +3,7 @@ package org.dslul.openboard;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.inputmethodservice.InputMethodService;
 import android.os.SystemClock;
 import android.util.Log;
@@ -21,19 +22,26 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-
         if ("com.headswype.ACTION_SEND_EVENT".equals(intent.getAction())) {
             float x = intent.getFloatExtra("x", -1);
             float y = intent.getFloatExtra("y", -1);
             int action = intent.getIntExtra("action", MotionEvent.ACTION_DOWN);
+            long downTime = intent.getLongExtra("downTime", SystemClock.uptimeMillis());
+            long eventTime = intent.getLongExtra("eventTime", SystemClock.uptimeMillis());
 
-            Log.d(TAG, "Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
+            Log.d(TAG, "[666] Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
 
             // Forward event to LatinIME
             if (context instanceof LatinIME) {
+                Rect imeBounds = new Rect();
+                ((LatinIME) context).getWindow().getWindow().getDecorView().getGlobalVisibleRect(imeBounds);
+
+                // Adjust Y-coordinate based on IME position
+//                float adjustedY = y - imeBounds.top;
+//                Log.d(TAG, "[666] adjustedY: " + adjustedY + ", y: " + y + ", imeBounds.top: " + imeBounds.top);
                 ((LatinIME) context).dispatchMotionEvent(x, y, action);
             } else {
-                Log.e(TAG, "Context is not LatinIME. Cannot dispatch motion event.");
+                Log.e(TAG, "[666] LatinIME instance is null. Cannot dispatch motion event.");
             }
         }
     }

@@ -29,9 +29,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
 
-    <uses-permission android:name="android.permission.INJECT_EVENTS"
-        android:protectionLevel="signature"
-        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.INJECT_EVENTS" />
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.SYSTEM_MANAGE_APP_PERMISSIONS" />
@@ -39,7 +37,7 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="35" />
+        android:maxSdkVersion="32" />
 
     <uses-permission android:name="com.headswype.permission.SEND_EVENT" />
 <!--    <instrumentation-->
@@ -124,9 +122,9 @@
             android:name=".TutorialPhoneStandActivity"
             android:exported="true" />
 
-        <activity
-            android:name=".ScreenCapturePermissionActivity"
-            android:exported="true" />
+<!--        <activity-->
+<!--            android:name=".ScreenCapturePermissionActivity"-->
+<!--            android:exported="true" />-->
 
         <service
             android:name=".CursorAccessibilityService"

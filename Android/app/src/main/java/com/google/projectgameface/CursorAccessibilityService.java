@@ -16,6 +16,7 @@
 
 package com.google.projectgameface;
 
+import static androidx.core.content.ContextCompat.RECEIVER_EXPORTED;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
@@ -33,6 +34,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
@@ -62,6 +64,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
 import androidx.annotation.NonNull;
@@ -129,6 +132,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isSwiping = false;
     private Rect keyboardBounds = new Rect();
     private Rect _keyboardBounds = new Rect();
+    private Rect navBarBounds = new Rect();
     private boolean isKeyboardOpen = false;
     private long startUptime;
     private long startTime;
@@ -269,7 +273,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         };
 
-        if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
             registerReceiver(
                     changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"),
                     RECEIVER_EXPORTED);
@@ -300,7 +303,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     RECEIVER_EXPORTED);
 //            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"),
 //                    RECEIVER_EXPORTED);
-        } else {
             registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
             registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
             registerReceiver(loadSharedConfigBasicReceiver, new IntentFilter("LOAD_SHARED_CONFIG_BASIC"));
@@ -311,7 +313,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"));
 //            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"));
-        }
     }
 
     /** Get current service state. */
@@ -998,7 +999,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         boolean keyboardFound = false;
         Rect tempBounds = new Rect();
-        Rect navBarBounds = new Rect();
 
         List<AccessibilityWindowInfo> windows = getWindows();
         for (AccessibilityWindowInfo window : windows) {
@@ -1537,13 +1537,38 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     // Unified MotionEvent injection method
     private void injectMotionEvent(MotionEvent event) {
-        try {
-            instrumentation.sendPointerSync(event);
-            Log.d(TAG, "MotionEvent sent: (" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to send MotionEvent(" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")", e);
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) { // Android 12 (API 31)
+            Log.d(TAG, "[666] Sending MotionEvent to IME");
+            sendMotionEventToIME(event);
+        } else {
+            try {
+                instrumentation.sendPointerSync(event);
+                Log.d(TAG, "MotionEvent sent: (" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to send MotionEvent(" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")", e);
+            }
         }
     }
+    private void sendMotionEventToIME(MotionEvent event) {
+        Log.d(TAG, "[666] Sending MotionEvent to IME");
+        Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
+        intent.putExtra("x", event.getX());
+        intent.putExtra("y", event.getY() - (navbarHeight * 2));
+        intent.putExtra("action", event.getAction());
+        intent.putExtra("downTime", event.getDownTime());
+        intent.putExtra("eventTime", event.getEventTime());
+        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+    }
+    public int getNavigationBarHeight(Context context) {
+        Resources resources = context.getResources();
+        int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return resources.getDimensionPixelSize(resourceId);
+        }
+        return 0; // Return 0 if no navigation bar is present
+    }
+    private int navbarHeight = 0;
     // Check if events can be injected into the window at (x, y)
     public boolean canInjectEvent(float x, float y) {
         for (AccessibilityWindowInfo window : getWindows()) {
@@ -1554,7 +1579,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             // Check if the coordinates fall within this window
             if (bounds.contains((int) x, (int) y)) {
                 if (isInjectableWindow(window)) {
-                    Log.d(TAG, "Injectable window found at (" + x + ", " + y + ").");
+                    navbarHeight = getNavigationBarHeight(this);
+                    Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
                     return true;
                 } else {
                     Log.d(TAG, "Window at (" + x + ", " + y + ") is not injectable.");
@@ -1569,23 +1595,31 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     // Helper method to check if a window is injectable
     private boolean isInjectableWindow(AccessibilityWindowInfo window) {
-        // Check if the window is owned by your app or IME
-        CharSequence packageName = window.getRoot().getPackageName();
-        if (packageName != null && isMyAppPackage(packageName.toString())) {
-            return true;
+        if (window == null) {
+            Log.e(TAG, "isInjectableWindow: Window is null.");
+            return false;
         }
 
-        // Optionally, you can add additional checks here, e.g., if it's a system window
-        // or if it's a third-party app but supports gestures via accessibility.
+        AccessibilityNodeInfo rootNode = window.getRoot();
+        if (rootNode == null) {
+            Log.e(TAG, "isInjectableWindow: Root node is null for the window.");
+            return false;
+        }
 
-        // For now, we'll assume only windows from our apps are injectable.
-        return false;
+        CharSequence packageName = rootNode.getPackageName();
+        if (packageName == null) {
+            Log.e(TAG, "isInjectableWindow: Package name is null for the root node.");
+            return false;
+        }
+
+        Log.d(TAG, "isInjectableWindow: Found package " + packageName);
+        return isMyAppPackage(packageName.toString());
     }
 
     // Helper method to check if a package belongs to your apps
     private boolean isMyAppPackage(String packageName) {
         String[] myApps = {
-                "com.google.projectgameface",
+//                "com.google.projectgameface",
                 "org.dslul.openboard.inputmethod.latin"
         };
 
