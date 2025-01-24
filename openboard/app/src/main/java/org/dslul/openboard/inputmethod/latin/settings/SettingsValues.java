@@ -78,6 +78,7 @@ public class SettingsValues {
     public final boolean mUsePersonalizedDicts;
     public final boolean mUseDoubleSpacePeriod;
     public final boolean mBlockPotentiallyOffensive;
+    public final float mWeightOfLangModelVsSpatialModel;
     public final boolean mSpaceTrackpadEnabled;
     public final boolean mDeleteSwipeEnabled;
     public final boolean mAutospaceAfterPunctuationEnabled;
@@ -162,6 +163,7 @@ public class SettingsValues {
         mUseDoubleSpacePeriod = prefs.getBoolean(Settings.PREF_KEY_USE_DOUBLE_SPACE_PERIOD, true)
                 && inputAttributes.mIsGeneralTextInput;
         mBlockPotentiallyOffensive = Settings.readBlockPotentiallyOffensive(prefs, res);
+        mWeightOfLangModelVsSpatialModel = Settings.readWeightOfLangModelVsSpatialModel(prefs);
         mAutoCorrectEnabled = Settings.readAutoCorrectEnabled(prefs, res);
         final String autoCorrectionThresholdRawValue = mAutoCorrectEnabled
                 ? res.getString(R.string.auto_correction_threshold_mode_index_modest)

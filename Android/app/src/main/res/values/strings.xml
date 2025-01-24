@@ -15,7 +15,7 @@
 -->
 
 <resources>
-    <string name="app_name">GameFace</string>
+    <string name="app_name">HeadBoard</string>
 
     <string name="service_description">Service Description</string>
     <string name="service_summary">Service Summary</string>

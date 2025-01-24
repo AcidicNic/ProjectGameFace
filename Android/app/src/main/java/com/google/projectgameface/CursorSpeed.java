@@ -60,16 +60,16 @@ public class CursorSpeed extends AppCompatActivity {
     private SeekBar seekBarDelay; // Controls how long the user should hold a gesture.
 
     private final int[] viewIds = {
-        R.id.fasterUp,
-        R.id.slowerUp,
-        R.id.fasterDown,
-        R.id.slowerDown,
-        R.id.fasterRight,
-        R.id.slowerRight,
-        R.id.fasterLeft,
-        R.id.slowerLeft,
-        R.id.fasterPointer,
-        R.id.slowerPointer,
+//        R.id.fasterUp,
+//        R.id.slowerUp,
+//        R.id.fasterDown,
+//        R.id.slowerDown,
+//        R.id.fasterRight,
+//        R.id.slowerRight,
+//        R.id.fasterLeft,
+//        R.id.slowerLeft,
+//        R.id.fasterPointer,
+//        R.id.slowerPointer,
         R.id.fasterBlendshapes,
         R.id.slowerBlendshapes,
         R.id.fasterDelay,
@@ -88,32 +88,32 @@ public class CursorSpeed extends AppCompatActivity {
 
 
         // SeekBar Binding and Textview Progress
-        seekBarMu = (SeekBar) findViewById(R.id.seekBarMU);
-        textViewMu = findViewById(R.id.progressMU);
-        setUpSeekBarAndTextView(
-            seekBarMu, textViewMu, String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED));
-
-        seekBarMd = (SeekBar) findViewById(R.id.seekBarMD);
-        textViewMd = findViewById(R.id.progressMD);
-        setUpSeekBarAndTextView(
-            seekBarMd, textViewMd, String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED));
-
-        seekBarMr = (SeekBar) findViewById(R.id.seekBarMR);
-        textViewMr = findViewById(R.id.progressMR);
-        setUpSeekBarAndTextView(
-            seekBarMr, textViewMr, String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED));
-
-        seekBarMl = (SeekBar) findViewById(R.id.seekBarML);
-        textViewMl = findViewById(R.id.progressML);
-        setUpSeekBarAndTextView(
-            seekBarMl, textViewMl, String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED));
-
-        seekBarSmoothPointer = (SeekBar) findViewById(R.id.seekBarSmoothPointer);
-        textViewSmoothPointer = findViewById(R.id.progressSmoothPointer);
-        setUpSeekBarAndTextView(
-            seekBarSmoothPointer,
-            textViewSmoothPointer,
-            String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER));
+//        seekBarMu = (SeekBar) findViewById(R.id.seekBarMU);
+//        textViewMu = findViewById(R.id.progressMU);
+//        setUpSeekBarAndTextView(
+//            seekBarMu, textViewMu, String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED));
+//
+//        seekBarMd = (SeekBar) findViewById(R.id.seekBarMD);
+//        textViewMd = findViewById(R.id.progressMD);
+//        setUpSeekBarAndTextView(
+//            seekBarMd, textViewMd, String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED));
+//
+//        seekBarMr = (SeekBar) findViewById(R.id.seekBarMR);
+//        textViewMr = findViewById(R.id.progressMR);
+//        setUpSeekBarAndTextView(
+//            seekBarMr, textViewMr, String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED));
+//
+//        seekBarMl = (SeekBar) findViewById(R.id.seekBarML);
+//        textViewMl = findViewById(R.id.progressML);
+//        setUpSeekBarAndTextView(
+//            seekBarMl, textViewMl, String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED));
+//
+//        seekBarSmoothPointer = (SeekBar) findViewById(R.id.seekBarSmoothPointer);
+//        textViewSmoothPointer = findViewById(R.id.progressSmoothPointer);
+//        setUpSeekBarAndTextView(
+//            seekBarSmoothPointer,
+//            textViewSmoothPointer,
+//            String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER));
 
         seekBarBlendshapes = (SeekBar) findViewById(R.id.seekBarBlendshapes);
         textViewBlendshapes = findViewById(R.id.progressBlendshapes);
@@ -171,57 +171,58 @@ public class CursorSpeed extends AppCompatActivity {
                 int newValue = 0;
                 boolean isFaster = true; // False means slower
                 String valueName = "";
-                if (v.getId() == R.id.fasterUp) {
-                    currentValue = seekBarMu.getProgress();
-                    newValue = currentValue + 1;
-                    isFaster = true;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED);
-                } else if (v.getId() == R.id.slowerUp) {
-                    currentValue = seekBarMu.getProgress();
-                    newValue = currentValue - 1;
-                    isFaster = false;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED);
-                } else if (v.getId() == R.id.fasterDown) {
-                    currentValue = seekBarMd.getProgress();
-                    newValue = currentValue + 1;
-                    isFaster = true;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED);
-                } else if (v.getId() == R.id.slowerDown) {
-                    currentValue = seekBarMd.getProgress();
-                    newValue = currentValue - 1;
-                    isFaster = false;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED);
-                } else if (v.getId() == R.id.fasterRight) {
-                    currentValue = seekBarMr.getProgress();
-                    newValue = currentValue + 1;
-                    isFaster = true;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED);
-                } else if (v.getId() == R.id.slowerRight) {
-                    currentValue = seekBarMr.getProgress();
-                    newValue = currentValue - 1;
-                    isFaster = false;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED);
-                } else if (v.getId() == R.id.fasterLeft) {
-                    currentValue = seekBarMl.getProgress();
-                    newValue = currentValue + 1;
-                    isFaster = true;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED);
-                } else if (v.getId() == R.id.slowerLeft) {
-                    currentValue = seekBarMl.getProgress();
-                    newValue = currentValue - 1;
-                    isFaster = false;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED);
-                } else if (v.getId() == R.id.fasterPointer) {
-                    currentValue = seekBarSmoothPointer.getProgress();
-                    newValue = currentValue + 1;
-                    isFaster = true;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
-                } else if (v.getId() == R.id.slowerPointer) {
-                    currentValue = seekBarSmoothPointer.getProgress();
-                    newValue = currentValue - 1;
-                    isFaster = false;
-                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
-                } else if (v.getId() == R.id.fasterBlendshapes) {
+//                if (v.getId() == R.id.fasterUp) {
+//                    currentValue = seekBarMu.getProgress();
+//                    newValue = currentValue + 1;
+//                    isFaster = true;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED);
+//                } else if (v.getId() == R.id.slowerUp) {
+//                    currentValue = seekBarMu.getProgress();
+//                    newValue = currentValue - 1;
+//                    isFaster = false;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED);
+//                } else if (v.getId() == R.id.fasterDown) {
+//                    currentValue = seekBarMd.getProgress();
+//                    newValue = currentValue + 1;
+//                    isFaster = true;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED);
+//                } else if (v.getId() == R.id.slowerDown) {
+//                    currentValue = seekBarMd.getProgress();
+//                    newValue = currentValue - 1;
+//                    isFaster = false;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED);
+//                } else if (v.getId() == R.id.fasterRight) {
+//                    currentValue = seekBarMr.getProgress();
+//                    newValue = currentValue + 1;
+//                    isFaster = true;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED);
+//                } else if (v.getId() == R.id.slowerRight) {
+//                    currentValue = seekBarMr.getProgress();
+//                    newValue = currentValue - 1;
+//                    isFaster = false;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED);
+//                } else if (v.getId() == R.id.fasterLeft) {
+//                    currentValue = seekBarMl.getProgress();
+//                    newValue = currentValue + 1;
+//                    isFaster = true;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED);
+//                } else if (v.getId() == R.id.slowerLeft) {
+//                    currentValue = seekBarMl.getProgress();
+//                    newValue = currentValue - 1;
+//                    isFaster = false;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED);
+//                } else if (v.getId() == R.id.fasterPointer) {
+//                    currentValue = seekBarSmoothPointer.getProgress();
+//                    newValue = currentValue + 1;
+//                    isFaster = true;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
+//                } else if (v.getId() == R.id.slowerPointer) {
+//                    currentValue = seekBarSmoothPointer.getProgress();
+//                    newValue = currentValue - 1;
+//                    isFaster = false;
+//                    valueName = String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
+//                } else
+                if (v.getId() == R.id.fasterBlendshapes) {
                     currentValue = seekBarBlendshapes.getProgress();
                     newValue = currentValue + 1;
                     isFaster = true;
@@ -273,17 +274,18 @@ public class CursorSpeed extends AppCompatActivity {
         new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (seekBar.getId() == R.id.seekBarMU) {
-                    textViewMu.setText(String.valueOf(progress));
-                } else if (seekBar.getId() == R.id.seekBarMD) {
-                    textViewMd.setText(String.valueOf(progress));
-                } else if (seekBar.getId() == R.id.seekBarMR) {
-                    textViewMr.setText(String.valueOf(progress));
-                } else if (seekBar.getId() == R.id.seekBarML) {
-                    textViewMl.setText(String.valueOf(progress));
-                } else if (seekBar.getId() == R.id.seekBarSmoothPointer) {
-                    textViewSmoothPointer.setText(String.valueOf(progress));
-                } else if (seekBar.getId() == R.id.seekBarBlendshapes) {
+//                if (seekBar.getId() == R.id.seekBarMU) {
+//                    textViewMu.setText(String.valueOf(progress));
+//                } else if (seekBar.getId() == R.id.seekBarMD) {
+//                    textViewMd.setText(String.valueOf(progress));
+//                } else if (seekBar.getId() == R.id.seekBarMR) {
+//                    textViewMr.setText(String.valueOf(progress));
+//                } else if (seekBar.getId() == R.id.seekBarML) {
+//                    textViewMl.setText(String.valueOf(progress));
+//                } else if (seekBar.getId() == R.id.seekBarSmoothPointer) {
+//                    textViewSmoothPointer.setText(String.valueOf(progress));
+//                } else
+                if (seekBar.getId() == R.id.seekBarBlendshapes) {
                     textViewBlendshapes.setText(String.valueOf(progress));
                 } else if (seekBar.getId() == R.id.seekBarDelay) {
                     int timeMsForShow = (int) (progress * CursorMovementConfig.RawConfigMultiplier.HOLD_TIME_MS);
@@ -296,22 +298,23 @@ public class CursorSpeed extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                if (seekBar.getId() == R.id.seekBarMU) {
-                    sendValueToService(
-                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED), seekBar.getProgress());
-                } else if (seekBar.getId() == R.id.seekBarMD) {
-                    sendValueToService(
-                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED), seekBar.getProgress());
-                } else if (seekBar.getId() == R.id.seekBarMR) {
-                    sendValueToService(
-                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED), seekBar.getProgress());
-                } else if (seekBar.getId() == R.id.seekBarML) {
-                    sendValueToService(
-                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED), seekBar.getProgress());
-                } else if (seekBar.getId() == R.id.seekBarSmoothPointer) {
-                    sendValueToService(
-                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER), seekBar.getProgress());
-                } else if (seekBar.getId() == R.id.seekBarBlendshapes) {
+//                if (seekBar.getId() == R.id.seekBarMU) {
+//                    sendValueToService(
+//                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.UP_SPEED), seekBar.getProgress());
+//                } else if (seekBar.getId() == R.id.seekBarMD) {
+//                    sendValueToService(
+//                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED), seekBar.getProgress());
+//                } else if (seekBar.getId() == R.id.seekBarMR) {
+//                    sendValueToService(
+//                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED), seekBar.getProgress());
+//                } else if (seekBar.getId() == R.id.seekBarML) {
+//                    sendValueToService(
+//                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED), seekBar.getProgress());
+//                } else if (seekBar.getId() == R.id.seekBarSmoothPointer) {
+//                    sendValueToService(
+//                        String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER), seekBar.getProgress());
+//                } else
+                if (seekBar.getId() == R.id.seekBarBlendshapes) {
                     sendValueToService(
                         String.valueOf(CursorMovementConfig.CursorMovementConfigType.SMOOTH_BLENDSHAPES), seekBar.getProgress());
                 } else if (seekBar.getId() == R.id.seekBarDelay) {

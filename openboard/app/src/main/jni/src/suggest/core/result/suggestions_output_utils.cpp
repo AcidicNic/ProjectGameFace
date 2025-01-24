@@ -49,8 +49,7 @@ const int SuggestionsOutputUtils::MIN_LEN_FOR_MULTI_WORD_AUTOCORRECT = 16;
     // NOT_A_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL (-1) is taken as an invalid value.
     const float weightOfLangModelVsSpatialModelToOutputSuggestions =
             (weightOfLangModelVsSpatialModel < 0.0f)
-            ? scoringPolicy->getAdjustedWeightOfLangModelVsSpatialModel(traverseSession,
-                    terminals.data(), terminalSize)
+            ? 2.0f
             : weightOfLangModelVsSpatialModel;
     outSuggestionResults->setWeightOfLangModelVsSpatialModel(
             weightOfLangModelVsSpatialModelToOutputSuggestions);

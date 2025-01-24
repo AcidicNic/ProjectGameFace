@@ -281,11 +281,7 @@ class FaceLandmarkerHelper extends HandlerThread {
                 mpHeightCorrected = MP_WIDTH;
                 break;
             case Surface.ROTATION_180:
-                matrixRotDegrees = frontCameraOrientation + 180;
-                widthCorrected = imageProxy.getWidth();
-                heightCorrected = imageProxy.getHeight();
-                mpWidthCorrected = MP_HEIGHT;
-                mpHeightCorrected = MP_WIDTH;
+                matrixRotDegrees = frontCameraOrientation + 180; // Simplify scaling logic
                 break;
             case Surface.ROTATION_270:
                 matrixRotDegrees = frontCameraOrientation - 90;

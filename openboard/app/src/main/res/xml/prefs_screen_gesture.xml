@@ -16,6 +16,7 @@
 
 <PreferenceScreen
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:latin="http://schemas.android.com/apk/res-auto"
     android:title="@string/settings_screen_gesture"
     android:key="screen_gesture">
     <CheckBoxPreference
@@ -37,4 +38,10 @@
         android:title="@string/gesture_preview_trail"
         android:defaultValue="true"
         android:persistent="true" />
+    <org.dslul.openboard.inputmethod.latin.settings.SeekBarDialogPreference
+        android:key="pref_weight_of_lang_model_vs_spatial_model"
+        android:title="Lang vs Spatial Model Weight"
+        latin:minValue="@integer/config_min_lang_vs_spatial_model_weight"
+        latin:maxValue="@integer/config_max_lang_vs_spatial_model_weight"
+        latin:stepValue="@integer/config_lang_vs_spatial_model_weight_step" />
 </PreferenceScreen>

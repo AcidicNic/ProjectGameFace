@@ -16,9 +16,14 @@
 
 package org.dslul.openboard.inputmethod.latin.settings;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.os.Bundle;
 
+import org.dslul.openboard.inputmethod.latin.AudioAndHapticFeedbackManager;
 import org.dslul.openboard.inputmethod.latin.R;
+import org.dslul.openboard.inputmethod.latin.SystemBroadcastReceiver;
 
 /**
  * "Gesture typing preferences" settings sub screen.
@@ -34,5 +39,72 @@ public final class GestureSettingsFragment extends SubScreenFragment {
     public void onCreate(final Bundle icicle) {
         super.onCreate(icicle);
         addPreferencesFromResource(R.xml.prefs_screen_gesture);
+
+
+        final Resources res = getResources();
+        final Context context = getActivity();
+
+        // When we are called from the Settings application but we are not already running, some
+        // singleton and utility classes may not have been initialized.  We have to call
+        // initialization method of these classes here. See {@link LatinIME#onCreate()}.
+        AudioAndHapticFeedbackManager.init(context);
+
+        final SharedPreferences prefs = getSharedPreferences();
+
+        if (!Settings.isInternal(prefs)) {
+            removePreference(Settings.SCREEN_DEBUG);
+        }
+
+        setupLangVsSpatialModelWeightSettings();
+    }
+
+
+    private void setupLangVsSpatialModelWeightSettings() {
+        final SharedPreferences prefs = getSharedPreferences();
+        final Resources res = getResources();
+        final SeekBarDialogPreference pref = (SeekBarDialogPreference)findPreference(
+                Settings.PREF_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL);
+        if (pref == null) {
+            return;
+        }
+        pref.setInterface(new SeekBarDialogPreference.ValueProxy() {
+            @Override
+            public void writeValue(final int value, final String key) {
+                float floatValue = ((value - 1) / 19.0f) * 1.9f + 0.1f;
+                prefs.edit().putFloat(key, floatValue).apply();
+            }
+
+            @Override
+            public void writeDefaultValue(final String key) {
+                prefs.edit().putFloat(key, 0.5f).apply();
+            }
+
+            @Override
+            public int readValue(final String key) {
+                float value = Settings.readWeightOfLangModelVsSpatialModel(prefs);
+                return Math.round(((value - 0.1f) / 1.9f) * 19 + 1);
+            }
+
+            @Override
+            public int readDefaultValue(final String key) {
+                return 5;
+            }
+
+            @Override
+            public String getValueText(final int value) {
+//                return ((float) (((value - 1) / 19.0f) * 1.9f + 0.1f)) + "f";
+                return String.valueOf(value);
+            }
+
+            @Override
+            public void feedbackValue(final int value) {}
+        });
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(final SharedPreferences prefs, final String key) {
+        if (key.equals(Settings.PREF_SHOW_SETUP_WIZARD_ICON)) {
+            SystemBroadcastReceiver.toggleAppIcon(getActivity());
+        }
     }
 }

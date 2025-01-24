@@ -85,7 +85,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
 
         // setting actionbar
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle("FaceSwype Settings");
+        getSupportActionBar().setTitle("HeadBoard Settings");
 
         // Initialize CursorMovementConfig
         cursorMovementConfig = new CursorMovementConfig(this);

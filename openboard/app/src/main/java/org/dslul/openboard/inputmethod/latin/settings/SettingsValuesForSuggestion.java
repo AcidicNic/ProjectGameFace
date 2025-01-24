@@ -18,8 +18,10 @@ package org.dslul.openboard.inputmethod.latin.settings;
 
 public class SettingsValuesForSuggestion {
     public final boolean mBlockPotentiallyOffensive;
+    public final float mWeightOfLangModelVsSpatialModel;
 
-    public SettingsValuesForSuggestion(final boolean blockPotentiallyOffensive) {
+    public SettingsValuesForSuggestion(final boolean blockPotentiallyOffensive, final float weightOfLangModelVsSpatialModel) {
         mBlockPotentiallyOffensive = blockPotentiallyOffensive;
+        mWeightOfLangModelVsSpatialModel = weightOfLangModelVsSpatialModel;
     }
 }

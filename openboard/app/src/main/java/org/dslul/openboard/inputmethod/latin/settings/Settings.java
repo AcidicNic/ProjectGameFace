@@ -77,6 +77,8 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
             "pref_key_use_double_space_period";
     public static final String PREF_BLOCK_POTENTIALLY_OFFENSIVE =
             "pref_key_block_potentially_offensive";
+    public static final String PREF_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL =
+            "pref_weight_of_lang_model_vs_spatial_model";
     public static final boolean ENABLE_SHOW_LANGUAGE_SWITCH_KEY_SETTINGS =
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT;
     public static final boolean SHOULD_SHOW_LXX_SUGGESTION_UI =
@@ -255,6 +257,16 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
                                                         final Resources res) {
         return prefs.getBoolean(PREF_BLOCK_POTENTIALLY_OFFENSIVE,
                 res.getBoolean(R.bool.config_block_potentially_offensive));
+    }
+
+    // Add method to read the weight value from SharedPreferences
+    public static float readWeightOfLangModelVsSpatialModel(final SharedPreferences prefs) {
+        return prefs.getFloat(PREF_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL, 0.5f);
+    }
+
+    // Add method to write the weight value to SharedPreferences
+    public void writeWeightOfLangModelVsSpatialModel(final float weight) {
+        mPrefs.edit().putFloat(PREF_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL, weight).apply();
     }
 
     public static boolean readFromBuildConfigIfGestureInputEnabled(final Resources res) {
