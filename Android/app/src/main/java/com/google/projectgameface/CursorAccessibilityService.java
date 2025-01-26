@@ -1554,7 +1554,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
         intent.putExtra("x", event.getX());
-        intent.putExtra("y", event.getY() - (navbarHeight * 2));
+        intent.putExtra("y", event.getY());
         intent.putExtra("action", event.getAction());
         intent.putExtra("downTime", event.getDownTime());
         intent.putExtra("eventTime", event.getEventTime());
