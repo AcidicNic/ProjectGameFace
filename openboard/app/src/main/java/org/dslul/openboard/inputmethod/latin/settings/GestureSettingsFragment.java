@@ -70,7 +70,7 @@ public final class GestureSettingsFragment extends SubScreenFragment {
         pref.setInterface(new SeekBarDialogPreference.ValueProxy() {
             @Override
             public void writeValue(final int value, final String key) {
-                float floatValue = ((value - 1) / 19.0f) * 1.9f + 0.1f;
+                float floatValue = ((value - 1) / 49.0f) * 4.9f + 0.1f;
                 prefs.edit().putFloat(key, floatValue).apply();
             }
 
@@ -82,7 +82,7 @@ public final class GestureSettingsFragment extends SubScreenFragment {
             @Override
             public int readValue(final String key) {
                 float value = Settings.readWeightOfLangModelVsSpatialModel(prefs);
-                return Math.round(((value - 0.1f) / 1.9f) * 19 + 1);
+                return Math.round(((value - 0.1f) / 4.9f) * 49 + 1);
             }
 
             @Override
