@@ -156,7 +156,9 @@ public final class InputView extends FrameLayout {
 
         // Translate global y-coordinate to <code>ReceiverView</code> local coordinate.
         protected int translateY(final int y) {
-            return y - mEventReceivingRect.top;
+            int translatedY = y - mEventReceivingRect.top;
+            Log.d("InputView", "translateY: " + translatedY + ", Original y: " + y + ", Rect top: " + mEventReceivingRect.top);
+            return translatedY;
         }
 
         /**

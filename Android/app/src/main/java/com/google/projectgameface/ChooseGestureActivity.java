@@ -211,7 +211,7 @@ public class ChooseGestureActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_choose_gesture);
+        setContentView(R.layout.activity_choose_input);
         getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         String profileName = ProfileManager.getCurrentProfile(this);
@@ -251,10 +251,14 @@ public class ChooseGestureActivity extends AppCompatActivity {
 
 
         findViewById(R.id.nextBtn).setOnClickListener(v -> {
-            if (selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.NONE){
+            if (selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.NONE ||
+                selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE ||
+                selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO ||
+                selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE
+            ) {
                 // Write config to sharedpref.
                 BlendshapeEventTriggerConfig.writeBindingConfig(getBaseContext(),
-                    BlendshapeEventTriggerConfig.Blendshape.NONE,
+                    selectedBlendshape,
                     pageEventType,
                     0);
                 try {

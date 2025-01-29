@@ -32,13 +32,8 @@ public class IMEEventReceiver extends BroadcastReceiver {
             Log.d(TAG, "[666] Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
 
             // Forward event to LatinIME
+            Log.d(TAG, "[666] context class of: " + context.getClass().getName());
             if (context instanceof LatinIME) {
-                Rect imeBounds = new Rect();
-                ((LatinIME) context).getWindow().getWindow().getDecorView().getGlobalVisibleRect(imeBounds);
-
-                // Adjust Y-coordinate based on IME position
-//                float adjustedY = y - imeBounds.top;
-//                Log.d(TAG, "[666] adjustedY: " + adjustedY + ", y: " + y + ", imeBounds.top: " + imeBounds.top);
                 ((LatinIME) context).dispatchMotionEvent(x, y, action);
             } else {
                 Log.e(TAG, "[666] LatinIME instance is null. Cannot dispatch motion event.");

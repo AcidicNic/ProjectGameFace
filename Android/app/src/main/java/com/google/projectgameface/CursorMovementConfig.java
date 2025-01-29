@@ -45,6 +45,7 @@ class CursorMovementConfig {
     HOLD_TIME_MS,
     HOLD_RADIUS,
     EDGE_HOLD_DURATION,
+    DRAG_TOGGLE_DURATION,
     HEAD_COORD_SCALE_FACTOR_X,
     HEAD_COORD_SCALE_FACTOR_Y,
     AVG_SMOOTHING,
@@ -99,6 +100,7 @@ class CursorMovementConfig {
     public static final boolean DEFAULT_DIRECT_MAPPING = true;
     public static final boolean DEFAULT_ENABLE_FEATURE = false;
     public static final int EDGE_HOLD_DURATION = 1000;
+    public static final int DRAG_TOGGLE_DURATION = 300;
     public static final float HEAD_COORD_SCALE_FACTOR_X = 1.5f;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.5f;
     public static final int AVG_SMOOTHING = 5;
@@ -126,6 +128,7 @@ class CursorMovementConfig {
     public static final float HOLD_TIME_MS = 200.f;
     public static final float HOLD_RADIUS = 50;
     public static final float EDGE_HOLD_DURATION = 1.0f;
+    public static final float DRAG_TOGGLE_DURATION = 1.0f;
     public static final float HEAD_COORD_SCALE_FACTOR_X = 1.0f;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.0f;
     public static final float AVG_SMOOTHING = 1.0f;
@@ -163,6 +166,7 @@ class CursorMovementConfig {
     rawValueMap.put(CursorMovementConfigType.HOLD_TIME_MS, InitialRawValue.HOLD_TIME_MS);
     rawValueMap.put(CursorMovementConfigType.HOLD_RADIUS, InitialRawValue.HOLD_RADIUS);
     rawValueMap.put(CursorMovementConfigType.EDGE_HOLD_DURATION, InitialRawValue.EDGE_HOLD_DURATION);
+    rawValueMap.put(CursorMovementConfigType.DRAG_TOGGLE_DURATION, InitialRawValue.DRAG_TOGGLE_DURATION);
 
     // Initialize default float values.
     rawFloatValueMap = new HashMap<>();
@@ -296,6 +300,9 @@ class CursorMovementConfig {
           break;
         case AVG_SMOOTHING:
           multiplier = RawConfigMultiplier.AVG_SMOOTHING;
+          break;
+        case DRAG_TOGGLE_DURATION:
+          multiplier = RawConfigMultiplier.DRAG_TOGGLE_DURATION;
           break;
         default:
           multiplier = 1.0f;

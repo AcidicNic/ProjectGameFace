@@ -51,12 +51,14 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private Switch noseTipSwitch;
     private Switch pitchYawSwitch;
     private SeekBar holdDurationSeekBar;
+    private SeekBar dragToggleDurSeekBar;
     private SeekBar smoothingSeekBar;
     private TextView smoothingTxt;
     private TextView smoothingProgress;
     private SeekBar headCoordScaleFactorXSeekBar;
     private SeekBar headCoordScaleFactorYSeekBar;
     private TextView holdDurationTxt;
+    private TextView dragToggleDurTxt;
     private TextView headCoordScaleFactorXTxt;
     private TextView headCoordScaleFactorYTxt;
     private TextView headCoordScaleFactorXProgress;
@@ -122,6 +124,13 @@ public class FaceSwypeSettings extends AppCompatActivity {
         holdDurationTxt = findViewById(R.id.progressHoldDuration);
         setUpSeekBarAndTextView(
                 holdDurationSeekBar, holdDurationTxt, String.valueOf(CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION)
+        );
+
+        // Edge Hold Duration
+        dragToggleDurSeekBar = findViewById(R.id.dragToggleDurSeekBar);
+        dragToggleDurTxt = findViewById(R.id.progressDragToggleDur);
+        setUpSeekBarAndTextViewTOGGLE(
+                dragToggleDurSeekBar, dragToggleDurTxt, String.valueOf(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION)
         );
 
         // Set initial visibility based on the DURATION_POP_OUT value
@@ -244,6 +253,10 @@ public class FaceSwypeSettings extends AppCompatActivity {
                             holdDurationSeekBar.setProgress(newValue);
                             int duration = (newValue + 1) * 200;
                             sendValueToService("EDGE_HOLD_DURATION", duration);
+                        } else if (v.getId() == R.id.fasterDragToggleDur || v.getId() == R.id.slowerDragToggleDur) {
+                            dragToggleDurSeekBar.setProgress(newValue);
+                            int duration = (newValue + 1) * 100;
+                            sendValueToService("DRAG_TOGGLE_DURATION", duration);
                         } else if (v.getId() == R.id.headCoordScaleFactorXFaster || v.getId() == R.id.headCoordScaleFactorXSlower) {
                             headCoordScaleFactorXSeekBar.setProgress(newValue);
                             float scaleFactor = (newValue + 1) / 10.0f;
@@ -291,6 +304,8 @@ public class FaceSwypeSettings extends AppCompatActivity {
         int savedProgress;
         if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION.toString())) {
             savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.EDGE_HOLD_DURATION);
+        } else if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION.toString())) {
+            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DRAG_TOGGLE_DURATION);
         } else {
             savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
         }
@@ -312,6 +327,40 @@ public class FaceSwypeSettings extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {
                 int duration = (seekBar.getProgress() + 1) * 200;
                 sendValueToService("EDGE_HOLD_DURATION", duration);
+            }
+        });
+    }
+
+    private void setUpSeekBarAndTextViewTOGGLE(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(9); // 1 to 10 in increments of 1 means 9 steps
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedProgress;
+        if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION.toString())) {
+            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.EDGE_HOLD_DURATION);
+        } else if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION.toString())) {
+            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DRAG_TOGGLE_DURATION);
+        } else {
+            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
+        }
+        int progress = (savedProgress / 100) - 1;
+        seekBar.setProgress(progress); // Set initial progress
+        textView.setText(String.valueOf(progress + 1)); // Set initial text
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int displayValue = progress + 1;
+                textView.setText(String.valueOf(displayValue));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int duration = (seekBar.getProgress() + 1) * 100;
+                sendValueToService("DRAG_TOGGLE_DURATION", duration);
             }
         });
     }
@@ -358,6 +407,8 @@ public class FaceSwypeSettings extends AppCompatActivity {
             int progress = (edgeHoldDuration / 200) - 1;
             holdDurationSeekBar.setProgress(progress);
             holdDurationTxt.setText(String.valueOf(progress + 1));
+
+            dragToggleDurSeekBar.setProgress(((int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION) / 100) - 1);
 
             float scaleFactorX = cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X);
             int scaleFactorXProgress = Math.round((scaleFactorX - 1.0f) * 15);

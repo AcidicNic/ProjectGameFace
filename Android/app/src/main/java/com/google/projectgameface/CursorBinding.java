@@ -42,6 +42,8 @@ public class CursorBinding extends AppCompatActivity {
 
     private final int[] viewIds = {
         R.id.tapLayout,
+        R.id.continuousTouchLayout,
+        R.id.toggleTouchLayout,
         R.id.homeLayout,
         R.id.backLayout,
         R.id.notificationLayout,
@@ -52,8 +54,12 @@ public class CursorBinding extends AppCompatActivity {
     };
 
 
-    TextView textTab;
-    TextView tabTxtLinear ;
+    TextView textTap;
+    TextView tapTxtLinear;
+    TextView textContinuousTouch;
+    TextView continuousTouchTxtLinear;
+    TextView textToggleTouch;
+    TextView toggleTouchTxtLinear;
     TextView textHome;
     TextView homeTxtLinear ;
     TextView textBack;
@@ -76,25 +82,23 @@ public class CursorBinding extends AppCompatActivity {
     }
 
     private void setUpActionList(
-        String preferencesId,
-        TextView textViewAction,
-        TextView textViewStatus,
-        ImageView statusImage) {
+            String preferencesId,
+            TextView textViewAction,
+            TextView textViewStatus,
+            ImageView statusImage) {
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
         // Load config from local sharedpref.
         BlendshapeEventTriggerConfig.Blendshape savedBlendshape = BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI
             .get(preferences.getInt(preferencesId,
-                BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(
-                BlendshapeEventTriggerConfig.Blendshape.NONE)));
+                BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE)
+            ));
 
         String addTxt = "Add";
         String editTxt = "Edit";
         String beautifyBlendshapeName = BlendshapeEventTriggerConfig.BEAUTIFY_BLENDSHAPE_NAME.get(savedBlendshape);
         textViewAction.setText(beautifyBlendshapeName);
-
-
 
         // Set to "No binding" if not found.
         if (savedBlendshape == BlendshapeEventTriggerConfig.Blendshape.NONE) {
@@ -111,10 +115,21 @@ public class CursorBinding extends AppCompatActivity {
         Log.i(TAG, "refreshUI");
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH),
-            textTab,
-            tabTxtLinear,
+            textTap,
+            tapTxtLinear,
             (ImageView) findViewById(R.id.tapIcon));
 
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH),
+                textContinuousTouch,
+                continuousTouchTxtLinear,
+                (ImageView) findViewById(R.id.continuousTouchIcon));
+
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH),
+                textToggleTouch,
+                toggleTouchTxtLinear,
+                (ImageView) findViewById(R.id.toggleTouchIcon));
 
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.HOME),
@@ -182,14 +197,18 @@ public class CursorBinding extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_cursor_binding);
+        setContentView(R.layout.activity_action_binding);
         getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
         // setting actionbar
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Set up gestures");
 
-        textTab = findViewById(R.id.tapBinding);
-        tabTxtLinear = findViewById(R.id.tapTxtLinear);
+        textTap = findViewById(R.id.tapBinding);
+        tapTxtLinear = findViewById(R.id.tapTxtLinear);
+        textContinuousTouch = findViewById(R.id.continuousTouchBinding);
+        continuousTouchTxtLinear = findViewById(R.id.continuousTouchTxtLinear);
+        textToggleTouch = findViewById(R.id.toggleTouchBinding);
+        toggleTouchTxtLinear = findViewById(R.id.toggleTouchTxtLinear);
         textHome = findViewById(R.id.homeBinding);
         homeTxtLinear = findViewById(R.id.homeTxtLinear);
         textBack = findViewById(R.id.backBinding);
@@ -221,6 +240,12 @@ public class CursorBinding extends AppCompatActivity {
 
                         if (v.getId() == R.id.tapLayout) {
                             intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
+
+                        } else if (v.getId() == R.id.continuousTouchLayout) {
+                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH);
+
+                        } else if (v.getId() == R.id.toggleTouchLayout) {
+                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH);
 
                         } else if (v.getId() == R.id.homeLayout) {
                             intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.HOME);

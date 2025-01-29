@@ -16,15 +16,12 @@
 
 package com.google.projectgameface;
 
-import static androidx.core.content.ContextCompat.RECEIVER_EXPORTED;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
 
 import android.accessibilityservice.AccessibilityService;
-import android.accessibilityservice.GestureDescription;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -36,7 +33,6 @@ import android.content.pm.Signature;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -48,8 +44,6 @@ import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
-import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -82,7 +76,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -456,6 +449,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     public boolean isDebugSwipeEnabled() {
         return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE);
+    }
+
+    public long getDragToggleDuration() {
+        return (long) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION);
     }
 
     /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
@@ -1112,22 +1109,24 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     Log.d(TAG, "SWIPE KeyEvent.ACTION_DOWN");
                     if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                         startRealtimeSwipe();
-//                        startSwipe();
+//                    startSwipe();
                     } else {
                         dragToggleStartTime = SystemClock.uptimeMillis();
                         dragToggleCancelled = false;
-                        dragToggleHandler.postDelayed(dragToggleRunnable, DRAG_TOGGLE_DELAY);
+                        dragToggle = true;
+                        Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
+                        dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
                     }
                 } else if (eventAction == KeyEvent.ACTION_UP) {
                     keyStates.put(keyCode, false);
                     Log.d(TAG, "SWIPE KeyEvent.ACTION_UP");
                     if (isSwiping) {
                         stopRealtimeSwipe();
-//                        stopSwipe();
+//                    stopSwipe();
                     } else if (dragToggle) {
                         long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
                         dragToggleHandler.removeCallbacks(dragToggleRunnable);
-                        if (elapsedTime < DRAG_TOGGLE_DELAY) {
+                        if (elapsedTime < getDragToggleDuration()) {
                             dragToggleCancelled = true;
                             // Perform tap instead of enabling drag toggle
                             DispatchEventHelper.checkAndDispatchEvent(
@@ -1164,10 +1163,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         stopRealtimeSwipe();
                     } else if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                         Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
+                        swipeToggle = true;
                         startRealtimeSwipe();
                     } else {
                         Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
-                        swipeToggle = true;
+                        dragToggle = true;
                         DispatchEventHelper.checkAndDispatchEvent(
                                 this,
                                 cursorController,
@@ -1180,7 +1180,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             case KeyEvent.KEYCODE_4:
                 if (eventAction == KeyEvent.ACTION_DOWN && isKeyboardOpen && cursorController.getCursorPositionXY()[1] > keyboardBounds.top) {
                     Log.d(TAG, "SCREENSHOT TEST KEY KeyEvent.ACTION_DOWN");
-//                    saveScreenshot();
+//                saveScreenshot();
                 }
                 return true;
         }
@@ -1202,231 +1202,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         cursorController,
                         serviceUiManager,
                         BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+            } else {
+                Log.d(TAG, "Drag toggle cancelled");
+                DispatchEventHelper.checkAndDispatchEvent(
+                        CursorAccessibilityService.this,
+                        cursorController,
+                        serviceUiManager,
+                        BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
             }
         }
     };
-
-//    private ArrayList<Long> swipeTimes = new ArrayList<>();
-
-//    private void startRealtimeSwipe() {
-//        isSwiping = true;
-//        cursorController.isRealtimeSwipe = true;
-//
-//        new Thread(() -> {
-//            while (isSwiping) {
-//                List<float[]> pointsToProcess;
-//                synchronized (cursorController.swipePathPoints) {
-//                    if (cursorController.swipePathPoints.size() < 2) {
-//                        // Not enough points to build a segment
-//                        try {
-//                            Thread.sleep(5); // Wait and try again
-//                        } catch (InterruptedException e) {
-//                            Log.e(TAG, "Swipe thread interrupted: " + e);
-//                        }
-//                        continue;
-//                    }
-//                    // Copy points for processing
-//                    pointsToProcess = new ArrayList<>(cursorController.swipePathPoints);
-//                    // Retain only the last point for continuity
-//                    float[] lastPoint = cursorController.swipePathPoints.get(cursorController.swipePathPoints.size() - 1);
-//                    cursorController.swipePathPoints.clear();
-//                    cursorController.swipePathPoints.add(lastPoint);
-//                }
-//
-//                // Validate points before building the Path
-//                if (pointsToProcess.size() < 2) {
-//                    Log.e(TAG, "Insufficient points to create a valid Path segment.");
-//                    continue;
-//                }
-//
-//                // Build a path from the collected points
-//                Path segmentPath = new Path();
-//                float[] startPoint = pointsToProcess.get(0);
-//                segmentPath.moveTo(startPoint[0], startPoint[1]);
-//                for (int i = 1; i < pointsToProcess.size(); i++) {
-//                    float[] point = pointsToProcess.get(i);
-//                    segmentPath.lineTo(point[0], point[1]);
-//                }
-//
-//                try {
-//                    GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
-//                    GestureDescription.StrokeDescription stroke =
-//                            new GestureDescription.StrokeDescription(segmentPath, 0, 16, false);
-//                    gestureBuilder.addStroke(stroke);
-//
-//                    GestureDescription gesture = gestureBuilder.build();
-//
-//                    // Dispatch gesture and chain to the next segment on completion
-//                    this.dispatchGesture(gesture, new GestureResultCallback() {
-//                        @Override
-//                        public void onCompleted(GestureDescription gestureDescription) {
-//                            if (isSwiping) {
-//                                Log.d(TAG, "Gesture segment completed.");
-//                            }
-//                        }
-//
-//                        @Override
-//                        public void onCancelled(GestureDescription gestureDescription) {
-//                            Log.e(TAG, "Gesture segment cancelled.");
-//                            // No explicit retry logic needed here, as the loop will handle it
-//                        }
-//                    }, null);
-//
-//                } catch (Exception e) {
-//                    Log.e(TAG, "Error during swipe gesture dispatch: " + e);
-//                }
-//            }
-//
-//            // End the swipe with a final ACTION_UP
-//            Path endPath = new Path();
-//            synchronized (cursorController.swipePathPoints) {
-//                if (!cursorController.swipePathPoints.isEmpty()) {
-//                    float[] lastPoint = cursorController.swipePathPoints.get(cursorController.swipePathPoints.size() - 1);
-//                    endPath.moveTo(lastPoint[0], lastPoint[1]);
-//                }
-//            }
-//
-//            GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
-//            GestureDescription.StrokeDescription finalStroke =
-//                    new GestureDescription.StrokeDescription(endPath, 0, 1, false);
-//            gestureBuilder.addStroke(finalStroke);
-//
-//            GestureDescription finalGesture = gestureBuilder.build();
-//            this.dispatchGesture(finalGesture, null, null); // No callback needed
-//        }).start();
-//    }
-//
-//    /**
-//     * Stops the swipe and dispatches a final ACTION_UP event.
-//     */
-//    private void stopRealtimeSwipe() {
-//        isSwiping = false;
-//        cursorController.isRealtimeSwipe = false;
-//        endUptime = SystemClock.uptimeMillis();
-//        endTime = System.currentTimeMillis();
-//
-//        if (!cursorController.swipePathPoints.isEmpty()) {
-//            Path endPath = new Path();
-//            float[] lastPoint = cursorController.swipePathPoints.get(cursorController.swipePathPoints.size() - 1);
-//            endPath.moveTo(lastPoint[0], lastPoint[1]);
-//
-//            GestureDescription.Builder gestureBuilder = new GestureDescription.Builder();
-//            GestureDescription.StrokeDescription finalStroke =
-//                    new GestureDescription.StrokeDescription(endPath, 0, 1, false);
-//            gestureBuilder.addStroke(finalStroke);
-//
-//            GestureDescription finalGesture = gestureBuilder.build();
-//            this.dispatchGesture(finalGesture, null, null); // No callback needed
-//        }
-//        cursorController.swipePathPoints.clear();
-//    }
-//
-//    private Point currentPoint;
-//    private Point lastPoint;
-//    private static final long GESTURE_DURATION = 100;
-//    private static final long GESTURE_DELAY = 100;
-//
-//    public void startSwipe() {
-//        if (isSwiping) {
-//            return;
-//        }
-//        isSwiping = true;
-//        simulateTouch(true);
-//        handler.post(updateGestureRunnable);
-//    }
-//
-//    public void stopSwipe() {
-//        isSwiping = false;
-//        simulateTouch(false);
-//    }
-//
-//    private Runnable updateGestureRunnable = new Runnable() {
-//        @Override
-//        public void run() {
-//            if (isSwiping) {
-//                simulateMove();
-//                handler.postDelayed(this, GESTURE_DELAY);
-//            }
-//        }
-//    };
-//
-//    private void simulateTouch(final boolean down) {
-//        handler.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                Path path = new Path();
-//                int[] cursorPosition = cursorController.getCursorPositionXY();
-//
-//                if (down) {
-//                    path.moveTo(cursorPosition[0], cursorPosition[1]);
-//                } else {
-//                    path.moveTo(lastPoint.x, lastPoint.y);
-//                    path.lineTo(cursorPosition[0], cursorPosition[1]);
-//                }
-//
-//                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-//                        path, 0, down ? GESTURE_DURATION : 1, down);
-//
-//
-//                GestureDescription gestureDescription = new GestureDescription.Builder()
-//                        .addStroke(stroke)
-//                        .build();
-//
-//                dispatchGesture(gestureDescription, null, null);
-//                lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//            }
-//        });
-//    }
-//
-//    private void simulateMove() {
-//        handler.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                int[] cursorPosition = cursorController.getCursorPositionXY();
-//                if (lastPoint.x == cursorPosition[0] && lastPoint.y == cursorPosition[1]) {
-//                    return;
-//                }
-//
-//                Path path = new Path();
-//                path.moveTo(lastPoint.x, lastPoint.y);
-//                path.lineTo(cursorPosition[0], cursorPosition[1]);
-//
-//                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-//                        path, 0, GESTURE_DURATION, false);
-//                GestureDescription gestureDescription = new GestureDescription.Builder()
-//                        .addStroke(stroke)
-//                        .build();
-//
-//                dispatchGesture(gestureDescription, null, null);
-//                Log.d("CursorAccessibilityService", "simulateMove: " + lastPoint.x + ", " + lastPoint.y + " -> " + cursorPosition[0] + ", " + cursorPosition[1]);
-//                lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//            }
-//        });
-//
-//    }
-//
-//
-//    public boolean onTouchEvent(MotionEvent event){
-//        switch(event.getAction()) {
-//            case (MotionEvent.ACTION_DOWN) :
-//                Log.d(DEBUG_TAG,"Action was DOWN");
-//                return true;
-//            case (MotionEvent.ACTION_MOVE) :
-//                Log.d(DEBUG_TAG,"Action was MOVE");
-//                return true;
-//            case (MotionEvent.ACTION_UP) :
-//                Log.d(DEBUG_TAG,"Action was UP");
-//                return true;
-//            case (MotionEvent.ACTION_CANCEL) :
-//                Log.d(DEBUG_TAG,"Action was CANCEL");
-//                return true;
-//            case (MotionEvent.ACTION_OUTSIDE) :
-//                Log.d(DEBUG_TAG,"Movement occurred outside bounds of current screen element");
-//                return true;
-//            default :
-//                return super.onTouchEvent(event);
-//        }
-//    }
 
     int[] lastValidCoords = new int[2];
 
@@ -1583,7 +1368,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
         intent.putExtra("x", event.getX());
-        intent.putExtra("y", event.getY() - (navbarHeight));
+        intent.putExtra("y", event.getY());
         intent.putExtra("action", event.getAction());
         intent.putExtra("downTime", event.getDownTime());
         intent.putExtra("eventTime", event.getEventTime());
@@ -1998,145 +1783,3 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean updateCanvas = false;
 
 }
-
-
-    //    OLD REALTIME SWIPE USING GESTURE DESCRIPTION
-//
-//    private void simulateTouch(final boolean down) {
-//        handler.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                Path path = new Path();
-//                int[] cursorPosition = cursorController.getCursorPositionXY();
-//
-//                if (down) {
-//                    path.moveTo(cursorPosition[0], cursorPosition[1]);
-//                } else {
-//                    if (lastPoint != null) {
-//                        path.moveTo(lastPoint.x, lastPoint.y);
-//                        path.lineTo(cursorPosition[0], cursorPosition[1]);
-//                    }
-//                }
-//
-//                if (path.isEmpty()) {
-//                    Log.w("CursorAccessibilityService", "Path is empty, skipping gesture dispatch.");
-//                    return;
-//                }
-//
-//                long duration = down ? GESTURE_DURATION : 1;
-//
-//                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-//                        path, 0, duration, down);
-//
-//                GestureDescription gestureDescription = new GestureDescription.Builder()
-//                        .addStroke(stroke)
-//                        .build();
-//
-//                dispatchGesture(gestureDescription, new GestureResultCallback() {
-//                    @Override
-//                    public void onCompleted(GestureDescription gestureDescription) {
-//                        super.onCompleted(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture completed: " + gestureDescription.toString());
-//                        lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                    }
-//
-//                    @Override
-//                    public void onCancelled(GestureDescription gestureDescription) {
-//                        super.onCancelled(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture cancelled: " + gestureDescription.toString());
-//                        lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                    }
-//                }, null);
-//            }
-//        });
-//    }
-//
-//
-//    private void simulateMove() {
-//        handler.post(new Runnable() {
-//            @Override
-//            public void run() {
-//                if (!isRealTimeSwiping) {
-//                    return; // Exit if swipe has been stopped
-//                }
-//
-//                if (gestureInProgress) {
-//                    return; // Skip if a gesture is already in progress
-//                }
-//
-//                int[] cursorPosition = cursorController.getCursorPositionXY();
-//                if (lastPoint == null || (lastPoint.x == cursorPosition[0] && lastPoint.y == cursorPosition[1])) {
-//                    return;
-//                }
-//
-//                Path path = new Path();
-//                List<Point> swipePathPoints = cursorController.getRealtimeSwipePathPoints();
-//
-//                if (swipePathPoints.isEmpty()) {
-//                    path.moveTo(lastPoint.x, lastPoint.y);
-//                    path.lineTo(cursorPosition[0], cursorPosition[1]);
-//                } else {
-//                    Point startPoint = swipePathPoints.get(0);
-//                    path.moveTo(startPoint.x, startPoint.y);
-//                    for (Point point : swipePathPoints) {
-//                        path.lineTo(point.x, point.y);
-//                    }
-//                }
-//
-//                if (path.isEmpty()) {
-//                    Log.w("CursorAccessibilityService", "Path is empty, skipping gesture dispatch.");
-//                    return;
-//                }
-//
-//                long duration = calculateDynamicDuration(swipePathPoints);
-//
-//                gestureInProgress = true;
-//
-//                GestureDescription.StrokeDescription stroke = new GestureDescription.StrokeDescription(
-//                        path, 0, duration, isRealTimeSwiping);
-//
-//                GestureDescription gestureDescription = new GestureDescription.Builder()
-//                        .addStroke(stroke)
-//                        .build();
-//
-//                dispatchGesture(gestureDescription, new GestureResultCallback() {
-//                    @Override
-//                    public void onCompleted(GestureDescription gestureDescription) {
-//                        super.onCompleted(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture completed: " + gestureDescription.toString());
-//                        if (!swipePathPoints.isEmpty()) {
-//                            Point lastSwipePoint = swipePathPoints.get(swipePathPoints.size() - 1);
-//                            lastPoint = new Point(lastSwipePoint.x, lastSwipePoint.y);
-//                        } else {
-//                            lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                        }
-//                        cursorController.clearSwipePathPoints();
-//                        gestureInProgress = false; // Mark gesture as completed
-//                        if (isRealTimeSwiping) {
-//                            simulateMove(); // Schedule the next gesture if still swiping
-//                        }
-//                    }
-//
-//                    @Override
-//                    public void onCancelled(GestureDescription gestureDescription) {
-//                        super.onCancelled(gestureDescription);
-//                        Log.d("CursorAccessibilityService", "Gesture cancelled: " + gestureDescription.toString());
-//                        if (!swipePathPoints.isEmpty()) {
-//                            Point lastSwipePoint = swipePathPoints.get(swipePathPoints.size() - 1);
-//                            lastPoint = new Point(lastSwipePoint.x, lastSwipePoint.y);
-//                        } else {
-//                            lastPoint = new Point(cursorPosition[0], cursorPosition[1]);
-//                        }
-//                        cursorController.clearSwipePathPoints();
-//                        gestureInProgress = false; // Mark gesture as completed
-//                        if (isRealTimeSwiping) {
-//                            simulateMove(); // Schedule the next gesture if still swiping
-//                        }
-//                    }
-//                }, null);
-//
-//                Log.d("CursorAccessibilityService", "simulateMove: " + lastPoint.x + ", " + lastPoint.y + " -> " + cursorPosition[0] + ", " + cursorPosition[1]);
-//            }
-//        });
-//    }
-

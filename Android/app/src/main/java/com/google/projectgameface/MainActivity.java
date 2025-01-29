@@ -231,7 +231,15 @@ public class MainActivity extends AppCompatActivity {
         if (isFirstLaunch()) {
             // Assign some default binding so user can navigate around.
             Log.i(TAG, "First launch, assign default binding");
-            // Your default binding logic here
+            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE,
+                    BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 20);
+            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO,
+                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH, 20);
+            BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE,
+                    BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 20);
+            String profileName = ProfileManager.getCurrentProfile(this);
+            preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+            preferences.edit().putBoolean(KEY_FIRST_RUN, false).apply();
 
             // Goto tutorial page.
             Intent intent = new Intent(this, TutorialActivity.class);

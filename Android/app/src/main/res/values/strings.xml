@@ -24,6 +24,8 @@
 
     <string-array name="event_type_description_keys">
         <item>CURSOR_TOUCH</item>
+        <item>CONTINUOUS_TOUCH</item>
+        <item>TOGGLE_TOUCH</item>
         <item>HOME</item>
         <item>BACK</item>
         <item>SHOW_NOTIFICATION</item>
@@ -37,15 +39,17 @@
 
 
     <string-array name="event_type_description_keys_values">
-        <item>Choose a facial gesture that will select items on your phone, like apps, text, buttons, and more</item>
-        <item>Choose a facial gesture that will open your phone’s home screen</item>
-        <item>Choose a facial gesture that will go back to the last screen</item>
-        <item>Choose a facial gesture that will open your notifications</item>
-        <item>Choose a facial gesture that will pause or unpause your cursor</item>
-        <item>Choose a facial gesture that will reset your cursor position</item>
-        <item>Choose a facial gesture that will touch \&amp; hold, otherwise known as a long press, on your phone</item>
-        <item>Choose a facial gesture that will open your all apps</item>
-        <item>Choose a facial gesture that will toggle a swipe</item>
+        <item>Choose an input that will tap on items on your phone, like apps, text, buttons, and more</item>
+        <item>Choose an input that will perform a continuous swipe</item>
+        <item>Choose an input that will perform a toggle swipe</item>
+        <item>Choose an input that will open your phone’s home screen</item>
+        <item>Choose an input that will go back to the last screen</item>
+        <item>Choose an input that will open your notifications</item>
+        <item>Choose an input that will pause or unpause your cursor</item>
+        <item>Choose an input that will reset your cursor position</item>
+        <item>Choose an input that will touch \&amp; hold, otherwise known as a long press, on your phone</item>
+        <item>Choose an input that will open your all apps</item>
+        <item>Choose an input that will toggle a swipe</item>
 
     </string-array>
 

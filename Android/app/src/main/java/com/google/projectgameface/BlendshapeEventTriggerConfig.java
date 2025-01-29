@@ -60,7 +60,9 @@ public class BlendshapeEventTriggerConfig {
     SHOW_NOTIFICATION,
     SWIPE_START,
     SWIPE_STOP,
-    SHOW_APPS
+    SHOW_APPS,
+    TOGGLE_TOUCH,
+    CONTINUOUS_TOUCH,
   }
 
   // EventType string name used in title bar UI.
@@ -77,7 +79,9 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.HOME, "Home");
     put(EventType.BACK, "Back");
     put(EventType.SHOW_NOTIFICATION, "Notification");
-    put(EventType.SHOW_APPS, "All Apps");
+    put(EventType.SHOW_APPS, "All apps");
+    put(EventType.TOGGLE_TOUCH, "Toggle touch");
+    put(EventType.CONTINUOUS_TOUCH, "Continuous touch");
   }};
 
 
@@ -92,7 +96,9 @@ public class BlendshapeEventTriggerConfig {
     put(Blendshape.RAISE_LEFT_EYEBROW, "Raise left eyebrow");
     put(Blendshape.LOWER_RIGHT_EYEBROW, "Lower right eyebrow");
     put(Blendshape.LOWER_LEFT_EYEBROW, "Lower left eyebrow");
-
+    put(Blendshape.SWITCH_ONE, "Switch one");
+    put(Blendshape.SWITCH_TWO, "Switch two");
+    put(Blendshape.SWITCH_THREE, "Switch three");
 
   }};
 
@@ -102,8 +108,9 @@ public class BlendshapeEventTriggerConfig {
 
   /** Allowed blendshape that our app can use and its array index (from MediaPipe's). */
   public enum Blendshape {
-//    ENTER_KEY(-62),
-//    SPACE_KEY(-66),
+    SWITCH_ONE(-11),
+    SWITCH_TWO(-22),
+    SWITCH_THREE(-33),
     NONE(-1),
     OPEN_MOUTH(25),
     MOUTH_LEFT(39),
@@ -126,7 +133,8 @@ public class BlendshapeEventTriggerConfig {
       Blendshape.MOUTH_RIGHT, Blendshape.ROLL_LOWER_MOUTH,
       Blendshape.RAISE_RIGHT_EYEBROW, Blendshape.RAISE_LEFT_EYEBROW,
       Blendshape.LOWER_RIGHT_EYEBROW, Blendshape.LOWER_LEFT_EYEBROW,
-      Blendshape.NONE
+      Blendshape.SWITCH_ONE, Blendshape.SWITCH_TWO,
+      Blendshape.SWITCH_THREE, Blendshape.NONE
   ).collect(Collectors.toList());
 
 

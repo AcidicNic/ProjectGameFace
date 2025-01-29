@@ -26,6 +26,7 @@ import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.inputmethodservice.InputMethodService;
 import android.media.AudioManager;
 import android.os.Build;
@@ -811,11 +812,28 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 y,
                 0
         );
-
         View rootView = getWindow().getWindow().getDecorView(); // Get the root view of the IME
+
         if (rootView != null) {
-            rootView.dispatchTouchEvent(event);
-            Log.d(TAG, "MotionEvent dispatched: (" + x + ", " + y + ", action=" + action + ")");
+            Rect imeBounds = new Rect();
+            rootView.getGlobalVisibleRect(imeBounds);
+
+            // Adjust Y-coordinate based on IME position
+            float adjustedY = y - imeBounds.top;
+            Log.d(TAG, "Adjusted Y: " + adjustedY + ", Original Y: " + y + ", IME bounds top: " + imeBounds.top);
+
+            MotionEvent adjustedEvent = MotionEvent.obtain(
+                    startUpTime > 0 ? startUpTime : SystemClock.uptimeMillis(),
+                    eventTime > 0 ? eventTime : SystemClock.uptimeMillis(),
+                    action,
+                    x,
+                    adjustedY,
+                    0
+            );
+
+            rootView.dispatchTouchEvent(adjustedEvent);
+            Log.d(TAG, "MotionEvent dispatched: (" + x + ", " + adjustedY + ", action=" + action + ")");
+            adjustedEvent.recycle();
         } else {
             startUpTime = 0;
             Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
@@ -1335,10 +1353,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     @Override
     public boolean onEvaluateInputViewShown() {
-        if (mIsExecutingStartShowingInputView) {
-            return true;
-        }
-        return super.onEvaluateInputViewShown();
+        return true;
+//        if (mIsExecutingStartShowingInputView) {
+//            return true;
+//        }
+//        return super.onEvaluateInputViewShown();
     }
 
     @Override
