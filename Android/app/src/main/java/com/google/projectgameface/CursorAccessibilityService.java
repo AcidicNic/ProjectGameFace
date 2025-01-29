@@ -52,6 +52,7 @@ import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.provider.Settings;
@@ -1113,12 +1114,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         startRealtimeSwipe();
 //                        startSwipe();
                     } else {
-                        dragToggle = true;
-                        DispatchEventHelper.checkAndDispatchEvent(
-                                this,
-                                cursorController,
-                                serviceUiManager,
-                                BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+                        dragToggleStartTime = SystemClock.uptimeMillis();
+                        dragToggleCancelled = false;
+                        dragToggleHandler.postDelayed(dragToggleRunnable, DRAG_TOGGLE_DELAY);
                     }
                 } else if (eventAction == KeyEvent.ACTION_UP) {
                     keyStates.put(keyCode, false);
@@ -1127,12 +1125,24 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         stopRealtimeSwipe();
 //                        stopSwipe();
                     } else if (dragToggle) {
-                        dragToggle = false;
-                        DispatchEventHelper.checkAndDispatchEvent(
-                                this,
-                                cursorController,
-                                serviceUiManager,
-                                BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+                        long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
+                        dragToggleHandler.removeCallbacks(dragToggleRunnable);
+                        if (elapsedTime < DRAG_TOGGLE_DELAY) {
+                            dragToggleCancelled = true;
+                            // Perform tap instead of enabling drag toggle
+                            DispatchEventHelper.checkAndDispatchEvent(
+                                    this,
+                                    cursorController,
+                                    serviceUiManager,
+                                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
+                        } else {
+                            dragToggle = false;
+                            DispatchEventHelper.checkAndDispatchEvent(
+                                    this,
+                                    cursorController,
+                                    serviceUiManager,
+                                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+                        }
                     }
                 }
                 return true;
@@ -1176,6 +1186,25 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         return false;
     }
+
+    private Handler dragToggleHandler = new Handler(Looper.getMainLooper());
+    private boolean dragToggleCancelled = false;
+    private static final int DRAG_TOGGLE_DELAY = 200; // 200ms delay
+    private long dragToggleStartTime;
+
+    // Runnable to handle delayed drag toggle start
+    private Runnable dragToggleRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!dragToggleCancelled) {
+                DispatchEventHelper.checkAndDispatchEvent(
+                        CursorAccessibilityService.this,
+                        cursorController,
+                        serviceUiManager,
+                        BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+            }
+        }
+    };
 
 //    private ArrayList<Long> swipeTimes = new ArrayList<>();
 
