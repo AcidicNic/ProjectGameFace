@@ -19,6 +19,8 @@ package com.google.projectgameface;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.util.Log;
+import android.view.KeyEvent;
 
 import com.google.projectgameface.utils.CursorUtils;
 
@@ -39,28 +41,36 @@ public class DispatchEventHelper {
       CursorAccessibilityService parentService,
       CursorController cursorController,
       ServiceUiManager serviceUiManager,
-      BlendshapeEventTriggerConfig.EventType event) {
+      BlendshapeEventTriggerConfig.EventType event,
+      KeyEvent keyEvent) {
 
 
     int[] cursorPosition = cursorController.getCursorPositionXY();
 
     int  eventOffsetX = 0;
-    int eventOffsetY =0;
+    int eventOffsetY = 0;
 
 
     switch (event) {
+      case CONTINUOUS_TOUCH:
+        parentService.continuousTouch(keyEvent);
+        break;
+
+      case TOGGLE_TOUCH:
+        parentService.toggleTouch();
+        break;
+
       case CURSOR_TOUCH:
+        Log.d("dispatchEvent", "Cursor touch");
+        parentService.quickTap(cursorPosition, 200);
+        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        break;
+
+      case CURSOR_LONG_TOUCH:
         if (cursorController.isRealtimeSwipe) {
           break;
         }
-        parentService.dispatchGesture(
-            CursorUtils.createClick(
-                cursorPosition[0] ,
-                cursorPosition[1] ,
-                /* startTime= */ 0,
-                /* duration= */ 250),
-            /* callback= */ null,
-            /* handler= */ null);
+        parentService.quickTap(cursorPosition, 650);
 
         serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         break;

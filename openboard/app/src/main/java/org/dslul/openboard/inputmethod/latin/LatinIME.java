@@ -673,7 +673,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         // Register the IMEEventReceiver
         imeEventReceiver = new IMEEventReceiver();
         IntentFilter headSwypeFilter = new IntentFilter("com.headswype.ACTION_SEND_EVENT");
-        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null);
+        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
 
         Log.d(TAG, "[666] IMEEventReceiver registered.");
     }
