@@ -1413,9 +1413,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     debugText[1] = "X, Y: (" + lastValidCoords[0] + ", " + lastValidCoords[1] + ")";
                     Log.d(TAG, "MotionEvent.ACTION_UP @ (" + lastValidCoords[0] + ", " + lastValidCoords[1] + ")");
                 }
-
-                // TODO: pause screencapture sometime after it seems like the user has finished swipe-typing.
-
             } catch (Exception e) {
                 writeToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
@@ -1663,7 +1660,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     // Helper method to check if a package belongs to your apps
     private boolean isMyAppPackage(String packageName) {
         String[] myApps = {
-                "com.google.projectgameface",
+//                "com.google.projectgameface",
                 "org.dslul.openboard.inputmethod.latin"
         };
 
