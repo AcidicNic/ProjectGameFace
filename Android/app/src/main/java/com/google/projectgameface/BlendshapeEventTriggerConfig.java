@@ -65,6 +65,8 @@ public class BlendshapeEventTriggerConfig {
     TOGGLE_TOUCH,
     CONTINUOUS_TOUCH,
     CURSOR_LONG_TOUCH,
+    BEGIN_TOUCH,
+    END_TOUCH,
   }
 
   // EventType string name used in title bar UI.
@@ -85,6 +87,8 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.TOGGLE_TOUCH, "Toggle touch");
     put(EventType.CONTINUOUS_TOUCH, "Continuous touch");
     put(EventType.CURSOR_LONG_TOUCH, "Long touch");
+    put(EventType.BEGIN_TOUCH, "Begin touch");
+    put(EventType.END_TOUCH, "End touch");
   }};
 
 

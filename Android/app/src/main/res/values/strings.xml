@@ -17,8 +17,8 @@
 <resources>
     <string name="app_name">HeadBoard</string>
 
-    <string name="service_description">Service Description</string>
-    <string name="service_summary">Service Summary</string>
+    <string name="service_description">HeadBoard\'s Accessibility Service</string>
+    <string name="service_summary">Allows headboard to run in the background while you navigate your device.</string>
 
 
 
@@ -34,6 +34,9 @@
         <item>DRAG_TOGGLE</item>
         <item>SHOW_APPS</item>
         <item>SWIPE_TOGGLE</item>
+        <item>CURSOR_LONG_TOUCH</item>
+        <item>BEGIN_TOUCH</item>
+        <item>END_TOUCH</item>
     </string-array>
 
 
@@ -50,6 +53,9 @@
         <item>Choose an input that will touch \&amp; hold, otherwise known as a long press, on your phone</item>
         <item>Choose an input that will open your all apps</item>
         <item>Choose an input that will toggle a swipe</item>
+        <item>Choose an input that will perform a long touch on your phone</item>
+        <item>Choose an input that will begin a touch</item>
+        <item>Choose an input that will end a touch</item>
 
     </string-array>
 

@@ -79,6 +79,20 @@ public class DispatchEventHelper {
         }
         break;
 
+      case BEGIN_TOUCH:
+        Log.d("dispatchEvent", "start touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.startTouch();
+        }
+        break;
+
+      case END_TOUCH:
+        Log.d("dispatchEvent", "end touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.endTouch();
+        }
+        break;
+
       case CURSOR_PAUSE:
         parentService.togglePause();
         break;

@@ -16,8 +16,6 @@
 
 package com.google.projectgameface;
 
-import static androidx.core.view.KeyEventDispatcher.dispatchKeyEvent;
-import static com.google.projectgameface.DispatchEventHelper.checkAndDispatchEvent;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.round;
@@ -81,10 +79,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -851,6 +847,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 break;
             case CONTINUOUS_TOUCH:
                 break;
+            case END_TOUCH:
+                break;
+            case BEGIN_TOUCH:
+                break;
             default:
                 // Cancel drag if user perform any other inputEvent.
                 cursorController.prepareDragEnd(0, 0);
@@ -1268,6 +1268,41 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         }
         return true;
+    }
+
+    public void startTouch() {
+        int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
+        if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+            Log.d(TAG, "START SWIPE");
+            swipeToggle = true;
+            startRealtimeSwipe();
+        } else if (!cursorController.isDragging) {
+            Log.d(TAG, "START DRAG");
+            DispatchEventHelper.checkAndDispatchEvent(
+                    CursorAccessibilityService.this,
+                    cursorController,
+                    serviceUiManager,
+                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                    null);
+        }
+    }
+
+    public void endTouch() {
+        int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
+        if (isSwiping) {
+            Log.d(TAG, "STOP SWIPE");
+            stopRealtimeSwipe();
+        } else if (cursorController.isDragging) {
+            Log.d(TAG, "STOP DRAG");
+            DispatchEventHelper.checkAndDispatchEvent(
+                    CursorAccessibilityService.this,
+                    cursorController,
+                    serviceUiManager,
+                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                    null);
+        }
     }
 
     private Handler dragToggleHandler = new Handler(Looper.getMainLooper());

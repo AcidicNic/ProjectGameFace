@@ -50,7 +50,10 @@ public class CursorBinding extends AppCompatActivity {
         R.id.allAppLayout,
         R.id.pauseLayout,
         R.id.resetLayout,
-        R.id.dragLayout
+        R.id.dragLayout,
+        R.id.longTouchLayout,
+        R.id.startTouchLayout,
+        R.id.endTouchLayout,
     };
 
 
@@ -74,6 +77,12 @@ public class CursorBinding extends AppCompatActivity {
     TextView resetLinear;
     TextView textDrag;
     TextView dragLinear;
+    TextView textLongTouch;
+    TextView longTouchLinear;
+    TextView textStartTouch;
+    TextView startTouchLinear;
+    TextView textEndTouch;
+    TextView endTouchLinear;
 
 
     protected String getDescriptionTextViewValue() {
@@ -184,11 +193,23 @@ public class CursorBinding extends AppCompatActivity {
                 (ImageView) findViewById(R.id.dragIcon));
 
 
-//        setUpActionList(
-//                String.valueOf(BlendshapeEventTriggerConfig.EventType.SWIPE_TOGGLE),
-//                textSwipe,
-//                swipeLinear,
-//                (ImageView) findViewById(R.id.swipeToggleIcon));
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_LONG_TOUCH),
+                textLongTouch,
+                longTouchLinear,
+                (ImageView) findViewById(R.id.longTouchIcon));
+
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.BEGIN_TOUCH),
+                textStartTouch,
+                startTouchLinear,
+                (ImageView) findViewById(R.id.startTouchIcon));
+
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.END_TOUCH),
+                textEndTouch,
+                endTouchLinear,
+                (ImageView) findViewById(R.id.endTouchIcon));
 
     }
 
@@ -223,8 +244,13 @@ public class CursorBinding extends AppCompatActivity {
         resetLinear = findViewById(R.id.resetLinear);
         textDrag = findViewById(R.id.dragBinding);
         dragLinear = findViewById(R.id.dragLinear);
-//        textSwipe = findViewById(R.id.swipeToggleBinding);
-//        swipeLinear = findViewById(R.id.swipeToggleLinear);
+
+        textLongTouch = findViewById(R.id.longTouchBinding);
+        longTouchLinear = findViewById(R.id.longTouchLinear);
+        textStartTouch = findViewById(R.id.startTouchBinding);
+        startTouchLinear = findViewById(R.id.startTouchLinear);
+        textEndTouch = findViewById(R.id.endTouchBinding);
+        endTouchLinear = findViewById(R.id.endTouchLinear);
 
         refreshUI();
 
@@ -268,8 +294,14 @@ public class CursorBinding extends AppCompatActivity {
                         } else if (v.getId() == R.id.dragLayout) {
                             intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
 
-//                        } else if (v.getId() == R.id.swipeToggleLayout) {
-//                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SWIPE_TOGGLE);
+                        } else if (v.getId() == R.id.longTouchLayout) {
+                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_LONG_TOUCH);
+
+                        } else if (v.getId() == R.id.startTouchLayout) {
+                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.BEGIN_TOUCH);
+
+                        } else if (v.getId() == R.id.endTouchLayout) {
+                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.END_TOUCH);
                         }
                         startActivity(intent);
 
