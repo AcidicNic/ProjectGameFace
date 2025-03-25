@@ -673,7 +673,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         // Register the IMEEventReceiver
         imeEventReceiver = new IMEEventReceiver();
         IntentFilter headSwypeFilter = new IntentFilter("com.headswype.ACTION_SEND_EVENT");
-        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null);
+        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
 
         Log.d(TAG, "[666] IMEEventReceiver registered.");
     }
@@ -804,42 +804,35 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             eventTime = startUpTime;
         }
         startUpTime = SystemClock.uptimeMillis();
-        MotionEvent event = MotionEvent.obtain(
-                startUpTime > 0 ? startUpTime : SystemClock.uptimeMillis(),
-                eventTime > 0 ? eventTime : SystemClock.uptimeMillis(),
-                action,
-                x,
-                y,
-                0
-        );
-        View rootView = getWindow().getWindow().getDecorView(); // Get the root view of the IME
 
+        View rootView = getWindow().getWindow().getDecorView();
         if (rootView != null) {
-            Rect imeBounds = new Rect();
-            rootView.getGlobalVisibleRect(imeBounds);
+            // Get the IME window location on screen
+            int[] location = new int[2];
+            rootView.getLocationOnScreen(location);
 
-            // Adjust Y-coordinate based on IME position
-            float adjustedY = y - imeBounds.top;
-            Log.d(TAG, "Adjusted Y: " + adjustedY + ", Original Y: " + y + ", IME bounds top: " + imeBounds.top);
+            // Transform the coordinates from screen space to IME window space
+            float localX = x - location[0];
+            float localY = y - location[1];
 
-            MotionEvent adjustedEvent = MotionEvent.obtain(
+            MotionEvent event = MotionEvent.obtain(
                     startUpTime > 0 ? startUpTime : SystemClock.uptimeMillis(),
                     eventTime > 0 ? eventTime : SystemClock.uptimeMillis(),
                     action,
-                    x,
-                    adjustedY,
+                    localX,
+                    localY,
                     0
             );
 
-            rootView.dispatchTouchEvent(adjustedEvent);
-            Log.d(TAG, "MotionEvent dispatched: (" + x + ", " + adjustedY + ", action=" + action + ")");
-            adjustedEvent.recycle();
+            rootView.dispatchTouchEvent(event);
+            Log.d(TAG, "MotionEvent dispatched: local(" + localX + ", " + localY +
+                    "), screen(" + x + ", " + y + "), window(" + location[0] + ", " + location[1] +
+                    "), action=" + action);
+            event.recycle();
         } else {
             startUpTime = 0;
             Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
         }
-
-        event.recycle();
     }
 
     @UsedForTesting

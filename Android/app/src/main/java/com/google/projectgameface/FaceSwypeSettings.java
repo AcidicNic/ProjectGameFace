@@ -24,7 +24,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -75,8 +74,10 @@ public class FaceSwypeSettings extends AppCompatActivity {
             R.id.headCoordScaleFactorXFaster,
             R.id.headCoordScaleFactorYSlower,
             R.id.headCoordScaleFactorYFaster,
-            R.id.slowerSmoothing,
-            R.id.fasterSmoothing
+            R.id.decreaseDragToggleDelay,
+            R.id.increaseDragToggleDelay,
+            R.id.decreaseSmoothing,
+            R.id.increaseSmoothing
     };
 
     @Override
@@ -221,69 +222,99 @@ public class FaceSwypeSettings extends AppCompatActivity {
     }
 
     private final View.OnClickListener buttonClickListener =
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    int currentValue;
-                    int newValue = 0;
-                    boolean isFaster = true; // False means slower
+        new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int currentValue;
+                int newValue = 0;
 
-                    if (v.getId() == R.id.holdDurationFaster) {
-                        currentValue = holdDurationSeekBar.getProgress();
-                        newValue = currentValue + 1;
-                    } else if (v.getId() == R.id.holdDurationSlower) {
-                        currentValue = holdDurationSeekBar.getProgress();
-                        newValue = currentValue - 1;
-                    } else if (v.getId() == R.id.headCoordScaleFactorXFaster) {
-                        currentValue = headCoordScaleFactorXSeekBar.getProgress();
-                        newValue = currentValue + 1;
-                    } else if (v.getId() == R.id.headCoordScaleFactorXSlower) {
-                        currentValue = headCoordScaleFactorXSeekBar.getProgress();
-                        newValue = currentValue - 1;
-                    } else if (v.getId() == R.id.headCoordScaleFactorYFaster) {
-                        currentValue = headCoordScaleFactorYSeekBar.getProgress();
-                        newValue = currentValue + 1;
-                    } else if (v.getId() == R.id.headCoordScaleFactorYSlower) {
-                        currentValue = headCoordScaleFactorYSeekBar.getProgress();
-                        newValue = currentValue - 1;
-                    }
-
-                    if ((isFaster && newValue < 15) || (!isFaster && newValue >= 0)) {
-                        if (v.getId() == R.id.holdDurationFaster || v.getId() == R.id.holdDurationSlower) {
+                if (v.getId() == R.id.holdDurationFaster) {
+                    currentValue = holdDurationSeekBar.getProgress();
+                    newValue = currentValue + 1;
+                } else if (v.getId() == R.id.holdDurationSlower) {
+                    currentValue = holdDurationSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.headCoordScaleFactorXFaster) {
+                    currentValue = headCoordScaleFactorXSeekBar.getProgress();
+                    newValue = currentValue + 1;
+                } else if (v.getId() == R.id.headCoordScaleFactorXSlower) {
+                    currentValue = headCoordScaleFactorXSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.headCoordScaleFactorYFaster) {
+                    currentValue = headCoordScaleFactorYSeekBar.getProgress();
+                    newValue = currentValue + 1;
+                } else if (v.getId() == R.id.headCoordScaleFactorYSlower) {
+                    currentValue = headCoordScaleFactorYSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.decreaseSmoothing) {
+                    currentValue = smoothingSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.increaseSmoothing) {
+                    currentValue = smoothingSeekBar.getProgress();
+                    newValue = currentValue + 1;
+                } else if (v.getId() == R.id.decreaseDragToggleDelay) {
+                    currentValue = dragToggleDurSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.increaseDragToggleDelay) {
+                    currentValue = dragToggleDurSeekBar.getProgress();
+                    newValue = currentValue + 1;
+                }
+                if (newValue >= 0) {
+                    if (v.getId() == R.id.holdDurationFaster || v.getId() == R.id.holdDurationSlower) {
+                        if (holdDurationSeekBar.getProgress() <= holdDurationSeekBar.getMax()) {
                             holdDurationSeekBar.setProgress(newValue);
                             int duration = (newValue + 1) * 200;
                             sendValueToService("EDGE_HOLD_DURATION", duration);
-                        } else if (v.getId() == R.id.fasterDragToggleDur || v.getId() == R.id.slowerDragToggleDur) {
+                        }
+                    } else if (v.getId() == R.id.decreaseDragToggleDelay || v.getId() == R.id.increaseDragToggleDelay) {
+                        if (dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
                             dragToggleDurSeekBar.setProgress(newValue);
                             int duration = (newValue + 1) * 100;
                             sendValueToService("DRAG_TOGGLE_DURATION", duration);
-                        } else if (v.getId() == R.id.headCoordScaleFactorXFaster || v.getId() == R.id.headCoordScaleFactorXSlower) {
+                        }
+                    } else if (v.getId() == R.id.headCoordScaleFactorXFaster || v.getId() == R.id.headCoordScaleFactorXSlower) {
+                        if (headCoordScaleFactorXSeekBar.getProgress() <= headCoordScaleFactorXSeekBar.getMax()) {
                             headCoordScaleFactorXSeekBar.setProgress(newValue);
-                            float scaleFactor = (newValue + 1) / 10.0f;
+                            float scaleFactor = 1.0f + (newValue * 0.2f);
                             sendValueToService("HEAD_COORD_SCALE_FACTOR_X", scaleFactor);
-                        } else if (v.getId() == R.id.headCoordScaleFactorYFaster || v.getId() == R.id.headCoordScaleFactorYSlower) {
+                        }
+                    } else if (v.getId() == R.id.headCoordScaleFactorYFaster || v.getId() == R.id.headCoordScaleFactorYSlower) {
+                        if (headCoordScaleFactorYSeekBar.getProgress() <= headCoordScaleFactorYSeekBar.getMax()) {
                             headCoordScaleFactorYSeekBar.setProgress(newValue);
-                            float scaleFactor = (newValue + 1) / 10.0f;
+                            float scaleFactor = 1.0f + (newValue * 0.2f);
                             sendValueToService("HEAD_COORD_SCALE_FACTOR_Y", scaleFactor);
+                        }
+                    } else if (v.getId() == R.id.decreaseSmoothing || v.getId() == R.id.increaseSmoothing) {
+                        if (smoothingSeekBar.getProgress() <= smoothingSeekBar.getMax()) {
+                            smoothingSeekBar.setProgress(newValue);
+                            int smoothingVal = newValue + 1;
+                            sendValueToService("AVG_SMOOTHING", smoothingVal);
                         }
                     }
                 }
-            };
+            }
+        };
 
     private void setUpScaleFactorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
-        seekBar.setMax(15); // 0.0 to 1.0 in increments of 0.1 means 10 steps
+        seekBar.setMax(20); // 1 to 20 (total 20 steps)
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
-        float savedProgress = preferences.getFloat(preferencesId, 1.5f); // Default to 1.2
-        int progress = Math.round((savedProgress - 1.0f) * 10);
+        float savedProgress = preferences.getFloat(preferencesId, 1.5f); // Default to 1.5
+
+        // Convert saved value to progress (1.0=0, 5.0=20)
+        int progress = Math.round((savedProgress - 1.0f) * 5);
+        progress = Math.min(progress, 20); // Ensure it doesn't exceed max
+        progress = Math.max(progress, 0);  // Ensure it doesn't go below min
+
         seekBar.setProgress(progress); // Set initial progress
         textView.setText(String.valueOf(savedProgress)); // Set initial text
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                float displayValue = 1.0f + (progress / 10.0f);
-                textView.setText(String.valueOf(displayValue));
+                // Calculate display value (progress 0=1.0, 20=5.0)
+                float displayValue = 1.0f + (progress * 0.2f);
+                textView.setText(String.format("%.1f", displayValue));
             }
 
             @Override
@@ -291,7 +322,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                float scaleFactor = 1.0f + (seekBar.getProgress() / 10.0f);
+                float scaleFactor = 1.0f + (seekBar.getProgress() * 0.2f);
                 sendValueToService(preferencesId, scaleFactor);
             }
         });
@@ -335,22 +366,15 @@ public class FaceSwypeSettings extends AppCompatActivity {
         seekBar.setMax(9); // 1 to 10 in increments of 1 means 9 steps
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
-        int savedProgress;
-        if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.EDGE_HOLD_DURATION.toString())) {
-            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.EDGE_HOLD_DURATION);
-        } else if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION.toString())) {
-            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DRAG_TOGGLE_DURATION);
-        } else {
-            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
-        }
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
         int progress = (savedProgress / 100) - 1;
         seekBar.setProgress(progress); // Set initial progress
-        textView.setText(String.valueOf(progress + 1)); // Set initial text
+        textView.setText(String.valueOf((progress + 1) * 100)); // Set initial text
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int displayValue = progress + 1;
+                int displayValue = (progress + 1) * 100;
                 textView.setText(String.valueOf(displayValue));
             }
 

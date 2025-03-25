@@ -19,6 +19,8 @@ package com.google.projectgameface;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.util.Log;
+import android.view.KeyEvent;
 
 import com.google.projectgameface.utils.CursorUtils;
 
@@ -39,30 +41,56 @@ public class DispatchEventHelper {
       CursorAccessibilityService parentService,
       CursorController cursorController,
       ServiceUiManager serviceUiManager,
-      BlendshapeEventTriggerConfig.EventType event) {
+      BlendshapeEventTriggerConfig.EventType event,
+      KeyEvent keyEvent) {
 
 
     int[] cursorPosition = cursorController.getCursorPositionXY();
 
     int  eventOffsetX = 0;
-    int eventOffsetY =0;
+    int eventOffsetY = 0;
 
 
     switch (event) {
-      case CURSOR_TOUCH:
-        if (cursorController.isRealtimeSwipe) {
-          break;
-        }
-        parentService.dispatchGesture(
-            CursorUtils.createClick(
-                cursorPosition[0] ,
-                cursorPosition[1] ,
-                /* startTime= */ 0,
-                /* duration= */ 250),
-            /* callback= */ null,
-            /* handler= */ null);
+      case CONTINUOUS_TOUCH:
+        Log.d("dispatchEvent", "continuous touch");
+        parentService.continuousTouch(keyEvent);
+        break;
 
-        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+      case TOGGLE_TOUCH:
+        Log.d("dispatchEvent", "toggle touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.toggleTouch();
+        }
+        break;
+
+      case CURSOR_TOUCH:
+        Log.d("dispatchEvent", "Cursor touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.quickTap(cursorPosition, 200);
+          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        }
+        break;
+
+      case CURSOR_LONG_TOUCH:
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.quickTap(cursorPosition, 650);
+          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        }
+        break;
+
+      case BEGIN_TOUCH:
+        Log.d("dispatchEvent", "start touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.startTouch();
+        }
+        break;
+
+      case END_TOUCH:
+        Log.d("dispatchEvent", "end touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.endTouch();
+        }
         break;
 
       case CURSOR_PAUSE:
@@ -182,15 +210,18 @@ public class DispatchEventHelper {
   }
 
   private static void dispatchDragOrHold(
-      CursorAccessibilityService parentService,
-      CursorController cursorController,
-      ServiceUiManager serviceUiManager,
-      int eventOffsetX, int eventOffsetY) {
+          CursorAccessibilityService parentService,
+          CursorController cursorController,
+          ServiceUiManager serviceUiManager,
+          int eventOffsetX, int eventOffsetY) {
+
+    Log.d("dispatchDragOrHold", "dispatchDragOrHold");
 
     int[] cursorPosition = cursorController.getCursorPositionXY();
 
     // Register new drag action.
     if (!cursorController.isDragging) {
+      Log.d("dispatchDragOrHold", "new drag action");
 
       cursorController.prepareDragStart(
           cursorPosition[0] + eventOffsetX,
@@ -201,10 +232,10 @@ public class DispatchEventHelper {
 
       serviceUiManager.setDragLineStart(
           cursorPosition[0], cursorPosition[1]);
-
     }
     // Finish drag action.
     else {
+      Log.d("dispatchDragOrHold", "end drag action");
       cursorController.prepareDragEnd(
           cursorPosition[0] + eventOffsetX,
           cursorPosition[1] + eventOffsetY);
