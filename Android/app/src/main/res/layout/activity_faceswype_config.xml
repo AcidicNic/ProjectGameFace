@@ -346,7 +346,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/smoothingTxt" />
             <TextView
-                android:id="@+id/slowerDragToggleDur"
+                android:id="@+id/decreaseSmoothing"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -360,7 +360,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/smoothingSeekBar" />
             <TextView
-                android:id="@+id/fasterDragToggleDur"
+                android:id="@+id/increaseSmoothing"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -506,7 +506,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/dragToggleDurTxt" />
             <TextView
-                android:id="@+id/slowerSmoothing"
+                android:id="@+id/decreaseDragToggleDelay"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
@@ -520,7 +520,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/dragToggleDurSeekBar" />
             <TextView
-                android:id="@+id/fasterSmoothing"
+                android:id="@+id/increaseDragToggleDelay"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"

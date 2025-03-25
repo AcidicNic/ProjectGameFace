@@ -76,7 +76,7 @@ public final class GestureSettingsFragment extends SubScreenFragment {
 
             @Override
             public void writeDefaultValue(final String key) {
-                prefs.edit().putFloat(key, 40.0f).apply();
+                prefs.edit().putFloat(key, 4.0f).apply();
             }
 
             @Override
