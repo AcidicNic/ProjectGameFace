@@ -21,18 +21,21 @@ import static java.lang.Math.max;
 import static java.lang.Math.round;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.GestureDescription;
 import android.annotation.SuppressLint;
 import android.app.Instrumentation;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -76,11 +79,13 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.google.projectgameface.utils.CursorUtils;
 import com.google.projectgameface.utils.DebuggingStats;
 import com.google.projectgameface.utils.WriteToFile;
 import com.google.projectgameface.utils.Config;
@@ -123,7 +128,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver profileChangeReceiver;
     private BroadcastReceiver resetDebuggingStatsReciever;
     private BroadcastReceiver screenCaptureReceiver;
-    private boolean isSwiping = false;
+    public boolean isSwiping = false;
     private Rect keyboardBounds = new Rect();
     private Rect _keyboardBounds = new Rect();
     private Rect navBarBounds = new Rect();
@@ -295,18 +300,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     RECEIVER_EXPORTED);
             registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"),
                     RECEIVER_EXPORTED);
-//            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"),
-//                    RECEIVER_EXPORTED);
-            registerReceiver(changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"));
-            registerReceiver(requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"));
-            registerReceiver(loadSharedConfigBasicReceiver, new IntentFilter("LOAD_SHARED_CONFIG_BASIC"));
-            registerReceiver(loadSharedConfigGestureReceiver, new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"));
-            registerReceiver(enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"));
-            registerReceiver(serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"));
-            registerReceiver(serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"));
-            registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
-            registerReceiver(resetDebuggingStatsReciever, new IntentFilter("RESET_DEBUGGING_STATS"));
-//            registerReceiver(screenCaptureReceiver, new IntentFilter("SCREEN_CAPTURE_PERMISSION_RESULT"));
     }
 
     /** Get current service state. */
@@ -510,7 +503,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                     cursorController.getCursorPositionXY()
                             );
 
-                            dispatchEvent();
+                            dispatchEvent(null, null);
 
                             if (isPitchYawEnabled() && isNoseTipEnabled()) {
                                 serviceUiManager.drawHeadCenter(
@@ -838,42 +831,51 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         super.onDestroy();
     }
 
-
     /** Function for perform {@link BlendshapeEventTriggerConfig.EventType} actions. */
-    private void dispatchEvent() {
-        // Check what event to dispatch.
-        BlendshapeEventTriggerConfig.EventType event =
-                cursorController.createCursorEvent(facelandmarkerHelper.getBlendshapes());
+    private void dispatchEvent(BlendshapeEventTriggerConfig.EventType inputEvent, KeyEvent keyEvent) {
+        // Check what inputEvent to dispatch.
+        if (inputEvent == null && keyEvent == null) {
+            inputEvent = cursorController.createCursorEvent(facelandmarkerHelper.getBlendshapes());
+        }
 
-
-        switch (event) {
+        switch (inputEvent) {
             case NONE:
                 return;
             case DRAG_TOGGLE:
                 break;
+            case TOGGLE_TOUCH:
+                break;
+            case CONTINUOUS_TOUCH:
+                break;
+            case END_TOUCH:
+                break;
+            case BEGIN_TOUCH:
+                break;
             default:
-                // Cancel drag if user perform any other event.
+                // Cancel drag if user perform any other inputEvent.
                 cursorController.prepareDragEnd(0, 0);
                 serviceUiManager.fullScreenCanvas.clearDragLine();
                 break;
         }
 
+        Log.d(TAG, "dispatchEvent: " + inputEvent);
 
         switch (serviceState) {
             case GLOBAL_STICK:
             case ENABLE:
-                // Check event type and dispatch it.
+                // Check inputEvent type and dispatch it.
                 DispatchEventHelper.checkAndDispatchEvent(
-                        this,
+                        CursorAccessibilityService.this,
                         cursorController,
                         serviceUiManager,
-                        event);
+                        inputEvent,
+                        keyEvent);
                 break;
 
             case PAUSE:
                 // In PAUSE state user can only perform togglePause
                 // with face gesture.
-                if (event == BlendshapeEventTriggerConfig.EventType.CURSOR_PAUSE) {
+                if (inputEvent == BlendshapeEventTriggerConfig.EventType.CURSOR_PAUSE) {
                     togglePause();
                 }
                 if (cursorController.isDragging) {
@@ -1039,7 +1041,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 keyboardBounds.union(navBarBounds);
             }
             cursorController.setTemporaryBounds(keyboardBounds);
-            Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
+//            Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
 
             checkForKeyboardType();
 //            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
@@ -1081,115 +1083,230 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean swipeToggle = false;
     private boolean dragToggle = false;
 
+
+//    public boolean handleSwipeAndTouch()
+
+
+    /**
+     * Handle key event for swipe and touch.
+     *
+     * @param event The key event.
+     * @return True if the key event is handled.
+     */
     private boolean handleKeyEvent(KeyEvent event) {
         if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
             return false;
         }
-        int eventAction = event.getAction();
+        SharedPreferences preferences = getSharedPreferences(ProfileManager.getCurrentProfile(this), Context.MODE_PRIVATE);
+        String eventName = "NONE";
         int keyCode = event.getKeyCode();
-        int[] cursorPosition = new int[2];
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_SPACE:
-            case KeyEvent.KEYCODE_2:
-                if (eventAction == KeyEvent.ACTION_DOWN) {
-                    Log.d(TAG, "TAP KeyEvent.ACTION_DOWN");
-                    DispatchEventHelper.checkAndDispatchEvent(
-                            this,
-                            cursorController,
-                            serviceUiManager,
-                            BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
-                }
-                return true;
-            case KeyEvent.KEYCODE_1:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_BUTTON_A:
-                cursorPosition = getCursorPosition();
-                if (eventAction == KeyEvent.ACTION_DOWN) {
-                    keyStates.put(keyCode, true);
-                    Log.d(TAG, "SWIPE KeyEvent.ACTION_DOWN");
-                    if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
-                        startRealtimeSwipe();
-//                    startSwipe();
-                    } else {
-                        dragToggleStartTime = SystemClock.uptimeMillis();
-                        dragToggleCancelled = false;
-                        dragToggle = true;
-                        Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
-                        dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
-                    }
-                } else if (eventAction == KeyEvent.ACTION_UP) {
-                    keyStates.put(keyCode, false);
-                    Log.d(TAG, "SWIPE KeyEvent.ACTION_UP");
-                    if (isSwiping) {
-                        stopRealtimeSwipe();
-//                    stopSwipe();
-                    } else if (dragToggle) {
-                        long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
-                        dragToggleHandler.removeCallbacks(dragToggleRunnable);
-                        if (elapsedTime < getDragToggleDuration()) {
-                            dragToggleCancelled = true;
-                            // Perform tap instead of enabling drag toggle
-                            DispatchEventHelper.checkAndDispatchEvent(
-                                    this,
-                                    cursorController,
-                                    serviceUiManager,
-                                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
-                        } else {
-                            dragToggle = false;
-                            DispatchEventHelper.checkAndDispatchEvent(
-                                    this,
-                                    cursorController,
-                                    serviceUiManager,
-                                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
-                        }
-                    }
-                }
-                return true;
-            case KeyEvent.KEYCODE_3:
-                cursorPosition = getCursorPosition();
-
-                if (eventAction == KeyEvent.ACTION_DOWN) {
-                    if (dragToggle) {
-                        Log.d(TAG, "STOP DRAG TOGGLE KeyEvent.ACTION_DOWN");
-                        dragToggle = false;
-                        DispatchEventHelper.checkAndDispatchEvent(
-                                this,
-                                cursorController,
-                                serviceUiManager,
-                                BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
-                    } else if (isSwiping && swipeToggle) {
-                        Log.d(TAG, "STOP SWIPE TOGGLE KeyEvent.ACTION_DOWN");
-                        swipeToggle = false;
-                        stopRealtimeSwipe();
-                    } else if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
-                        Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
-                        swipeToggle = true;
-                        startRealtimeSwipe();
-                    } else {
-                        Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
-                        dragToggle = true;
-                        DispatchEventHelper.checkAndDispatchEvent(
-                                this,
-                                cursorController,
-                                serviceUiManager,
-                                BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
-                    }
-                }
-                return true;
-
-            case KeyEvent.KEYCODE_4:
-                if (eventAction == KeyEvent.ACTION_DOWN && isKeyboardOpen && cursorController.getCursorPositionXY()[1] > keyboardBounds.top) {
-                    Log.d(TAG, "SCREENSHOT TEST KEY KeyEvent.ACTION_DOWN");
-//                saveScreenshot();
-                }
-                return true;
+        if (keyCode == KeyEvent.KEYCODE_1) {
+            eventName = preferences.getString(BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE.toString()+"_event", BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
+            if (eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
+                return false;
+            }
+        } else if (keyCode == KeyEvent.KEYCODE_2) {
+            eventName = preferences.getString(BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO.toString()+"_event", BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
+            if (eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
+                return false;
+            }
+        } else if (keyCode == KeyEvent.KEYCODE_3) {
+            eventName = preferences.getString(BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE.toString()+"_event", BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
+            if (eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
+                return false;
+            }
+        } else {
+//            wrong key pressed
+            return false;
         }
-        return false;
+
+        BlendshapeEventTriggerConfig.EventType eventType = BlendshapeEventTriggerConfig.EventType.valueOf(eventName);
+        Log.d(TAG, "handleKeyEvent: name " + eventName+ "; + type " + eventType);
+        dispatchEvent(eventType, event);
+        return true;
+    }
+
+
+    public void quickTap(int[] cursorPosition, int duration) {
+        if (duration == -1) {
+            duration = 200;
+        }
+        dispatchGesture(
+            CursorUtils.createClick(
+                    cursorPosition[0] ,
+                    cursorPosition[1] ,
+                    /* startTime= */ 0,
+                    /* duration= */ duration),
+            /* callback= */ null,
+            /* handler= */ null);
+
+        serviceUiManager.drawTouchDot(cursorPosition);
+    }
+
+    boolean dragToggleActive = false;
+    public boolean toggleTouch() {
+        Log.d(TAG, "toggleTouch()");
+        int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
+
+//        if (isGestureSwiping) {
+//            Log.d(TAG, "STOP GESTURE SWIPE KeyEvent.ACTION_DOWN");
+//            stopSwipeGesture();
+//        } else {
+//            Log.d(TAG, "START GESTURE SWIPE KeyEvent.ACTION_DOWN");
+//            startSwipeGesture();
+//        }
+        if (isSwiping && swipeToggle) {
+            Log.d(TAG, "STOP SWIPE TOGGLE KeyEvent.ACTION_DOWN");
+            swipeToggle = false;
+            stopRealtimeSwipe();
+        } else if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+            Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
+            swipeToggle = true;
+            startRealtimeSwipe();
+        } else {
+            Log.d(TAG, "DRAG TOGGLE KeyEvent.ACTION_DOWN");
+            DispatchEventHelper.checkAndDispatchEvent(
+                    CursorAccessibilityService.this,
+                    cursorController,
+                    serviceUiManager,
+                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                    null);
+
+            /* // drag toggle with delay for quick tap... not sure if this is useful?
+            if (cursorController.isDragging) {
+                DispatchEventHelper.checkAndDispatchEvent(
+                        CursorAccessibilityService.this,
+                        cursorController,
+                        serviceUiManager,
+                        BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                        null);
+                dragToggleActive = false;
+            } else if (!dragToggleActive) {
+                dragToggleStartTime = SystemClock.uptimeMillis();
+                dragToggleCancelled = false;
+                dragtoggleStartPosition = cursorPosition;
+                dragToggleActive = true;
+                dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
+            } else {
+                long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
+                dragToggleHandler.removeCallbacks(dragToggleRunnable);
+                if (elapsedTime < getDragToggleDuration()) {
+                    dragToggleCancelled = true;
+                    dragToggleActive = false;
+                    // Perform quick tap instead of enabling drag toggle
+                    quickTap(dragtoggleStartPosition, -1);
+                }
+            }
+            */
+        }
+        return true;
+    }
+
+    public void dragToggle() {
+        dispatchEvent(BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, null);
+    }
+
+    int[] dragtoggleStartPosition = new int[2];
+    public boolean continousTouchActive = false;
+    public boolean continuousTouch (KeyEvent event) {
+        Log.d(TAG, "continuousTouch() SWIPE KeyEvent: " + event);
+
+        int keyCode = -1;
+        int eventAction = -1;
+        if (event != null) {
+            eventAction = event.getAction();
+            keyCode = event.getKeyCode();
+        }
+        int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
+
+        if (eventAction == KeyEvent.ACTION_DOWN || !continousTouchActive) {
+            if (keyCode <= 0) {
+                keyStates.put(keyCode, true);
+            }
+            continousTouchActive = true;
+            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
+            if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+                startRealtimeSwipe();
+            } else {
+                dragToggleStartTime = SystemClock.uptimeMillis();
+                dragToggleCancelled = false;
+                dragtoggleStartPosition = cursorPosition;
+                dragToggle = true;
+//                Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
+                dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
+            }
+        } else if (eventAction == KeyEvent.ACTION_UP || continousTouchActive) {
+            if (keyCode <= 0) {
+                keyStates.put(keyCode, false);
+            }
+
+            continousTouchActive = false;
+
+            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_UP");
+            if (isSwiping) {
+                stopRealtimeSwipe();
+            } else {
+                long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
+                dragToggleHandler.removeCallbacks(dragToggleRunnable);
+                if (elapsedTime < getDragToggleDuration()) {
+                    dragToggleCancelled = true;
+                    // Perform quick tap instead of enabling drag toggle
+                    quickTap(dragtoggleStartPosition, -1);
+                } else {
+                    dragToggle = false;
+                    if (cursorController.isDragging) {
+                        DispatchEventHelper.checkAndDispatchEvent(
+                                CursorAccessibilityService.this,
+                                cursorController,
+                                serviceUiManager,
+                                BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                                null);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public void startTouch() {
+        int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
+        if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+            Log.d(TAG, "START SWIPE");
+            swipeToggle = true;
+            startRealtimeSwipe();
+        } else if (!cursorController.isDragging) {
+            Log.d(TAG, "START DRAG");
+            DispatchEventHelper.checkAndDispatchEvent(
+                    CursorAccessibilityService.this,
+                    cursorController,
+                    serviceUiManager,
+                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                    null);
+        }
+    }
+
+    public void endTouch() {
+        int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
+        if (isSwiping) {
+            Log.d(TAG, "STOP SWIPE");
+            stopRealtimeSwipe();
+        } else if (cursorController.isDragging) {
+            Log.d(TAG, "STOP DRAG");
+            DispatchEventHelper.checkAndDispatchEvent(
+                    CursorAccessibilityService.this,
+                    cursorController,
+                    serviceUiManager,
+                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                    null);
+        }
     }
 
     private Handler dragToggleHandler = new Handler(Looper.getMainLooper());
     private boolean dragToggleCancelled = false;
-    private static final int DRAG_TOGGLE_DELAY = 200; // 200ms delay
     private long dragToggleStartTime;
 
     // Runnable to handle delayed drag toggle start
@@ -1201,14 +1318,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         CursorAccessibilityService.this,
                         cursorController,
                         serviceUiManager,
-                        BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+                        BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                        null);
             } else {
                 Log.d(TAG, "Drag toggle cancelled");
                 DispatchEventHelper.checkAndDispatchEvent(
                         CursorAccessibilityService.this,
                         cursorController,
                         serviceUiManager,
-                        BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
+                        BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH,
+                        null);
             }
         }
     };
@@ -1329,9 +1448,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     debugText[1] = "X, Y: (" + lastValidCoords[0] + ", " + lastValidCoords[1] + ")";
                     Log.d(TAG, "MotionEvent.ACTION_UP @ (" + lastValidCoords[0] + ", " + lastValidCoords[1] + ")");
                 }
-
-                // TODO: pause screencapture sometime after it seems like the user has finished swipe-typing.
-
             } catch (Exception e) {
                 writeToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
@@ -1347,6 +1463,152 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
 //            displaySwipeInfo();
         }).start();
+    }
+
+    private Handler gestureHandler = new Handler(Looper.getMainLooper());
+    private boolean isGestureSwiping = false;
+    private final int gestureInterval = 10; // Slightly longer for smoother tracking
+    private final LinkedList<int[]> gestureQueue = new LinkedList<>();
+    private float lastX, lastY;
+    private long gestureStartTime = 0;
+    private final long MAX_GESTURE_DURATION = 9000;
+    private boolean isGestureInProgress = false; // Tracks if a gesture is still running
+
+    public void startSwipeGesture() {
+        if (isGestureSwiping) return;
+        isGestureSwiping = true;
+        gestureQueue.clear();
+        gestureStartTime = SystemClock.uptimeMillis();
+        isGestureInProgress = false;
+
+        int[] pos = getCursorPosition();
+        lastX = pos[0];
+        lastY = pos[1];
+
+        simulateTouchDown(lastX, lastY);
+
+        gestureHandler.post(updateSwipeRunnable);
+    }
+
+    private Runnable updateSwipeRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isGestureSwiping) return;
+
+            // Add latest cursor position to the queue
+            gestureQueue.add(getCursorPosition());
+
+            if (!isGestureInProgress && gestureQueue.size() > 1) {
+                dispatchQueuedGestures();
+            }
+
+            // Keep adding points while a gesture is in progress
+            gestureHandler.post(this);
+        }
+    };
+
+    private void dispatchQueuedGestures() {
+        if (gestureQueue.isEmpty() || isGestureInProgress) return;
+        isGestureInProgress = true;
+
+        Path path = new Path();
+        path.moveTo(lastX, lastY);
+
+        // Use all points collected in the queue to form a smooth segment
+        while (!gestureQueue.isEmpty()) {
+            int[] next = gestureQueue.poll();
+            path.lineTo(next[0], next[1]);
+            lastX = next[0];
+            lastY = next[1];
+        }
+
+        long newStartTime = lastStroke == null ? 0 : lastStroke.getStartTime() + lastStroke.getDuration();
+
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+
+        if (lastStroke == null || !lastStroke.willContinue()) {
+            lastStroke = new GestureDescription.StrokeDescription(path, 0, gestureInterval, true);
+        } else {
+            lastStroke = lastStroke.continueStroke(path, newStartTime, gestureInterval, true);
+        }
+
+        builder.addStroke(lastStroke);
+        dispatchGesture(builder.build(), new GestureResultCallback() {
+            @Override
+            public void onCompleted(GestureDescription gesture) {
+                isGestureInProgress = false;
+                if (isGestureSwiping) {
+                    dispatchQueuedGestures(); // Immediately dispatch next segment if points exist
+                }
+            }
+        }, null);
+    }
+
+    // 🔄 Restart Gesture if near 10s limit
+//    private void restartGesture() {
+//        Log.d("GESTURE", "Restarting gesture to avoid 10s limit.");
+//
+//        int[] pos = getCursorPosition();
+//        stopSwipeGesture();
+//
+//        gestureHandler.postDelayed(() -> startSwipeGesture(), 15);
+//    }
+
+    public void stopSwipeGesture() {
+        if (!isGestureSwiping) return;
+        isGestureSwiping = false;
+
+        int[] pos = getCursorPosition();
+        gestureQueue.add(pos);
+
+        dispatchQueuedGestures();
+        gestureHandler.removeCallbacks(updateSwipeRunnable);
+
+        if (lastStroke != null && lastStroke.willContinue()) {
+            Path path = new Path();
+            path.moveTo(lastX, lastY);
+            path.lineTo(pos[0], pos[1]);
+
+            long newStartTime = lastStroke.getStartTime() + lastStroke.getDuration();
+
+            GestureDescription.Builder builder = new GestureDescription.Builder();
+            lastStroke = lastStroke.continueStroke(path, newStartTime, gestureInterval, false);
+
+            builder.addStroke(lastStroke);
+            dispatchGesture(builder.build(), new GestureResultCallback() {
+                @Override
+                public void onCompleted(GestureDescription gesture) {
+                    Log.d("GESTURE", "ACTION_UP Completed");
+                }
+            }, null);
+        }
+    }
+
+    private GestureDescription.StrokeDescription lastStroke;
+//    private float lastX, lastY;  // Track last touch position
+//
+//
+    // Start the gesture (ACTION_DOWN)
+    public void simulateTouchDown(float x, float y) {
+        if (isGestureSwiping) return; // Prevent multiple calls
+        isGestureSwiping = true;
+        gestureQueue.clear(); // Ensure old movements are discarded
+        lastX = x;
+        lastY = y;
+
+        Path path = new Path();
+        path.moveTo(x, y);
+
+        GestureDescription.Builder builder = new GestureDescription.Builder();
+        lastStroke = new GestureDescription.StrokeDescription(path, 0, gestureInterval, true); // First stroke, will continue
+
+        builder.addStroke(lastStroke);
+        dispatchGesture(builder.build(), new GestureResultCallback() {
+            @Override
+            public void onCompleted(GestureDescription gesture) {
+                Log.d("GESTURE", "ACTION_DOWN Completed at " + x + ", " + y);
+            }
+        }, null);
     }
 
     // Unified MotionEvent injection method
@@ -1368,7 +1630,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
         intent.putExtra("x", event.getX());
-        intent.putExtra("y", event.getY() - (navbarHeight));
+        intent.putExtra("y", event.getY());
         intent.putExtra("action", event.getAction());
         intent.putExtra("downTime", event.getDownTime());
         intent.putExtra("eventTime", event.getEventTime());
@@ -1410,23 +1672,23 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     // Helper method to check if a window is injectable
     private boolean isInjectableWindow(AccessibilityWindowInfo window) {
         if (window == null) {
-            Log.e(TAG, "isInjectableWindow: Window is null.");
+//            Log.e(TAG, "isInjectableWindow: Window is null.");
             return false;
         }
 
         AccessibilityNodeInfo rootNode = window.getRoot();
         if (rootNode == null) {
-            Log.e(TAG, "isInjectableWindow: Root node is null for the window.");
+//            Log.e(TAG, "isInjectableWindow: Root node is null for the window.");
             return false;
         }
 
         CharSequence packageName = rootNode.getPackageName();
         if (packageName == null) {
-            Log.e(TAG, "isInjectableWindow: Package name is null for the root node.");
+//            Log.e(TAG, "isInjectableWindow: Package name is null for the root node.");
             return false;
         }
 
-        Log.d(TAG, "isInjectableWindow: Found package " + packageName);
+//        Log.d(TAG, "isInjectableWindow: Found package " + packageName);
         return isMyAppPackage(packageName.toString());
     }
 

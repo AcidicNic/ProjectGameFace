@@ -30,6 +30,7 @@ import com.google.auto.value.AutoValue;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -63,6 +64,9 @@ public class BlendshapeEventTriggerConfig {
     SHOW_APPS,
     TOGGLE_TOUCH,
     CONTINUOUS_TOUCH,
+    CURSOR_LONG_TOUCH,
+    BEGIN_TOUCH,
+    END_TOUCH,
   }
 
   // EventType string name used in title bar UI.
@@ -82,6 +86,9 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.SHOW_APPS, "All apps");
     put(EventType.TOGGLE_TOUCH, "Toggle touch");
     put(EventType.CONTINUOUS_TOUCH, "Continuous touch");
+    put(EventType.CURSOR_LONG_TOUCH, "Long touch");
+    put(EventType.BEGIN_TOUCH, "Begin touch");
+    put(EventType.END_TOUCH, "End touch");
   }};
 
 
@@ -101,9 +108,6 @@ public class BlendshapeEventTriggerConfig {
     put(Blendshape.SWITCH_THREE, "Switch three");
 
   }};
-
-
-
 
 
   /** Allowed blendshape that our app can use and its array index (from MediaPipe's). */
@@ -136,10 +140,6 @@ public class BlendshapeEventTriggerConfig {
       Blendshape.SWITCH_ONE, Blendshape.SWITCH_TWO,
       Blendshape.SWITCH_THREE, Blendshape.NONE
   ).collect(Collectors.toList());
-
-
-
-
 
 
 
@@ -183,9 +183,7 @@ public class BlendshapeEventTriggerConfig {
     }
   }
 
-  private final HashMap<EventType, BlendshapeAndThreshold> configMap;
-
-
+  public final HashMap<EventType, BlendshapeAndThreshold> configMap;
 
 
   /**
@@ -314,6 +312,7 @@ public class BlendshapeEventTriggerConfig {
     SharedPreferences.Editor editor = preferences.edit();
     editor.putInt(eventType.toString(), BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(blendshape));
     editor.putInt(eventType.toString()+"_size", thresholdInUI);
+    editor.putString(blendshape.toString()+"_event", eventType.toString());
     editor.apply();
 
     // Tell service to refresh its config.
@@ -337,6 +336,5 @@ public class BlendshapeEventTriggerConfig {
     return values[index];
 
   }
-
 
 }

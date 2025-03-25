@@ -376,6 +376,10 @@ class CursorMovementConfig {
         float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_PHRASE_LENGTH);
         setRawFloatValueFromUi(configName, configValueInUi);
         Log.i(TAG, "Set raw float value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.AVG_SMOOTHING) {
+        int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.AVG_SMOOTHING);
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw int value to: " + configValueInUi);
 
       } else {
         int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);

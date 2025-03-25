@@ -26,8 +26,8 @@ public class IMEEventReceiver extends BroadcastReceiver {
             float x = intent.getFloatExtra("x", -1);
             float y = intent.getFloatExtra("y", -1);
             int action = intent.getIntExtra("action", MotionEvent.ACTION_DOWN);
-            long downTime = intent.getLongExtra("downTime", SystemClock.uptimeMillis());
-            long eventTime = intent.getLongExtra("eventTime", SystemClock.uptimeMillis());
+//            long downTime = intent.getLongExtra("downTime", SystemClock.uptimeMillis());
+//            long eventTime = intent.getLongExtra("eventTime", SystemClock.uptimeMillis());
 
             Log.d(TAG, "[666] Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
 

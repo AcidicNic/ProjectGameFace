@@ -624,6 +624,186 @@
                 app:layout_constraintTop_toBottomOf="@+id/allAppTxt" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/longTouchLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="24dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/allAppLayout">
+
+            <TextView
+                android:id="@id/longTouchTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Long Touch"
+                android:textColor="#3C4043"
+                android:textSize="16sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="5dp"
+                android:paddingBottom="9dp"
+                android:paddingStart="17dp"
+                android:paddingEnd="17dp"
+                android:background="@drawable/custom_binding_linear"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/longTouchIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginTop="3dp"/>
+
+                <TextView
+                    android:id="@+id/longTouchLinear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="4dp"
+                    android:text="Add"
+                    android:textStyle="bold"
+                    android:textSize="13sp" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/longTouchBinding"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#5F6368"
+                android:text="No binding"
+                app:layout_constraintStart_toStartOf="@id/longTouchTxt"
+                app:layout_constraintTop_toBottomOf="@+id/longTouchTxt" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/startTouchLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="24dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/longTouchLayout">
+
+            <TextView
+                android:id="@id/startTouchTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Start Touch"
+                android:textColor="#3C4043"
+                android:textSize="16sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="5dp"
+                android:paddingBottom="9dp"
+                android:paddingStart="17dp"
+                android:paddingEnd="17dp"
+                android:background="@drawable/custom_binding_linear"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/startTouchIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginTop="3dp"/>
+
+                <TextView
+                    android:id="@+id/startTouchLinear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="4dp"
+                    android:text="Add"
+                    android:textStyle="bold"
+                    android:textSize="13sp" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/startTouchBinding"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#5F6368"
+                android:text="No binding"
+                app:layout_constraintStart_toStartOf="@id/startTouchTxt"
+                app:layout_constraintTop_toBottomOf="@+id/startTouchTxt" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/endTouchLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="24dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/startTouchLayout">
+
+            <TextView
+                android:id="@id/endTouchTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="End Touch"
+                android:textColor="#3C4043"
+                android:textSize="16sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="5dp"
+                android:paddingBottom="9dp"
+                android:paddingStart="17dp"
+                android:paddingEnd="17dp"
+                android:background="@drawable/custom_binding_linear"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/endTouchIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginTop="3dp"/>
+
+                <TextView
+                    android:id="@+id/endTouchLinear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="4dp"
+                    android:text="Add"
+                    android:textStyle="bold"
+                    android:textSize="13sp" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/endTouchBinding"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#5F6368"
+                android:text="No binding"
+                app:layout_constraintStart_toStartOf="@id/endTouchTxt"
+                app:layout_constraintTop_toBottomOf="@+id/endTouchTxt" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </ScrollView>
