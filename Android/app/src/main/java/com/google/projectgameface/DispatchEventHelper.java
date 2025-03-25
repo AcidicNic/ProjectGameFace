@@ -53,26 +53,30 @@ public class DispatchEventHelper {
 
     switch (event) {
       case CONTINUOUS_TOUCH:
+        Log.d("dispatchEvent", "continuous touch");
         parentService.continuousTouch(keyEvent);
         break;
 
       case TOGGLE_TOUCH:
-        parentService.toggleTouch();
+        Log.d("dispatchEvent", "toggle touch");
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.toggleTouch();
+        }
         break;
 
       case CURSOR_TOUCH:
         Log.d("dispatchEvent", "Cursor touch");
-        parentService.quickTap(cursorPosition, 200);
-        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.quickTap(cursorPosition, 200);
+          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        }
         break;
 
       case CURSOR_LONG_TOUCH:
-        if (cursorController.isRealtimeSwipe) {
-          break;
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.quickTap(cursorPosition, 650);
+          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         }
-        parentService.quickTap(cursorPosition, 650);
-
-        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         break;
 
       case CURSOR_PAUSE:
@@ -192,15 +196,18 @@ public class DispatchEventHelper {
   }
 
   private static void dispatchDragOrHold(
-      CursorAccessibilityService parentService,
-      CursorController cursorController,
-      ServiceUiManager serviceUiManager,
-      int eventOffsetX, int eventOffsetY) {
+          CursorAccessibilityService parentService,
+          CursorController cursorController,
+          ServiceUiManager serviceUiManager,
+          int eventOffsetX, int eventOffsetY) {
+
+    Log.d("dispatchDragOrHold", "dispatchDragOrHold");
 
     int[] cursorPosition = cursorController.getCursorPositionXY();
 
     // Register new drag action.
     if (!cursorController.isDragging) {
+      Log.d("dispatchDragOrHold", "new drag action");
 
       cursorController.prepareDragStart(
           cursorPosition[0] + eventOffsetX,
@@ -211,10 +218,10 @@ public class DispatchEventHelper {
 
       serviceUiManager.setDragLineStart(
           cursorPosition[0], cursorPosition[1]);
-
     }
     // Finish drag action.
     else {
+      Log.d("dispatchDragOrHold", "end drag action");
       cursorController.prepareDragEnd(
           cursorPosition[0] + eventOffsetX,
           cursorPosition[1] + eventOffsetY);

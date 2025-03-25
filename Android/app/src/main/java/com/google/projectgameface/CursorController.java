@@ -198,14 +198,11 @@ public class CursorController {
             BlendshapeEventTriggerConfig.EventType eventType = entry.getKey();
             BlendshapeEventTriggerConfig.BlendshapeAndThreshold blendshapeAndThreshold = entry.getValue();
 
-            if (
-//                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.NONE ||
-                blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE ||
-                blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO ||
-                blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE
-            ) {
-                blendshapeEventTriggeredTracker.put(eventType, true);
-                return eventType;
+            if (blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE ||
+                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO ||
+                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE ||
+                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.NONE) {
+                continue;
             }
             if (blendshapeEventTriggeredTracker.get(eventType) == null) {
                 continue;

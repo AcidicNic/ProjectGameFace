@@ -29,7 +29,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
 
-    <uses-permission android:name="android.permission.INJECT_EVENTS" />
+<!--    <uses-permission android:name="android.permission.INJECT_EVENTS" />-->
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.SYSTEM_MANAGE_APP_PERMISSIONS" />

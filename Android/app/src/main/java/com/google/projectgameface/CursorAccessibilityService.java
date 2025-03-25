@@ -81,6 +81,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -834,27 +835,30 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         super.onDestroy();
     }
 
-
     /** Function for perform {@link BlendshapeEventTriggerConfig.EventType} actions. */
     private void dispatchEvent(BlendshapeEventTriggerConfig.EventType inputEvent, KeyEvent keyEvent) {
         // Check what inputEvent to dispatch.
         if (inputEvent == null && keyEvent == null) {
             inputEvent = cursorController.createCursorEvent(facelandmarkerHelper.getBlendshapes());
-            switch (inputEvent) {
-                case NONE:
-                    return;
-                case DRAG_TOGGLE:
-                    break;
-                default:
-                    // Cancel drag if user perform any other inputEvent.
-//                    cursorController.prepareDragEnd(0, 0);
-//                    serviceUiManager.fullScreenCanvas.clearDragLine();
-                    break;
-            }
         }
 
+        switch (inputEvent) {
+            case NONE:
+                return;
+            case DRAG_TOGGLE:
+                break;
+            case TOGGLE_TOUCH:
+                break;
+            case CONTINUOUS_TOUCH:
+                break;
+            default:
+                // Cancel drag if user perform any other inputEvent.
+                cursorController.prepareDragEnd(0, 0);
+                serviceUiManager.fullScreenCanvas.clearDragLine();
+                break;
+        }
 
-
+        Log.d(TAG, "dispatchEvent: " + inputEvent);
 
         switch (serviceState) {
             case GLOBAL_STICK:
@@ -1095,11 +1099,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         SharedPreferences preferences = getSharedPreferences(ProfileManager.getCurrentProfile(this), Context.MODE_PRIVATE);
         String eventName = "NONE";
-        Log.d(TAG, "TEST~~~~~~*******");
         int keyCode = event.getKeyCode();
         if (keyCode == KeyEvent.KEYCODE_1) {
             eventName = preferences.getString(BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE.toString()+"_event", BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
-            Log.d(TAG, "if"+eventName+"=="+BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
             if (eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
                 return false;
             }
@@ -1113,12 +1115,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
                 return false;
             }
-        }
-
-        if (eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
+        } else {
+//            wrong key pressed
             return false;
         }
+
         BlendshapeEventTriggerConfig.EventType eventType = BlendshapeEventTriggerConfig.EventType.valueOf(eventName);
+        Log.d(TAG, "handleKeyEvent: name " + eventName+ "; + type " + eventType);
         dispatchEvent(eventType, event);
         return true;
     }
@@ -1137,29 +1140,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             /* callback= */ null,
             /* handler= */ null);
 
-        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        serviceUiManager.drawTouchDot(cursorPosition);
     }
 
     public boolean toggleTouch() {
+        Log.d(TAG, "toggleTouch()");
         int[] cursorPosition = new int[2];
+        cursorPosition = getCursorPosition();
 
-        if (isGestureSwiping) {
-            Log.d(TAG, "STOP GESTURE SWIPE KeyEvent.ACTION_DOWN");
-            stopSwipeGesture();
-        } else {
-            Log.d(TAG, "START GESTURE SWIPE KeyEvent.ACTION_DOWN");
-            startSwipeGesture();
-        }
-        if (dragToggle) {
-            Log.d(TAG, "STOP DRAG TOGGLE KeyEvent.ACTION_DOWN");
-            dragToggle = false;
-            DispatchEventHelper.checkAndDispatchEvent(
-                    CursorAccessibilityService.this,
-                    cursorController,
-                    serviceUiManager,
-                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
-                    null);
-        } else if (isSwiping && swipeToggle) {
+//        if (isGestureSwiping) {
+//            Log.d(TAG, "STOP GESTURE SWIPE KeyEvent.ACTION_DOWN");
+//            stopSwipeGesture();
+//        } else {
+//            Log.d(TAG, "START GESTURE SWIPE KeyEvent.ACTION_DOWN");
+//            startSwipeGesture();
+//        }
+        if (isSwiping && swipeToggle) {
             Log.d(TAG, "STOP SWIPE TOGGLE KeyEvent.ACTION_DOWN");
             swipeToggle = false;
             stopRealtimeSwipe();
@@ -1167,13 +1163,21 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
             swipeToggle = true;
             startRealtimeSwipe();
+        } else {
+            Log.d(TAG, "DRAG TOGGLE KeyEvent.ACTION_DOWN");
+            dragToggle();
         }
         return true;
+    }
+
+    public void dragToggle() {
+        dispatchEvent(BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, null);
     }
 
     int[] dragtoggleStartPosition = new int[2];
     public boolean continousTouchActive = false;
     public boolean continuousTouch (KeyEvent event) {
+        Log.d(TAG, "continuousTouch() SWIPE KeyEvent: " + event);
 
         int keyCode = -1;
         int eventAction = -1;
@@ -1184,12 +1188,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int[] cursorPosition = new int[2];
         cursorPosition = getCursorPosition();
 
-        if (eventAction == KeyEvent.ACTION_DOWN || continousTouchActive) {
+        if (eventAction == KeyEvent.ACTION_DOWN || !continousTouchActive) {
             if (keyCode <= 0) {
                 keyStates.put(keyCode, true);
             }
             continousTouchActive = true;
-            Log.d(TAG, "SWIPE KeyEvent.ACTION_DOWN");
+            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
             if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                 startRealtimeSwipe();
             } else {
@@ -1204,26 +1208,29 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (keyCode <= 0) {
                 keyStates.put(keyCode, false);
             }
+
             continousTouchActive = false;
-            Log.d(TAG, "SWIPE KeyEvent.ACTION_UP");
+
+            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_UP");
             if (isSwiping) {
                 stopRealtimeSwipe();
-            } else if (dragToggle) {
+            } else {
                 long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
                 dragToggleHandler.removeCallbacks(dragToggleRunnable);
                 if (elapsedTime < getDragToggleDuration()) {
                     dragToggleCancelled = true;
-                    // Perform tap instead of enabling drag toggle
+                    // Perform quick tap instead of enabling drag toggle
                     quickTap(dragtoggleStartPosition, -1);
-                }
-                else {
+                } else {
                     dragToggle = false;
-                    DispatchEventHelper.checkAndDispatchEvent(
-                            CursorAccessibilityService.this,
-                            cursorController,
-                            serviceUiManager,
-                            BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
-                            null);
+                    if (cursorController.isDragging) {
+                        DispatchEventHelper.checkAndDispatchEvent(
+                                CursorAccessibilityService.this,
+                                cursorController,
+                                serviceUiManager,
+                                BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                                null);
+                    }
                 }
             }
         }
@@ -1473,14 +1480,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     // 🔄 Restart Gesture if near 10s limit
-    private void restartGesture() {
-        Log.d("GESTURE", "Restarting gesture to avoid 10s limit.");
-
-        int[] pos = getCursorPosition();
-        stopSwipeGesture();
-
-        gestureHandler.postDelayed(() -> startSwipeGesture(), 15);
-    }
+//    private void restartGesture() {
+//        Log.d("GESTURE", "Restarting gesture to avoid 10s limit.");
+//
+//        int[] pos = getCursorPosition();
+//        stopSwipeGesture();
+//
+//        gestureHandler.postDelayed(() -> startSwipeGesture(), 15);
+//    }
 
     public void stopSwipeGesture() {
         if (!isGestureSwiping) return;
@@ -1600,30 +1607,30 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     // Helper method to check if a window is injectable
     private boolean isInjectableWindow(AccessibilityWindowInfo window) {
         if (window == null) {
-            Log.e(TAG, "isInjectableWindow: Window is null.");
+//            Log.e(TAG, "isInjectableWindow: Window is null.");
             return false;
         }
 
         AccessibilityNodeInfo rootNode = window.getRoot();
         if (rootNode == null) {
-            Log.e(TAG, "isInjectableWindow: Root node is null for the window.");
+//            Log.e(TAG, "isInjectableWindow: Root node is null for the window.");
             return false;
         }
 
         CharSequence packageName = rootNode.getPackageName();
         if (packageName == null) {
-            Log.e(TAG, "isInjectableWindow: Package name is null for the root node.");
+//            Log.e(TAG, "isInjectableWindow: Package name is null for the root node.");
             return false;
         }
 
-        Log.d(TAG, "isInjectableWindow: Found package " + packageName);
+//        Log.d(TAG, "isInjectableWindow: Found package " + packageName);
         return isMyAppPackage(packageName.toString());
     }
 
     // Helper method to check if a package belongs to your apps
     private boolean isMyAppPackage(String packageName) {
         String[] myApps = {
-//                "com.google.projectgameface",
+                "com.google.projectgameface",
                 "org.dslul.openboard.inputmethod.latin"
         };
 
