@@ -1143,6 +1143,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.drawTouchDot(cursorPosition);
     }
 
+    boolean dragToggleActive = false;
     public boolean toggleTouch() {
         Log.d(TAG, "toggleTouch()");
         int[] cursorPosition = new int[2];
@@ -1165,7 +1166,39 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             startRealtimeSwipe();
         } else {
             Log.d(TAG, "DRAG TOGGLE KeyEvent.ACTION_DOWN");
-            dragToggle();
+            DispatchEventHelper.checkAndDispatchEvent(
+                    CursorAccessibilityService.this,
+                    cursorController,
+                    serviceUiManager,
+                    BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                    null);
+
+            /* // drag toggle with delay for quick tap... not sure if this is useful?
+            if (cursorController.isDragging) {
+                DispatchEventHelper.checkAndDispatchEvent(
+                        CursorAccessibilityService.this,
+                        cursorController,
+                        serviceUiManager,
+                        BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
+                        null);
+                dragToggleActive = false;
+            } else if (!dragToggleActive) {
+                dragToggleStartTime = SystemClock.uptimeMillis();
+                dragToggleCancelled = false;
+                dragtoggleStartPosition = cursorPosition;
+                dragToggleActive = true;
+                dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
+            } else {
+                long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
+                dragToggleHandler.removeCallbacks(dragToggleRunnable);
+                if (elapsedTime < getDragToggleDuration()) {
+                    dragToggleCancelled = true;
+                    dragToggleActive = false;
+                    // Perform quick tap instead of enabling drag toggle
+                    quickTap(dragtoggleStartPosition, -1);
+                }
+            }
+            */
         }
         return true;
     }
@@ -1201,7 +1234,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 dragToggleCancelled = false;
                 dragtoggleStartPosition = cursorPosition;
                 dragToggle = true;
-                Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
+//                Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
                 dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
             }
         } else if (eventAction == KeyEvent.ACTION_UP || continousTouchActive) {
