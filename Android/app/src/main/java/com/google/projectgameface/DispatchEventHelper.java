@@ -28,7 +28,6 @@ import com.google.projectgameface.utils.CursorUtils;
 public class DispatchEventHelper {
   /** Duration for swipe action. Should be fast enough to change page in launcher app. */
   private static final int SWIPE_DURATION_MS = 100;
-  private static final int DRAG_DURATION_MS = 250;
 
   /**
    * Helper function to check the event type and dispatch the events desired location.
@@ -165,8 +164,7 @@ public class DispatchEventHelper {
         break;
 
       case DRAG_TOGGLE:
-        dispatchDragOrHold(parentService, cursorController, serviceUiManager,
-            eventOffsetX, eventOffsetY);
+        parentService.dispatchDragOrHold();
         break;
 
       case SWIPE_START:
@@ -206,80 +204,6 @@ public class DispatchEventHelper {
         parentService.performGlobalAction(AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS);
         break;
       default:
-    }
-  }
-
-  private static void dispatchDragOrHold(
-          CursorAccessibilityService parentService,
-          CursorController cursorController,
-          ServiceUiManager serviceUiManager,
-          int eventOffsetX, int eventOffsetY) {
-
-    Log.d("dispatchDragOrHold", "dispatchDragOrHold");
-
-    int[] cursorPosition = cursorController.getCursorPositionXY();
-
-    // Register new drag action.
-    if (!cursorController.isDragging) {
-      Log.d("dispatchDragOrHold", "new drag action");
-
-      cursorController.prepareDragStart(
-          cursorPosition[0] + eventOffsetX,
-          cursorPosition[1] + eventOffsetY);
-
-      serviceUiManager.fullScreenCanvas.setHoldRadius(
-          cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
-
-      serviceUiManager.setDragLineStart(
-          cursorPosition[0], cursorPosition[1]);
-    }
-    // Finish drag action.
-    else {
-      Log.d("dispatchDragOrHold", "end drag action");
-      cursorController.prepareDragEnd(
-          cursorPosition[0] + eventOffsetX,
-          cursorPosition[1] + eventOffsetY);
-      serviceUiManager.fullScreenCanvas.clearDragLine();
-
-      // Cursor path distance.
-      float xOffset = cursorController.dragEndX - cursorController.dragStartX;
-      float yOffset = cursorController.dragEndY - cursorController.dragStartY;
-
-      // Is action finished inside defined circle or not.
-      boolean isFinishedInside =
-          (Math.abs(xOffset)
-              < cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS))
-              && (Math.abs(yOffset)
-              < cursorController.cursorMovementConfig.get(
-              CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
-
-      // If finished inside a circle, trigger HOLD action.
-      if (isFinishedInside) {
-        // Dispatch HOLD event.
-        parentService.dispatchGesture(
-            CursorUtils.createClick(
-                cursorController.dragStartX,
-                cursorController.dragStartY,
-                0,
-                (long)
-                    cursorController.cursorMovementConfig.get(
-                        CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
-            /* callback= */ null,
-            /* handler= */ null);
-
-      }
-      // Trigger normal DRAG action.
-      else {
-        parentService.dispatchGesture(
-            CursorUtils.createSwipe(
-                cursorController.dragStartX,
-                cursorController.dragStartY,
-                xOffset,
-                yOffset,
-                /* duration= */ DRAG_DURATION_MS),
-            /* callback= */ null,
-            /* handler= */ null);
-      }
     }
   }
 }

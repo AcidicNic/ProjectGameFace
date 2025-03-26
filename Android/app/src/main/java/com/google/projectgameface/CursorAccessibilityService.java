@@ -1143,6 +1143,70 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.drawTouchDot(cursorPosition);
     }
 
+    private static final int DRAG_DURATION_MS = 250;
+    public void dispatchDragOrHold() {
+        Log.d("dispatchDragOrHold", "dispatchDragOrHold");
+        int[] cursorPosition = cursorController.getCursorPositionXY();
+
+        // Register new drag action.
+        if (!cursorController.isDragging) {
+            Log.d("dispatchDragOrHold", "new drag action");
+
+            cursorController.prepareDragStart(cursorPosition[0], cursorPosition[1]);
+
+            serviceUiManager.fullScreenCanvas.setHoldRadius(
+                    cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
+
+            serviceUiManager.setDragLineStart(cursorPosition[0], cursorPosition[1]);
+        }
+        // Finish drag action.
+        else {
+            Log.d("dispatchDragOrHold", "end drag action");
+            cursorController.prepareDragEnd(cursorPosition[0], cursorPosition[1]);
+            serviceUiManager.fullScreenCanvas.clearDragLine();
+
+            // Cursor path distance.
+            float xOffset = cursorController.dragEndX - cursorController.dragStartX;
+            float yOffset = cursorController.dragEndY - cursorController.dragStartY;
+
+            // Is action finished inside defined circle or not.
+            boolean isFinishedInside =
+                (Math.abs(xOffset)
+                    < cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS))
+                    && (Math.abs(yOffset)
+                    < cursorController.cursorMovementConfig.get(
+                    CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
+
+            // If finished inside a circle, trigger HOLD action.
+            if (isFinishedInside) {
+                // Dispatch HOLD event.
+                dispatchGesture(
+                    CursorUtils.createClick(
+                            cursorController.dragStartX,
+                            cursorController.dragStartY,
+                            0,
+                            (long)
+                                    cursorController.cursorMovementConfig.get(
+                                            CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
+                    /* callback= */ null,
+                    /* handler= */ null);
+
+            }
+            // Trigger normal DRAG action.
+            else {
+                dispatchGesture(
+                    CursorUtils.createSwipe(
+                            cursorController.dragStartX,
+                            cursorController.dragStartY,
+                            xOffset,
+                            yOffset,
+                            /* duration= */ DRAG_DURATION_MS),
+                    /* callback= */ null,
+                    /* handler= */ null);
+            }
+        }
+    }
+
     boolean dragToggleActive = false;
     public boolean toggleTouch() {
         Log.d(TAG, "toggleTouch()");
@@ -1345,9 +1409,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             int[] initialPosition = getCursorPosition();
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
-                checkForPrediction = true;
-                // TODO: free up screencapture resources until ^^^
-                Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
+//                checkForPrediction = true;
+//                 TODO: free up screencapture resources until ^^^
+//                Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
             }
 
             if (canInjectEvent(initialPosition[0],  initialPosition[1])) {
@@ -1396,19 +1460,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 } catch (Exception e) {
                     Log.e(TAG, "Error while sleeping in startRealtimeSwipe: " + e);
                 }
-
-                now = System.currentTimeMillis();
-
-                // Check if the button is still being pressed every 500ms
-//                if (isSwiping && (now - lastCheckTime) >= 500) {
-//                    if (!isSwipeKeyStillPressed()) {
-//                        Log.e(TAG, "Button not pressed, manually ending swipe.");
-//                        writeToFile.logError(TAG, "Button not pressed, manually ending swipe.");
-//                        stopRealtimeSwipe();
-//                        break;
-//                    }
-//                    lastCheckTime = now;
-//                }
 
             }
         }).start();
