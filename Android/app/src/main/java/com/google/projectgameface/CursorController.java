@@ -83,6 +83,8 @@ public class CursorController {
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
 
+    public boolean continousTouchActive = false;
+
     /**
      * Calculate cursor movement and keeping track of face action events.
      *
@@ -211,24 +213,16 @@ public class CursorController {
 
             boolean eventTriggered = Boolean.TRUE.equals(blendshapeEventTriggeredTracker.get(eventType));
 
+            // new event triggered
             if (!eventTriggered && (score > blendshapeAndThreshold.threshold())) {
                 blendshapeEventTriggeredTracker.put(eventType, true);
                 if (eventType == BlendshapeEventTriggerConfig.EventType.SHOW_APPS) {
-                    Log.i(
-                            TAG,
-                            eventType
-                                    + " "
-                                    + blendshapeAndThreshold.shape()
-                                    + " "
-                                    + score
-                                    + " "
-                                    + blendshapeAndThreshold.threshold());
+                    Log.i(TAG, eventType + " " + blendshapeAndThreshold.shape() + " " + score + " " + blendshapeAndThreshold.threshold());
                 }
 
                 // Return the correspond event (te be trigger in Accessibility service).
 
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET)
-                {
+                if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
                     isTeleportMode = true;
                     if (tempBoundsSet && !isCursorOutsideBounds) {
                         teleportShadowX = (double) (tempMinX + tempMaxX) / 2;
@@ -244,8 +238,11 @@ public class CursorController {
             } else if (eventTriggered && (score <= blendshapeAndThreshold.threshold())) {
                 // Reset the trigger.
                 blendshapeEventTriggeredTracker.put(eventType, false);
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET)
-                {
+                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH && continousTouchActive) {
+                    // returning eventType when gesture score for continuous touch is below threshold
+                    Log.d(TAG, "Continuous touch gesture score below threshold, returning eventType");
+                    return eventType;
+                } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
                     isTeleportMode=false;
                 }
 

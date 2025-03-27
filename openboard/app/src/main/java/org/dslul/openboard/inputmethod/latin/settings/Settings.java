@@ -261,7 +261,7 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
 
     // Add method to read the weight value from SharedPreferences
     public static float readWeightOfLangModelVsSpatialModel(final SharedPreferences prefs) {
-        return prefs.getFloat(PREF_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL, 0.5f);
+        return prefs.getFloat(PREF_WEIGHT_OF_LANG_MODEL_VS_SPATIAL_MODEL, 4.0f);
     }
 
     // Add method to write the weight value to SharedPreferences

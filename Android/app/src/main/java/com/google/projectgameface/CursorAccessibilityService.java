@@ -1272,7 +1272,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     int[] dragtoggleStartPosition = new int[2];
-    public boolean continousTouchActive = false;
+
     public boolean continuousTouch (KeyEvent event) {
         Log.d(TAG, "continuousTouch() SWIPE KeyEvent: " + event);
 
@@ -1285,11 +1285,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int[] cursorPosition = new int[2];
         cursorPosition = getCursorPosition();
 
-        if (eventAction == KeyEvent.ACTION_DOWN || !continousTouchActive) {
+        if (eventAction == KeyEvent.ACTION_DOWN || !cursorController.continousTouchActive) {
             if (keyCode <= 0) {
                 keyStates.put(keyCode, true);
             }
-            continousTouchActive = true;
+            cursorController.continousTouchActive = true;
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
             if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                 startRealtimeSwipe();
@@ -1301,12 +1301,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
                 dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
             }
-        } else if (eventAction == KeyEvent.ACTION_UP || continousTouchActive) {
+        } else if (eventAction == KeyEvent.ACTION_UP || cursorController.continousTouchActive) {
             if (keyCode <= 0) {
                 keyStates.put(keyCode, false);
             }
 
-            continousTouchActive = false;
+            cursorController.continousTouchActive = false;
 
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_UP");
             if (isSwiping) {
