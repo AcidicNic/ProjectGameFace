@@ -13,8 +13,7 @@ import android.view.View;
 import org.dslul.openboard.inputmethod.latin.LatinIME;
 
 public class IMEEventReceiver extends BroadcastReceiver {
-    private static final String TAG = "IMEEventReceiver";
-    long startUpTime = 0;
+    private static final String TAG = "HeadBoardReceiver";
 
     public IMEEventReceiver() {
         // Empty constructor required for framework instantiation
@@ -29,14 +28,14 @@ public class IMEEventReceiver extends BroadcastReceiver {
 //            long downTime = intent.getLongExtra("downTime", SystemClock.uptimeMillis());
 //            long eventTime = intent.getLongExtra("eventTime", SystemClock.uptimeMillis());
 
-            Log.d(TAG, "[666] Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
+            Log.d(TAG, "Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
 
             // Forward event to LatinIME
-            Log.d(TAG, "[666] context class of: " + context.getClass().getName());
+            Log.d(TAG, "context class of: " + context.getClass().getName());
             if (context instanceof LatinIME) {
                 ((LatinIME) context).dispatchMotionEvent(x, y, action);
             } else {
-                Log.e(TAG, "[666] LatinIME instance is null. Cannot dispatch motion event.");
+                Log.e(TAG, "LatinIME instance is null. Cannot dispatch motion event.");
             }
         }
     }

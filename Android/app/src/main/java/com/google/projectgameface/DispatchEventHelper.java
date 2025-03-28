@@ -93,7 +93,9 @@ public class DispatchEventHelper {
         break;
 
       case CURSOR_PAUSE:
-        parentService.togglePause();
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.togglePause();
+        }
         break;
 
       case CURSOR_RESET:

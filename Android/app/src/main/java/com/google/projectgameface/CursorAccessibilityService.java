@@ -1291,6 +1291,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
             cursorController.continousTouchActive = true;
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
+
             if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                 startRealtimeSwipe();
             } else {
@@ -1408,6 +1409,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             startTime = System.currentTimeMillis();
 
             int[] initialPosition = getCursorPosition();
+            if (swipingFromRightKbd) {
+                initialPosition[0] = initialPosition[0] - 1;
+            }
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
 //                checkForPrediction = true;
 //                 TODO: free up screencapture resources until ^^^
@@ -1695,6 +1699,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         return 0; // Return 0 if no navigation bar is present
     }
+    private boolean swipingFromRightKbd = false;
     private int navbarHeight = 0;
     // Check if events can be injected into the window at (x, y)
     public boolean canInjectEvent(float x, float y) {
@@ -1704,19 +1709,32 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             window.getBoundsInScreen(bounds);
 
             // Check if the coordinates fall within this window
-            if (bounds.contains((int) x, (int) y)) {
-                if (isInjectableWindow(window)) {
+            if (isInjectableWindow(window)) {
+                if (bounds.contains((int) x, (int) y)) {
                     navbarHeight = getNavigationBarHeight(this);
                     Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
+                    swipingFromRightKbd = false;
                     return true;
-                } else {
-                    Log.d(TAG, "Window at (" + x + ", " + y + ") is not injectable.");
-                    return false;
+                } else if (isKeyboardOpen && y >= keyboardBounds.top) {
+                    if (x == 0) {
+                        x = 1;
+                    } else if (x > screenSize.x - 1) {
+                        x = screenSize.x - 1;
+                        swipingFromRightKbd = true;
+                    }
+                    if (bounds.contains((int) x, (int) y)) {
+                        navbarHeight = getNavigationBarHeight(this);
+                        Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
+                        return true;
+                    } else {
+                        swipingFromRightKbd = false;
+                    }
                 }
             }
         }
 
         Log.d(TAG, "No window found at (" + x + ", " + y + ").");
+        swipingFromRightKbd = false;
         return false;
     }
 

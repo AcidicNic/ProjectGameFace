@@ -810,6 +810,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             // Get the IME window location on screen
             int[] location = new int[2];
             rootView.getLocationOnScreen(location);
+            Log.d(TAG, "Root view rect: " + rootView.getLeft() + ", " + rootView.getTop() + ", " +
+                    rootView.getRight() + ", " + rootView.getBottom());
 
             // Transform the coordinates from screen space to IME window space
             float localX = x - location[0];
