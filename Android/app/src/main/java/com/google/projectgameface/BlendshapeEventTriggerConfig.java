@@ -67,6 +67,7 @@ public class BlendshapeEventTriggerConfig {
     CURSOR_LONG_TOUCH,
     BEGIN_TOUCH,
     END_TOUCH,
+    DELETE_PREVIOUS_WORD,
   }
 
   // EventType string name used in title bar UI.

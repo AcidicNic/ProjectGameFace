@@ -47,6 +47,7 @@ import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -1265,6 +1266,63 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             */
         }
         return true;
+    }
+
+    public void deleteLastWord() {
+        AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+        if (rootNode == null) {
+            return;
+        }
+
+        AccessibilityNodeInfo focusedNode = findFocusedEditText(rootNode);
+        if (focusedNode != null && focusedNode.getText() != null) {
+            String text = focusedNode.getText().toString();
+            String modifiedText = removeLastWord(text);
+            Bundle arguments = new Bundle();
+            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, modifiedText);
+            focusedNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_TEXT.getId(), arguments);
+        }
+    }
+
+    private AccessibilityNodeInfo findFocusedEditText(AccessibilityNodeInfo rootNode) {
+        if (rootNode == null) {
+            return null;
+        }
+
+        if (rootNode.isFocused() && rootNode.getClassName().equals("android.widget.EditText")) {
+            return rootNode;
+        }
+
+        for (int i = 0; i < rootNode.getChildCount(); i++) {
+            AccessibilityNodeInfo childNode = rootNode.getChild(i);
+            AccessibilityNodeInfo result = findFocusedEditText(childNode);
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    private String removeLastWord(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+
+        String[] words = text.split("\\s+");
+        if (words.length == 0) {
+            return text;
+        }
+
+        StringBuilder modifiedText = new StringBuilder();
+        for (int i = 0; i < words.length - 1; i++) {
+            modifiedText.append(words[i]);
+            if (i < words.length - 2) {
+                modifiedText.append(" ");
+            }
+        }
+
+        return modifiedText.toString();
     }
 
     public void dragToggle() {

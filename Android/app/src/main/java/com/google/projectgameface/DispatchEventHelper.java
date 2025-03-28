@@ -98,6 +98,12 @@ public class DispatchEventHelper {
         }
         break;
 
+      case DELETE_PREVIOUS_WORD:
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.deleteLastWord();
+        }
+        break;
+
       case CURSOR_RESET:
         if (cursorController.isRealtimeSwipe || cursorController.isDirectMappingEnabled()) {
           break;
