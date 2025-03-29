@@ -1468,7 +1468,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             int[] initialPosition = getCursorPosition();
             if (swipingFromRightKbd) {
+                startedDeleteWord = true;
                 initialPosition[0] = initialPosition[0] - 1;
+            } else {
+                startedDeleteWord = false;
             }
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
 //                checkForPrediction = true;
@@ -1534,6 +1537,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.clearPreviewBitmap();
         new Thread(() -> {
             try {
+                if (startedDeleteWord && isKeyboardOpen && cursorPosition[1] > keyboardBounds.top && cursorPosition[0] <= screenSize.x && cursorPosition[0] >= (screenSize.x / 2)) {
+                    deleteLastWord();
+                    startedDeleteWord = false;
+                }
                 if (canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
                     MotionEvent event = MotionEvent.obtain(
                             startUptime,
@@ -1758,6 +1765,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return 0; // Return 0 if no navigation bar is present
     }
     private boolean swipingFromRightKbd = false;
+    private boolean startedDeleteWord = false;
     private int navbarHeight = 0;
     // Check if events can be injected into the window at (x, y)
     public boolean canInjectEvent(float x, float y) {

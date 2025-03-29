@@ -90,6 +90,7 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.CURSOR_LONG_TOUCH, "Long touch");
     put(EventType.BEGIN_TOUCH, "Begin touch");
     put(EventType.END_TOUCH, "End touch");
+    put(EventType.DELETE_PREVIOUS_WORD, "Delete previous word");
   }};
 
 

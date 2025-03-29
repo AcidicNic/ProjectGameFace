@@ -38,8 +38,6 @@ public class CursorBinding extends AppCompatActivity {
 
     private static final String TAG = "GestureSizeActivity";
 
-
-
     private final int[] viewIds = {
         R.id.tapLayout,
         R.id.continuousTouchLayout,
@@ -54,8 +52,8 @@ public class CursorBinding extends AppCompatActivity {
         R.id.longTouchLayout,
         R.id.startTouchLayout,
         R.id.endTouchLayout,
+        R.id.deletePrevWordLayout,
     };
-
 
     TextView textTap;
     TextView tapTxtLinear;
@@ -83,12 +81,15 @@ public class CursorBinding extends AppCompatActivity {
     TextView startTouchLinear;
     TextView textEndTouch;
     TextView endTouchLinear;
+    TextView textDeletePrevWord;
+    TextView deletePrevWordLinear;
 
 
     protected String getDescriptionTextViewValue() {
         TextView descriptionTextView = findViewById(R.id.tapTxtLinear);
         return descriptionTextView.getText().toString();
     }
+
 
     private void setUpActionList(
             String preferencesId,
@@ -119,6 +120,7 @@ public class CursorBinding extends AppCompatActivity {
         }
     }
 
+
     private void refreshUI()
     {
         Log.i(TAG, "refreshUI");
@@ -146,20 +148,17 @@ public class CursorBinding extends AppCompatActivity {
             homeTxtLinear,
             (ImageView) findViewById(R.id.homeIcon));
 
-
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.BACK),
             textBack,
             backTxtLinear,
             (ImageView) findViewById(R.id.backIcon));
 
-
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.SHOW_NOTIFICATION),
             textNotification,
             notificationTxtLinear,
             (ImageView) findViewById(R.id.notificationIcon));
-
 
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.SHOW_APPS),
@@ -171,13 +170,11 @@ public class CursorBinding extends AppCompatActivity {
             findViewById(R.id.allAppLayout).setVisibility(View.GONE);
         }
 
-
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_PAUSE),
             textPause,
             pauseLinear,
             (ImageView) findViewById(R.id.pauseIcon));
-
 
         setUpActionList(
             String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_RESET),
@@ -185,13 +182,11 @@ public class CursorBinding extends AppCompatActivity {
             resetLinear,
             (ImageView) findViewById(R.id.resetIcon));
 
-
         setUpActionList(
                 String.valueOf(BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE),
                 textDrag,
                 dragLinear,
                 (ImageView) findViewById(R.id.dragIcon));
-
 
         setUpActionList(
                 String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_LONG_TOUCH),
@@ -210,6 +205,12 @@ public class CursorBinding extends AppCompatActivity {
                 textEndTouch,
                 endTouchLinear,
                 (ImageView) findViewById(R.id.endTouchIcon));
+
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.DELETE_PREVIOUS_WORD),
+                textDeletePrevWord,
+                deletePrevWordLinear,
+                (ImageView) findViewById(R.id.deletePrevWordIcon));
 
     }
 
@@ -251,61 +252,64 @@ public class CursorBinding extends AppCompatActivity {
         startTouchLinear = findViewById(R.id.startTouchLinear);
         textEndTouch = findViewById(R.id.endTouchBinding);
         endTouchLinear = findViewById(R.id.endTouchLinear);
+        textDeletePrevWord = findViewById(R.id.deletePrevWordBinding);
+        deletePrevWordLinear = findViewById(R.id.deletePrevWordLinear);
 
         refreshUI();
 
-
         for (int id : viewIds) {
-            findViewById(id)
-                .setOnClickListener(
-                    v -> {
+            findViewById(id).setOnClickListener(
+                v -> {
 
-                        // Start intent corresponding to each event action type.
-                        Intent intent = new Intent(getBaseContext(),
-                            ChooseGestureActivity.class);
+                // Start intent corresponding to each event action type.
+                Intent intent = new Intent(getBaseContext(),
+                    ChooseGestureActivity.class);
 
-                        if (v.getId() == R.id.tapLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
+                if (v.getId() == R.id.tapLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
 
-                        } else if (v.getId() == R.id.continuousTouchLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH);
+                } else if (v.getId() == R.id.continuousTouchLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH);
 
-                        } else if (v.getId() == R.id.toggleTouchLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH);
+                } else if (v.getId() == R.id.toggleTouchLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH);
 
-                        } else if (v.getId() == R.id.homeLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.HOME);
+                } else if (v.getId() == R.id.homeLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.HOME);
 
-                        } else if (v.getId() == R.id.backLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.BACK);
+                } else if (v.getId() == R.id.backLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.BACK);
 
-                        } else if (v.getId() == R.id.notificationLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SHOW_NOTIFICATION);
+                } else if (v.getId() == R.id.notificationLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SHOW_NOTIFICATION);
 
-                        } else if (v.getId() == R.id.allAppLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SHOW_APPS);
+                } else if (v.getId() == R.id.allAppLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SHOW_APPS);
 
-                        } else if (v.getId() == R.id.pauseLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_PAUSE);
+                } else if (v.getId() == R.id.pauseLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_PAUSE);
 
-                        } else if (v.getId() == R.id.resetLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_RESET);
+                } else if (v.getId() == R.id.resetLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_RESET);
 
-                        } else if (v.getId() == R.id.dragLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
+                } else if (v.getId() == R.id.dragLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE);
 
-                        } else if (v.getId() == R.id.longTouchLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_LONG_TOUCH);
+                } else if (v.getId() == R.id.longTouchLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_LONG_TOUCH);
 
-                        } else if (v.getId() == R.id.startTouchLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.BEGIN_TOUCH);
+                } else if (v.getId() == R.id.startTouchLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.BEGIN_TOUCH);
 
-                        } else if (v.getId() == R.id.endTouchLayout) {
-                            intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.END_TOUCH);
-                        }
-                        startActivity(intent);
+                } else if (v.getId() == R.id.endTouchLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.END_TOUCH);
 
-                    });
+                } else if (v.getId() == R.id.deletePrevWordLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.DELETE_PREVIOUS_WORD);
+                }
+                startActivity(intent);
+
+            });
         }
 
 
@@ -319,7 +323,6 @@ public class CursorBinding extends AppCompatActivity {
             }
         };
         getOnBackPressedDispatcher().addCallback(this,onBackPressedCallback);
-
     }
 
 
@@ -341,8 +344,4 @@ public class CursorBinding extends AppCompatActivity {
         refreshUI();
         super.onResume();
     }
-
-
-
 }
-
