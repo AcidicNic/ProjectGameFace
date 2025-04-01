@@ -1269,15 +1269,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     public void deleteLastWord() {
+        Log.d(TAG, "deleteLastWord()");
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
         if (rootNode == null) {
+            Log.d(TAG, "deleteLastWord(): rootNode is null");
             return;
         }
 
         AccessibilityNodeInfo focusedNode = findFocusedEditText(rootNode);
         if (focusedNode != null && focusedNode.getText() != null) {
+            Log.d(TAG, "deleteLastWord(): focusedNode: " + focusedNode);
             String text = focusedNode.getText().toString();
             String modifiedText = removeLastWord(text);
+            Log.d(TAG, "deleteLastWord(): modifiedText: " + modifiedText);
             Bundle arguments = new Bundle();
             arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, modifiedText);
             focusedNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_TEXT.getId(), arguments);
@@ -1306,7 +1310,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private String removeLastWord(String text) {
         if (text == null || text.isEmpty()) {
-            return text;
+            return "";
         }
 
         String[] words = text.split("\\s+");
@@ -1469,7 +1473,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             int[] initialPosition = getCursorPosition();
             if (swipingFromRightKbd) {
                 startedDeleteWord = true;
-                initialPosition[0] = initialPosition[0] - 1;
+//                initialPosition[0] = initialPosition[0] - 1;
             } else {
                 startedDeleteWord = false;
             }
@@ -1537,7 +1541,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.clearPreviewBitmap();
         new Thread(() -> {
             try {
-                if (startedDeleteWord && isKeyboardOpen && cursorPosition[1] > keyboardBounds.top && cursorPosition[0] <= screenSize.x && cursorPosition[0] >= (screenSize.x / 2)) {
+                if (startedDeleteWord && (cursorPosition[0] < screenSize.x)
+//                        && (cursorPosition[0] >= (screenSize.x / 2))
+                ) {
                     deleteLastWord();
                     startedDeleteWord = false;
                 }
