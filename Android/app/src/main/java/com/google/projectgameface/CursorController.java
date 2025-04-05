@@ -203,6 +203,7 @@ public class CursorController {
             if (blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE ||
                     blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO ||
                     blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE ||
+                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD ||
                     blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.NONE) {
                 continue;
             }
