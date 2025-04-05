@@ -43,6 +43,7 @@ public class ChooseGestureActivity extends AppCompatActivity {
 
     private static final String CURRENT_TEXT = "\n(Current)";
     private static final String IN_USE_TEXT = "\n(In use)";
+    private static final String UNAVAILABLE_TEXT = "\n(Unavailable)";
 
     ConstraintLayout chooseGestureLayout;
 
@@ -77,7 +78,39 @@ public class ChooseGestureActivity extends AppCompatActivity {
         String newTextLabel = (String) gestureText.getText();
         newTextLabel= newTextLabel.replace(IN_USE_TEXT, "");
         newTextLabel = newTextLabel.replace(CURRENT_TEXT, "");
+        newTextLabel = newTextLabel.replace(UNAVAILABLE_TEXT, "");
         newTextLabel +=  IN_USE_TEXT;
+
+
+        gestureText.setText(newTextLabel);
+        gestureText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+    }
+
+
+    /**
+     * Set gesture box as "In use" state by dim the color, change text
+     * and disable clickable.
+     * @param oneGestureBox LinearLayout item contain gesture box.
+     */
+    private void changeButtonStyleToUnavailable(View oneGestureBox){
+        if (!(oneGestureBox instanceof ViewGroup))
+        {return;}
+
+        ViewGroup oneGestureBoxViewGroup = (ViewGroup) oneGestureBox;
+        oneGestureBoxViewGroup.setClickable(false);
+        oneGestureBoxViewGroup.setAlpha(0.3f);
+
+        TextView gestureText = oneGestureBoxViewGroup.findViewWithTag("text_view_gesture_name");
+
+        if (gestureText == null)
+        {return;}
+
+
+        String newTextLabel = (String) gestureText.getText();
+        newTextLabel= newTextLabel.replace(IN_USE_TEXT, "");
+        newTextLabel = newTextLabel.replace(CURRENT_TEXT, "");
+        newTextLabel = newTextLabel.replace(UNAVAILABLE_TEXT, "");
+        newTextLabel += UNAVAILABLE_TEXT;
 
 
         gestureText.setText(newTextLabel);
@@ -103,6 +136,7 @@ public class ChooseGestureActivity extends AppCompatActivity {
         String newTextLabel = (String) gestureText.getText();
         newTextLabel = newTextLabel.replace(IN_USE_TEXT, "");
         newTextLabel = newTextLabel.replace(CURRENT_TEXT, "");
+        newTextLabel = newTextLabel.replace(UNAVAILABLE_TEXT, "");
         newTextLabel +=  CURRENT_TEXT;
         gestureText.setText(newTextLabel);
         gestureText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
@@ -124,6 +158,7 @@ public class ChooseGestureActivity extends AppCompatActivity {
         String newTextLabel = (String) gestureText.getText();
         newTextLabel = newTextLabel.replace(IN_USE_TEXT, "");
         newTextLabel = newTextLabel.replace(CURRENT_TEXT, "");
+        newTextLabel = newTextLabel.replace(UNAVAILABLE_TEXT, "");
 
 
         gestureText.setText(newTextLabel);
@@ -185,9 +220,14 @@ public class ChooseGestureActivity extends AppCompatActivity {
         // None button case need special handling.
         ViewGroup noneGestureBox = (ViewGroup) gestureLayout.getChildAt(BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE));
         int boundGestureIndex = preferences.getInt(pageEventType.toString(), BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE));
-        if (boundGestureIndex == BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE))
-        {
+        if (boundGestureIndex == BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE)) {
             changeButtonStyleToCurrent(noneGestureBox);
+        }
+
+        // Swiping gestures require special handling.
+        ViewGroup swipeFromRightKbdBox = (ViewGroup) gestureLayout.getChildAt(BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD));
+        if (!Boolean.TRUE.equals(BlendshapeEventTriggerConfig.EVENT_TYPE_SHOULD_SHOW_SWIPING_INPUTS.get(pageEventType))) {
+            changeButtonStyleToUnavailable(swipeFromRightKbdBox);
         }
 
     }
@@ -254,7 +294,8 @@ public class ChooseGestureActivity extends AppCompatActivity {
             if (selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.NONE ||
                 selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE ||
                 selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO ||
-                selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE
+                selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE ||
+                selectedBlendshape == BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD
             ) {
                 // Write config to sharedpref.
                 BlendshapeEventTriggerConfig.writeBindingConfig(getBaseContext(),
@@ -325,4 +366,5 @@ public class ChooseGestureActivity extends AppCompatActivity {
         super.onResume();
         setupUi();
     }
+
 }

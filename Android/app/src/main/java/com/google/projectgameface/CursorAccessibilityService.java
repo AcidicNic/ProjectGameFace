@@ -1280,12 +1280,31 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (focusedNode != null && focusedNode.getText() != null) {
             Log.d(TAG, "deleteLastWord(): focusedNode: " + focusedNode);
             String text = focusedNode.getText().toString();
-            String modifiedText = removeLastWord(text);
-            Log.d(TAG, "deleteLastWord(): modifiedText: " + modifiedText);
-            Bundle arguments = new Bundle();
-            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, modifiedText);
-            focusedNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_TEXT.getId(), arguments);
+            if (text.isEmpty()) {
+                Log.d(TAG, "deleteLastWord(): text is empty");
+                return;
+            }
+            int cursorPosition = focusedNode.getTextSelectionStart(); // get current cursor position
+            if (cursorPosition < 0) return;
+            if (text.isEmpty() || cursorPosition == 0) return;
+            DeleteResult modifiedTextResult = removeLastWord(text, cursorPosition);
+            Log.d(TAG, "deleteLastWord(): modifiedText: " + modifiedTextResult.text + ", newCursor: " + modifiedTextResult.newCursor);
+
+            Bundle setModifiedTextargs = new Bundle();
+            setModifiedTextargs.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, modifiedTextResult.text);
+
+            Bundle setCursorPositionargs = new Bundle();
+            setCursorPositionargs.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, modifiedTextResult.newCursor);
+            setCursorPositionargs.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, modifiedTextResult.newCursor);
+
+            focusedNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_TEXT.getId(), setModifiedTextargs);
+            focusedNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_SELECTION.getId(), setCursorPositionargs);
         }
+    }
+
+    private static class DeleteResult {
+        String text;
+        int newCursor;
     }
 
     private AccessibilityNodeInfo findFocusedEditText(AccessibilityNodeInfo rootNode) {
@@ -1308,25 +1327,37 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return null;
     }
 
-    private String removeLastWord(String text) {
+    private DeleteResult removeLastWord(String text, int cursor) {
+        DeleteResult result = new DeleteResult();
         if (text == null || text.isEmpty()) {
-            return "";
+            result.text = "";
+            result.newCursor = 0;
+            return result;
         }
 
-        String[] words = text.split("\\s+");
-        if (words.length == 0) {
-            return text;
-        }
-
-        StringBuilder modifiedText = new StringBuilder();
-        for (int i = 0; i < words.length - 1; i++) {
-            modifiedText.append(words[i]);
-            if (i < words.length - 2) {
-                modifiedText.append(" ");
+        int start = cursor;
+        char ch = text.charAt(cursor - 1);
+        if (ch == '\n') {
+            start = cursor - 1;
+        } else if (Character.isWhitespace(ch)) {
+            while (start > 0) {
+                char c = text.charAt(start - 1);
+                if (c == '\n' || !Character.isWhitespace(c)) break;
+                start--;
             }
+        } else if (Character.isLetterOrDigit(ch)) {
+            while (start > 0) {
+                char c = text.charAt(start - 1);
+                if (c == '\n' || !Character.isLetterOrDigit(c)) break;
+                start--;
+            }
+        } else {
+            start = cursor - 1;
         }
 
-        return modifiedText.toString();
+        result.text = text.substring(0, start) + text.substring(cursor);
+        result.newCursor = start;
+        return result;
     }
 
     public void dragToggle() {
@@ -1464,19 +1495,22 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void startRealtimeSwipe() {
         isSwiping = true;
         cursorController.isRealtimeSwipe = true;
-//        swipePath = new ArrayList<>();
+        startUptime = SystemClock.uptimeMillis();
+        startTime = System.currentTimeMillis();
+        int[] initialPosition = getCursorPosition();
+
+        if (checkForSwipingFromRightKbd) {
+            lastValidCoords = initialPosition;
+            startedSwipeFromRightKbd = true;
+
+            /* Correct the cursor to start swipe */
+//            initialPosition[0] = initialPosition[0] - 1;
+            return;
+        } else {
+            startedSwipeFromRightKbd = false;
+        }
 
         new Thread(() -> {
-            startUptime = SystemClock.uptimeMillis();
-            startTime = System.currentTimeMillis();
-
-            int[] initialPosition = getCursorPosition();
-            if (swipingFromRightKbd) {
-                startedDeleteWord = true;
-//                initialPosition[0] = initialPosition[0] - 1;
-            } else {
-                startedDeleteWord = false;
-            }
             if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
 //                checkForPrediction = true;
 //                 TODO: free up screencapture resources until ^^^
@@ -1539,14 +1573,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         endTime = System.currentTimeMillis();
         int[] cursorPosition = getCursorPosition();
         serviceUiManager.clearPreviewBitmap();
+        if (startedSwipeFromRightKbd &&
+            (cursorPosition[0] < screenSize.x) &&
+            (cursorPosition[0] >= 5) /*(cursorPosition[0] (screenSize.x / 2))*/
+        ) {
+            handleSwipeFromRightKbd();
+            startedSwipeFromRightKbd = false;
+            isSwiping = false;
+            cursorController.isRealtimeSwipe = false;
+            return;
+        }
+
         new Thread(() -> {
             try {
-                if (startedDeleteWord && (cursorPosition[0] < screenSize.x)
-//                        && (cursorPosition[0] >= (screenSize.x / 2))
-                ) {
-                    deleteLastWord();
-                    startedDeleteWord = false;
-                }
                 if (canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
                     MotionEvent event = MotionEvent.obtain(
                             startUptime,
@@ -1589,6 +1628,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
 //            displaySwipeInfo();
         }).start();
+    }
+
+    public void handleSwipeFromRightKbd() {
+        SharedPreferences preferences = getSharedPreferences(ProfileManager.getCurrentProfile(this), Context.MODE_PRIVATE);
+        String eventName = preferences.getString(BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD.toString() + "_event", BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
+        if (!eventName.equals(BlendshapeEventTriggerConfig.Blendshape.NONE.toString())) {
+            dispatchEvent(BlendshapeEventTriggerConfig.EventType.valueOf(eventName), null);
+        }
     }
 
     private Handler gestureHandler = new Handler(Looper.getMainLooper());
@@ -1770,8 +1817,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         return 0; // Return 0 if no navigation bar is present
     }
-    private boolean swipingFromRightKbd = false;
-    private boolean startedDeleteWord = false;
+    private boolean checkForSwipingFromRightKbd = false;
+    private boolean startedSwipeFromRightKbd = false;
     private int navbarHeight = 0;
     // Check if events can be injected into the window at (x, y)
     public boolean canInjectEvent(float x, float y) {
@@ -1785,28 +1832,28 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (bounds.contains((int) x, (int) y)) {
                     navbarHeight = getNavigationBarHeight(this);
                     Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
-                    swipingFromRightKbd = false;
+                    checkForSwipingFromRightKbd = false;
                     return true;
                 } else if (isKeyboardOpen && y >= keyboardBounds.top) {
                     if (x == 0) {
                         x = 1;
                     } else if (x > screenSize.x - 1) {
                         x = screenSize.x - 1;
-                        swipingFromRightKbd = true;
+                        checkForSwipingFromRightKbd = true;
                     }
                     if (bounds.contains((int) x, (int) y)) {
                         navbarHeight = getNavigationBarHeight(this);
                         Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
                         return true;
                     } else {
-                        swipingFromRightKbd = false;
+                        checkForSwipingFromRightKbd = false;
                     }
                 }
             }
         }
 
         Log.d(TAG, "No window found at (" + x + ", " + y + ").");
-        swipingFromRightKbd = false;
+        checkForSwipingFromRightKbd = false;
         return false;
     }
 

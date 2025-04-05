@@ -93,7 +93,6 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.DELETE_PREVIOUS_WORD, "Delete previous word");
   }};
 
-
   // String for display in the UI only.
   public static final HashMap<Blendshape, String> BEAUTIFY_BLENDSHAPE_NAME = new HashMap<Blendshape, String>() {{
     put(Blendshape.NONE, "No binding");
@@ -108,15 +107,53 @@ public class BlendshapeEventTriggerConfig {
     put(Blendshape.SWITCH_ONE, "Switch one");
     put(Blendshape.SWITCH_TWO, "Switch two");
     put(Blendshape.SWITCH_THREE, "Switch three");
-
+    put(Blendshape.SWIPE_FROM_RIGHT_KBD, "Swipe from right side of keyboard");
   }};
 
+  public static final HashMap<EventType, Boolean> EVENT_TYPE_SHOULD_SHOW_SWIPING_INPUTS = new HashMap<EventType, Boolean>() {{
+    put(EventType.NONE, false);
+    put(EventType.CURSOR_TOUCH, false);
+    put(EventType.CURSOR_PAUSE, false);
+    put(EventType.CURSOR_RESET, false);
+    put(EventType.SWIPE_LEFT, false);
+    put(EventType.SWIPE_RIGHT, false);
+    put(EventType.SWIPE_UP, false);
+    put(EventType.SWIPE_DOWN, false);
+    put(EventType.DRAG_TOGGLE, false);
+    put(EventType.HOME, true);
+    put(EventType.BACK, true);
+    put(EventType.SHOW_NOTIFICATION, true);
+    put(EventType.SHOW_APPS, true);
+    put(EventType.TOGGLE_TOUCH, false);
+    put(EventType.CONTINUOUS_TOUCH, false);
+    put(EventType.CURSOR_LONG_TOUCH, false);
+    put(EventType.BEGIN_TOUCH, false);
+    put(EventType.END_TOUCH, false);
+    put(EventType.DELETE_PREVIOUS_WORD, true);
+  }};
+
+  public static final HashMap<Blendshape, Boolean> BLENDSHAPE_IS_SWIPING_INPUT = new HashMap<Blendshape, Boolean>() {{
+    put(Blendshape.NONE, false);
+    put(Blendshape.OPEN_MOUTH, false);
+    put(Blendshape.MOUTH_LEFT, false);
+    put(Blendshape.MOUTH_RIGHT, false);
+    put(Blendshape.ROLL_LOWER_MOUTH, false);
+    put(Blendshape.RAISE_RIGHT_EYEBROW, false);
+    put(Blendshape.RAISE_LEFT_EYEBROW, false);
+    put(Blendshape.LOWER_RIGHT_EYEBROW, false);
+    put(Blendshape.LOWER_LEFT_EYEBROW, false);
+    put(Blendshape.SWITCH_ONE, false);
+    put(Blendshape.SWITCH_TWO, false);
+    put(Blendshape.SWITCH_THREE, false);
+    put(Blendshape.SWIPE_FROM_RIGHT_KBD, true);
+  }};
 
   /** Allowed blendshape that our app can use and its array index (from MediaPipe's). */
   public enum Blendshape {
     SWITCH_ONE(-11),
     SWITCH_TWO(-22),
     SWITCH_THREE(-33),
+    SWIPE_FROM_RIGHT_KBD(-2),
     NONE(-1),
     OPEN_MOUTH(25),
     MOUTH_LEFT(39),
@@ -140,10 +177,8 @@ public class BlendshapeEventTriggerConfig {
       Blendshape.RAISE_RIGHT_EYEBROW, Blendshape.RAISE_LEFT_EYEBROW,
       Blendshape.LOWER_RIGHT_EYEBROW, Blendshape.LOWER_LEFT_EYEBROW,
       Blendshape.SWITCH_ONE, Blendshape.SWITCH_TWO,
-      Blendshape.SWITCH_THREE, Blendshape.NONE
+      Blendshape.SWITCH_THREE, Blendshape.SWIPE_FROM_RIGHT_KBD, Blendshape.NONE
   ).collect(Collectors.toList());
-
-
 
   @AutoValue
   abstract static class BlendshapeAndThreshold {
@@ -187,7 +222,6 @@ public class BlendshapeEventTriggerConfig {
 
   public final HashMap<EventType, BlendshapeAndThreshold> configMap;
 
-
   /**
    * Stores event and Blendshape pair that will be triggered when the threshold is passed.
    *
@@ -219,8 +253,6 @@ public class BlendshapeEventTriggerConfig {
     }
     updateProfile(context, ProfileManager.getCurrentProfile(context));
   }
-
-
 
   public void updateProfile(Context context, String profileName) {
     sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
@@ -296,7 +328,6 @@ public class BlendshapeEventTriggerConfig {
     }
   }
 
-
   /**
    * Write binding config to local sharedpref a
    * nd also send broadcast to tell background service to update its config.
@@ -329,14 +360,11 @@ public class BlendshapeEventTriggerConfig {
    * @return
    */
   public static String getActionDescription(Context context, BlendshapeEventTriggerConfig.EventType eventType) {
-
-
     String[] keys = context.getResources().getStringArray(R.array.event_type_description_keys);
     String[] values = context.getResources().getStringArray(R.array.event_type_description_keys_values);
 
     int index = Arrays.asList(keys).indexOf(String.valueOf(eventType));
     return values[index];
-
   }
 
 }
