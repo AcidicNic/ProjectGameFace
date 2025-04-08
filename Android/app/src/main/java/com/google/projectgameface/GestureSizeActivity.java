@@ -52,7 +52,7 @@ public class GestureSizeActivity extends AppCompatActivity {
     private int thresholdInUi;
 
 
-    private final int seekBarDefaultValue = 2;
+    private final int seekBarDefaultValue = 6;
     private static final int SEEK_BAR_MAXIMUM_VALUE = 10;
     private static final int SEEK_BAR_MINIMUM_VALUE = 0;
 

@@ -1288,7 +1288,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (cursorPosition < 0) return;
             if (text.isEmpty() || cursorPosition == 0) return;
             DeleteResult modifiedTextResult = removeLastWord(text, cursorPosition);
-            Log.d(TAG, "deleteLastWord(): modifiedText: " + modifiedTextResult.text + ", newCursor: " + modifiedTextResult.newCursor);
+//            Log.d(TAG, "deleteLastWord(): modifiedText: " + modifiedTextResult.text + ", newCursor: " + modifiedTextResult.newCursor);
 
             Bundle setModifiedTextargs = new Bundle();
             setModifiedTextargs.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, modifiedTextResult.text);
@@ -1334,7 +1334,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             result.newCursor = 0;
             return result;
         }
-
         int start = cursor;
         char ch = text.charAt(cursor - 1);
         if (ch == '\n') {
@@ -1345,6 +1344,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (c == '\n' || !Character.isWhitespace(c)) break;
                 start--;
             }
+            if (start > 0 && Character.isLetterOrDigit(text.charAt(start - 1))) {
+                while (start > 0 && Character.isLetterOrDigit(text.charAt(start - 1))) start--;
+            }
         } else if (Character.isLetterOrDigit(ch)) {
             while (start > 0) {
                 char c = text.charAt(start - 1);
@@ -1354,7 +1356,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else {
             start = cursor - 1;
         }
-
         result.text = text.substring(0, start) + text.substring(cursor);
         result.newCursor = start;
         return result;

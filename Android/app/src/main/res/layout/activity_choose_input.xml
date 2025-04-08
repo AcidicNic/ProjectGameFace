@@ -75,12 +75,23 @@
         tools:layout_editor_absoluteX="20dp">
 
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:id="@+id/gestureConstraintLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="30dp">
+            android:orientation="vertical"
+            android:paddingHorizontal="30dp"
+            android:paddingBottom="30dp">
 
+            <TextView
+                android:id="@+id/gestureTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Gestures"
+                android:textSize="20sp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="5dp"
+                android:layout_marginTop="10dp" />
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/gestureLayout"
@@ -108,7 +119,6 @@
                         android:src="@drawable/open_mouth" />
 
                     <TextView
-
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:tag="text_view_gesture_name"
@@ -148,7 +158,7 @@
                     android:id="@+id/mouthRight"
                     android:layout_width="144dp"
                     android:layout_height="134dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="10dp"
                     android:layout_marginEnd="5dp"
                     android:background="@drawable/gesture_button"
                     android:gravity="center_vertical|center_horizontal"
@@ -203,7 +213,7 @@
                     android:id="@+id/raiseRightEyebrow"
                     android:layout_width="144dp"
                     android:layout_height="134dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="10dp"
                     android:layout_marginEnd="5dp"
                     android:background="@drawable/gesture_button"
                     android:gravity="center_vertical|center_horizontal"
@@ -258,7 +268,7 @@
                     android:id="@+id/lowerRightEyebrow"
                     android:layout_width="144dp"
                     android:layout_height="134dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="10dp"
                     android:layout_marginEnd="5dp"
                     android:background="@drawable/gesture_button"
                     android:gravity="center_vertical|center_horizontal"
@@ -310,55 +320,26 @@
                         android:textSize="16sp" />
                 </LinearLayout>
 
-
-                <!--  -->
-
-
-<!--                <LinearLayout-->
-<!--                    android:id="@+id/none"-->
-<!--                    android:layout_width="144dp"-->
-<!--                    android:layout_height="134dp"-->
-<!--                    android:layout_marginTop="10dp"-->
-<!--                    android:layout_marginEnd="5dp"-->
-<!--                    android:background="@drawable/gesture_button"-->
-<!--                    android:gravity="center_vertical|center_horizontal"-->
-<!--                    android:orientation="vertical"-->
-<!--                    app:layout_constraintHorizontal_bias="0.0"-->
-<!--                    app:layout_constraintEnd_toStartOf="@+id/temp"-->
-<!--                    app:layout_constraintStart_toStartOf="parent"-->
-<!--                    app:layout_constraintTop_toBottomOf="@+id/lowerRightEyebrow">-->
-
-<!--                    <ImageView-->
-<!--                        android:layout_width="76dp"-->
-<!--                        android:layout_height="76dp"-->
-<!--                        android:src="@drawable/none" />-->
-
-<!--                    <TextView-->
-<!--                        android:layout_width="wrap_content"-->
-<!--                        android:layout_height="wrap_content"-->
-<!--                        android:tag="text_view_gesture_name"-->
-<!--                        android:text="None"-->
-<!--                        android:textColor="#0B57D0"-->
-<!--                        android:textSize="16sp" />-->
-<!--                </LinearLayout>-->
-
-<!--                <LinearLayout-->
-<!--                    android:id="@+id/temp"-->
-<!--                    android:layout_width="144dp"-->
-<!--                    android:layout_height="134dp"-->
-<!--                    android:layout_marginStart="5dp"-->
-<!--                    android:layout_marginTop="10dp"-->
-<!--                    android:background="@drawable/gesture_button"-->
-<!--                    android:gravity="center_vertical|center_horizontal"-->
-<!--                    android:orientation="vertical"-->
-<!--                    android:visibility="invisible"-->
-<!--                    app:layout_constraintEnd_toEndOf="parent"-->
-<!--                    app:layout_constraintStart_toEndOf="@+id/none"-->
-<!--                    app:layout_constraintTop_toBottomOf="@+id/lowerRightEyebrow" />-->
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
 
 
-                <!-- End of New Keys Section -->
+            <TextView
+                android:id="@+id/switchesTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Switches"
+                android:textSize="20sp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="5dp"
+                android:layout_marginTop="10dp" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/gestureLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
                 <LinearLayout
                     android:id="@+id/keyOne"
@@ -425,7 +406,7 @@
                     android:gravity="center_vertical|center_horizontal"
                     android:orientation="vertical"
                     app:layout_constraintHorizontal_bias="0.0"
-                    app:layout_constraintEnd_toStartOf="@+id/swipeFromRightKbd"
+                    app:layout_constraintEnd_toStartOf="@+id/temp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/keyOne">
 
@@ -444,17 +425,52 @@
                 </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/swipeFromRightKbd"
+                    android:id="@+id/temp"
                     android:layout_width="144dp"
                     android:layout_height="134dp"
                     android:layout_marginStart="5dp"
                     android:layout_marginTop="10dp"
+                    android:visibility="invisible"
                     android:background="@drawable/gesture_button"
                     android:gravity="center_vertical|center_horizontal"
                     android:orientation="vertical"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/keyThree"
                     app:layout_constraintTop_toBottomOf="@+id/keyOne">
+
+                </LinearLayout>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+            <TextView
+                android:id="@+id/otherTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Other"
+                android:textSize="20sp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="5dp"
+                android:layout_marginTop="10dp" />
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/gestureLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <LinearLayout
+                    android:id="@+id/swipeFromRightKbd"
+                    android:layout_width="144dp"
+                    android:layout_height="134dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/gesture_button"
+                    android:gravity="center_vertical|center_horizontal"
+                    android:orientation="vertical"
+                    app:layout_constraintEnd_toStartOf="@+id/none"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
 
                     <ImageView
                         android:layout_width="76dp"
@@ -476,43 +492,14 @@
                     android:id="@+id/none"
                     android:layout_width="144dp"
                     android:layout_height="134dp"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginStart="5dp"
                     android:background="@drawable/gesture_button"
                     android:gravity="center_vertical|center_horizontal"
                     android:orientation="vertical"
                     app:layout_constraintHorizontal_bias="0.0"
-                    app:layout_constraintEnd_toStartOf="@+id/temp"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/keyThree">
-
-                    <ImageView
-                        android:layout_width="76dp"
-                        android:layout_height="76dp"
-                        android:src="@drawable/none" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:tag="text_view_gesture_name"
-                        android:text="None"
-                        android:textColor="#0B57D0"
-                        android:textSize="16sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/temp"
-                    android:layout_width="144dp"
-                    android:layout_height="134dp"
-                    android:layout_marginStart="5dp"
-                    android:layout_marginTop="10dp"
-                    android:visibility="invisible"
-                    android:background="@drawable/gesture_button"
-                    android:gravity="center_vertical|center_horizontal"
-                    android:orientation="vertical"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/none"
-                    app:layout_constraintTop_toBottomOf="@+id/keyThree">
+                    app:layout_constraintStart_toEndOf="@+id/swipeFromRightKbd"
+                    app:layout_constraintTop_toTopOf="parent">
 
                     <ImageView
                         android:layout_width="76dp"
@@ -529,8 +516,7 @@
                 </LinearLayout>
 
             </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
 
     </ScrollView>
 
