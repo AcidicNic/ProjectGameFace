@@ -177,7 +177,8 @@ public class BlendshapeEventTriggerConfig {
       Blendshape.RAISE_RIGHT_EYEBROW, Blendshape.RAISE_LEFT_EYEBROW,
       Blendshape.LOWER_RIGHT_EYEBROW, Blendshape.LOWER_LEFT_EYEBROW,
       Blendshape.SWITCH_ONE, Blendshape.SWITCH_TWO,
-      Blendshape.SWITCH_THREE, Blendshape.SWIPE_FROM_RIGHT_KBD, Blendshape.NONE
+      Blendshape.SWITCH_THREE, Blendshape.SWIPE_FROM_RIGHT_KBD,
+      Blendshape.NONE
   ).collect(Collectors.toList());
 
   @AutoValue

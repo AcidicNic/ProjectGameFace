@@ -34,6 +34,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 
 public class ChooseGestureActivity extends AppCompatActivity {
@@ -45,7 +48,35 @@ public class ChooseGestureActivity extends AppCompatActivity {
     private static final String IN_USE_TEXT = "\n(In use)";
     private static final String UNAVAILABLE_TEXT = "\n(Unavailable)";
 
-    ConstraintLayout chooseGestureLayout;
+    private ArrayList<Integer> viewIds = new ArrayList<>(Arrays.asList(
+        R.id.openMouth,
+        R.id.mouthLeft,
+        R.id.mouthRight,
+        R.id.rollLowerMouth,
+        R.id.raiseRightEyebrow,
+        R.id.raiseLeftEyebrow,
+        R.id.lowerRightEyebrow,
+        R.id.lowerLeftEyebrow,
+        R.id.keyOne,
+        R.id.keyTwo,
+        R.id.keyThree,
+        R.id.swipeFromRightKbd,
+        R.id.none
+    ));
+
+    private LinearLayout openMouth;
+    private LinearLayout mouthLeft;
+    private LinearLayout mouthRight;
+    private LinearLayout rollLowerMouth;
+    private LinearLayout raiseRightEyebrow;
+    private LinearLayout raiseLeftEyebrow;
+    private LinearLayout lowerRightEyebrow;
+    private LinearLayout lowerLeftEyebrow;
+    private LinearLayout keyOne;
+    private LinearLayout keyTwo;
+    private LinearLayout keyThree;
+    private LinearLayout swipeFromRightKbd;
+    private LinearLayout none;
 
     // What is the target action for this page.
     BlendshapeEventTriggerConfig.EventType pageEventType;
@@ -54,7 +85,6 @@ public class ChooseGestureActivity extends AppCompatActivity {
     int preSelectButtonIndex;
 
     private BlendshapeEventTriggerConfig.Blendshape selectedBlendshape;
-
 
     /**
      * Set gesture box as "In use" state by dim the color, change text
@@ -178,12 +208,9 @@ public class ChooseGestureActivity extends AppCompatActivity {
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
 
-        // Big layout contain face gesture buttons.
-        ConstraintLayout gestureLayout = findViewById(R.id.gestureLayout);
-
         // For each face gesture button.
-        for (int gestureButtonIndexInUi = 0; gestureButtonIndexInUi < gestureLayout.getChildCount(); gestureButtonIndexInUi++) {
-            ViewGroup oneGestureBox = (ViewGroup) gestureLayout.getChildAt(gestureButtonIndexInUi);
+        for (int gestureButtonIndexInUi = 0; gestureButtonIndexInUi < viewIds.size(); gestureButtonIndexInUi++) {
+            LinearLayout oneGestureBox = findViewById(viewIds.get(gestureButtonIndexInUi));
 
             resetButtonStyle(oneGestureBox);
 
@@ -218,19 +245,19 @@ public class ChooseGestureActivity extends AppCompatActivity {
         }
 
         // None button case need special handling.
-        ViewGroup noneGestureBox = (ViewGroup) gestureLayout.getChildAt(BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE));
+        ViewGroup noneGestureBox = findViewById(viewIds.get(BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE)));
         int boundGestureIndex = preferences.getInt(pageEventType.toString(), BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE));
         if (boundGestureIndex == BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.NONE)) {
             changeButtonStyleToCurrent(noneGestureBox);
         }
 
         // Swiping gestures require special handling.
-        ViewGroup swipeFromRightKbdBox = (ViewGroup) gestureLayout.getChildAt(BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD));
+        ViewGroup swipeFromRightKbdBox = findViewById(viewIds.get(BlendshapeEventTriggerConfig.BLENDSHAPE_FROM_ORDER_IN_UI.indexOf(BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD)));
         if (!Boolean.TRUE.equals(BlendshapeEventTriggerConfig.EVENT_TYPE_SHOULD_SHOW_SWIPING_INPUTS.get(pageEventType))) {
             changeButtonStyleToUnavailable(swipeFromRightKbdBox);
         }
-
     }
+
 
     /**
      * Make back button work as back action in device's navigation.
@@ -323,15 +350,14 @@ public class ChooseGestureActivity extends AppCompatActivity {
                 startActivity(intentGoGestureSize);
             }
         });
-        chooseGestureLayout = findViewById(R.id.gestureLayout);
         setupUi();
     }
 
 
     private void setupUi(){
-        for (int i = 0; i < chooseGestureLayout.getChildCount(); i++) {
+        for (int i = 0; i < viewIds.size(); i++) {
             final int position = i;
-            View childView = chooseGestureLayout.getChildAt(i);
+            View childView = findViewById(viewIds.get(i));
 
             childView.setBackgroundResource(R.drawable.gesture_button);
 
