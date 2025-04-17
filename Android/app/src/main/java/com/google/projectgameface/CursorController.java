@@ -60,10 +60,10 @@ public class CursorController {
     public float dragEndY = 0.f;
     private int screenWidth;
     private int screenHeight;
-    private int tempMinX = 0;
-    private int tempMaxX = 0;
-    private int tempMinY = 0;
-    private int tempMaxY = 0;
+    private int tempBoundLeftX = 0;
+    private int tempBoundRightX = 0;
+    private int tempBoundTopY = 0;
+    private int tempBoundBottomY = 0;
     private float smoothedCursorPositionX = 0;
     private float smoothedCursorPositionY = 0;
     private boolean tempBoundsSet = false;
@@ -226,8 +226,8 @@ public class CursorController {
                 if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
                     isTeleportMode = true;
                     if (tempBoundsSet && !isCursorOutsideBounds) {
-                        teleportShadowX = (double) (tempMinX + tempMaxX) / 2;
-                        teleportShadowY = (double) (tempMinY + tempMaxY) / 2;
+                        teleportShadowX = (double) (tempBoundLeftX + tempBoundRightX) / 2;
+                        teleportShadowY = (double) (tempBoundTopY + tempBoundBottomY) / 2;
                     } else {
                         teleportShadowX = (double) this.screenWidth / 2;
                         teleportShadowY = (double) this.screenHeight / 2;
@@ -401,9 +401,9 @@ public class CursorController {
         if (tempBoundsSet) {
             int WIGGLE_ROOM = screenHeight / 20;
             if (isCursorOutsideBounds) {
-                regionMaxY = tempMinY + WIGGLE_ROOM;
+                regionMaxY = tempBoundTopY + WIGGLE_ROOM;
             } else {
-                regionMinY = tempMinY - WIGGLE_ROOM;
+                regionMinY = tempBoundTopY - WIGGLE_ROOM;
             }
         }
 
@@ -511,7 +511,7 @@ public class CursorController {
 
     private void handleBoundingLogic() {
         long currentTime = System.currentTimeMillis();
-        boolean touchingTopEdge = cursorPositionY <= tempMinY;
+        boolean touchingTopEdge = cursorPositionY <= tempBoundTopY;
 
         if (!isCursorOutsideBounds) {
             // Cursor is inside the bounds
@@ -528,16 +528,16 @@ public class CursorController {
                     edgeHoldStartTime = 0;
                 } else {
                     // Clamp cursor to the top bound while holding against the edge
-                    cursorPositionY = clamp(cursorPositionY, tempMinY, screenHeight);
+                    cursorPositionY = clamp(cursorPositionY, tempBoundTopY, screenHeight);
                 }
             } else {
                 edgeHoldStartTime = 0;
                 // Ensure cursor stays within the bounds
-                cursorPositionY = clamp(cursorPositionY, tempMinY, screenHeight);
+                cursorPositionY = clamp(cursorPositionY, tempBoundTopY, screenHeight);
             }
         } else {
             // Cursor is outside the bounds
-            if (cursorPositionY >= tempMinY) {
+            if (cursorPositionY >= tempBoundTopY || cursorPositionY <= tempBoundBottomY) {
                 if (edgeHoldStartTime == 0) {
                     edgeHoldStartTime = currentTime;
                 }
@@ -550,37 +550,37 @@ public class CursorController {
                     edgeHoldStartTime = 0;
                 } else {
                     // Clamp cursor to the area just above the bound while holding against the edge
-                    cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
+                    cursorPositionY = clamp(cursorPositionY, 0, tempBoundTopY);
                 }
             } else {
                 edgeHoldStartTime = 0;
                 // Ensure cursor stays within the bounds
-                cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
+                cursorPositionY = clamp(cursorPositionY, 0, tempBoundTopY);
             }
         }
     }
 
     public Rect getTemporaryBounds() {
-        return new Rect(this.tempMinX, this.tempMinY, this.tempMaxX, this.tempMaxY);
+        return new Rect(this.tempBoundLeftX, this.tempBoundTopY, this.tempBoundRightX, this.tempBoundBottomY);
     }
 
     public void setTemporaryBounds(Rect bounds) {
-        this.tempMinX = bounds.left;
-        this.tempMinY = bounds.top;
-        this.tempMaxX = bounds.right;
-        this.tempMaxY = bounds.bottom;
+        this.tempBoundLeftX = bounds.left;
+        this.tempBoundTopY = bounds.top;
+        this.tempBoundRightX = bounds.right;
+        this.tempBoundBottomY = bounds.bottom;
         this.tempBoundsSet = true;
 //        resetCursorToCenter(true);
-        this.isCursorOutsideBounds = this.cursorPositionY < tempMinY;
+        this.isCursorOutsideBounds = this.cursorPositionY < tempBoundTopY || this.cursorPositionY > tempBoundBottomY;
         Log.d(TAG, "Set temporary bounds: " + bounds);
     }
 
     public void clearTemporaryBounds() {
         this.tempBoundsSet = false;
-        this.tempMinX = 0;
-        this.tempMinY = 0;
-        this.tempMaxX = screenWidth;
-        this.tempMaxY = screenHeight;
+        this.tempBoundLeftX = 0;
+        this.tempBoundTopY = 0;
+        this.tempBoundRightX = screenWidth;
+        this.tempBoundBottomY = screenHeight;
     }
 
     public int[] getCursorPositionXY() {
@@ -589,8 +589,8 @@ public class CursorController {
 
     public void resetCursorToCenter(boolean bound) {
         if (bound || tempBoundsSet && !isCursorOutsideBounds) {
-            cursorPositionX = (double) (tempMinX + tempMaxX) / 2;
-            cursorPositionY = (double) (tempMinY + tempMaxY) / 2;
+            cursorPositionX = (double) (tempBoundLeftX + tempBoundRightX) / 2;
+            cursorPositionY = (double) (tempBoundTopY + tempBoundBottomY) / 2;
         } else {
             cursorPositionX = (double) this.screenWidth / 2;
             cursorPositionY = (double) this.screenHeight / 2;

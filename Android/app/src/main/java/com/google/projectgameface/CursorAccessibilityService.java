@@ -1038,9 +1038,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                keyboardBounds.union(navBarBounds); // Expand the bounds to include the navigation bar
 //                Log.d(TAG, "Navigation bar bounds added: " + navBarBounds);
 //            }
-            if (keyboardBounds.top > navBarBounds.top) {
-                keyboardBounds.union(navBarBounds);
-            }
+//            if (keyboardBounds.top > navBarBounds.top) {
+//                keyboardBounds.union(navBarBounds);
+//            }
             cursorController.setTemporaryBounds(keyboardBounds);
 //            Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
 
@@ -1574,10 +1574,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         endTime = System.currentTimeMillis();
         int[] cursorPosition = getCursorPosition();
         serviceUiManager.clearPreviewBitmap();
+        int keyWidth = keyboardBounds.width() / 10;
         if (startedSwipeFromRightKbd &&
-            (cursorPosition[0] < screenSize.x) &&
-            (cursorPosition[0] >= 5) /*(cursorPosition[0] (screenSize.x / 2))*/
-        ) {
+                (cursorPosition[0] < screenSize.x) &&
+                (cursorPosition[0] >= screenSize.x - (keyWidth * 2)) /*(cursorPosition[0] (screenSize.x / 2))*/
+            ) {
             handleSwipeFromRightKbd();
             startedSwipeFromRightKbd = false;
             isSwiping = false;
@@ -1587,33 +1588,31 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         new Thread(() -> {
             try {
-                if (canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
-                    MotionEvent event = MotionEvent.obtain(
-                            startUptime,
-                            endUptime,
-                            MotionEvent.ACTION_UP,
-                            cursorPosition[0],
-                            cursorPosition[1],
-                            0
-                    );
-                    injectMotionEvent(event);
-                    debugText[0] = "Swiping";
-                    debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
-                    Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorPosition[0] + ", " + cursorPosition[1] + ")");
-                } else {
-                    MotionEvent event = MotionEvent.obtain(
-                            startUptime,
-                            endUptime,
-                            MotionEvent.ACTION_UP,
-                            lastValidCoords[0],
-                            lastValidCoords[1],
-                            0
-                    );
-                    injectMotionEvent(event);
-                    debugText[0] = "Swiping";
-                    debugText[1] = "X, Y: (" + lastValidCoords[0] + ", " + lastValidCoords[1] + ")";
-                    Log.d(TAG, "MotionEvent.ACTION_UP @ (" + lastValidCoords[0] + ", " + lastValidCoords[1] + ")");
+                int action = MotionEvent.ACTION_UP;
+                int[] cursorCoords = cursorPosition;
+
+                // Cancel swipe if it ends too close to the right edge
+                if (cursorCoords[0] >= screenSize.x - 5) {
+                    action = MotionEvent.ACTION_CANCEL;
                 }
+                // if current cursor position is outside of keyboard bounds, use last valid coords
+                else if (!canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
+                    cursorCoords = lastValidCoords;
+                }
+
+                MotionEvent event = MotionEvent.obtain(
+                        startUptime,
+                        endUptime,
+                        action,
+                        cursorCoords[0],
+                        cursorCoords[1],
+                        0
+                );
+                injectMotionEvent(event);
+
+                debugText[0] = "Swiping";
+                debugText[1] = "X, Y: (" + cursorCoords[0] + ", " + cursorCoords[1] + ")";
+                Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorCoords[0] + ", " + cursorCoords[1] + ")");
             } catch (Exception e) {
                 writeToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
@@ -1799,8 +1798,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         }
     }
+
+    /**
+     * Send motion event to OpenBoard IME to simulate touch events
+     * @param event The motion event to send.
+     */
     private void sendMotionEventToIME(MotionEvent event) {
-        Log.d(TAG, "[666] Sending MotionEvent to IME");
+        Log.d(TAG, "[openboard] Sending MotionEvent to IME");
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
         intent.putExtra("x", event.getX());
@@ -1810,6 +1814,35 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         intent.putExtra("eventTime", event.getEventTime());
         sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
     }
+
+    /**
+     * Send key event to OpenBoard IME to simulate virtual keyboard key presses
+     * @param keyCode The key code to send.
+     * @param isDown Whether the key is pressed down or released.
+     * @param isLongPress Whether the key is a long press.
+     */
+    private void sendKeyEventToIME(int keyCode, boolean isDown, boolean isLongPress) {
+        Log.d(TAG, "[openboard] Sending keyEvent to IME");
+        Intent intent = new Intent("com.headswype.ACTION_SEND_KEY_EVENT");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
+        intent.putExtra("keyCode", keyCode);
+        intent.putExtra("isDown", isDown);
+        intent.putExtra("isLongPress", isLongPress);
+        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+    }
+
+    /**
+     * Send gesture trail color to OpenBoard IME.
+     * @param color The color to send. ("green", "red", "orange")
+     */
+    private void sendGestureTrailColorToIME(String color) {
+        Log.d(TAG, "[openboard] Sending getsure trail color to IME");
+        Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
+        intent.putExtra("color", color);
+        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+    }
+
     public int getNavigationBarHeight(Context context) {
         Resources resources = context.getResources();
         int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
@@ -1818,6 +1851,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         return 0; // Return 0 if no navigation bar is present
     }
+
     private boolean checkForSwipingFromRightKbd = false;
     private boolean startedSwipeFromRightKbd = false;
     private int navbarHeight = 0;

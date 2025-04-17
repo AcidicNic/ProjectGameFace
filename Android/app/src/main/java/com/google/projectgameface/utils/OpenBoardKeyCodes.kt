@@ -2,7 +2,7 @@ package com.google.projectgameface.utils
 
 import android.view.KeyEvent
 
-object Config {
+object OpenBoardKeyCodes {
     const val FILES_DIR: String = "/data/data/com.google.projectgameface/files"
     const val STATS_DIR: String = "stats/"
     const val LOGS_DIR: String = "logs/"

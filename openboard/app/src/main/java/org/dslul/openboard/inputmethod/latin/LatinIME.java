@@ -672,10 +672,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
         // Register the IMEEventReceiver
         imeEventReceiver = new IMEEventReceiver();
-        IntentFilter headSwypeFilter = new IntentFilter("com.headswype.ACTION_SEND_EVENT");
-        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
-
-        Log.d(TAG, "[666] IMEEventReceiver registered.");
+        IntentFilter eventFilter = new IntentFilter();
+        eventFilter.addAction(IMEEventReceiver.ACTION_SEND_MOTION_EVENT);
+        eventFilter.addAction(IMEEventReceiver.ACTION_SEND_KEY_EVENT);
+        registerReceiver(imeEventReceiver, eventFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
+        Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
     }
 
     // Has to be package-visible for unit tests
@@ -835,6 +836,42 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             startUpTime = 0;
             Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
         }
+    }
+
+    /**
+     * Dispatch key event to the input method.
+     * @param keyCode The key code of the key event.
+     * @param isDown True if the key is pressed down, false if released.
+     * @param isLongPress True if the key is long pressed.
+     **/
+    public void dispatchKeyEvent(int keyCode, boolean isDown, boolean isLongPress) {
+        // For key presses, we need to call both onPressKey and onCodeInput
+        if (isDown) {
+            int repeatCount = isLongPress ? 1 : 0; // Set repeat count to 1 for long press
+
+            Log.d(TAG, "Dispatching key press event: keyCode=" + keyCode);
+
+            // First simulate the press event (haptic feedback, etc.)
+            onPressKey(keyCode, repeatCount, true);
+
+            // Then simulate the actual character input
+            final Event event = createSoftwareKeypressEvent(keyCode,
+                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            onEvent(event);
+
+            // For long press, we might want to trigger a different behavior
+            if (isLongPress) {
+                // Handle long press specific functionality if needed
+                Log.d(TAG, "Long press detected for keyCode=" + keyCode);
+            }
+        } else {
+            // Handle key release if needed
+            onReleaseKey(keyCode, false);
+        }
+    }
+
+    public void setGestureTrailColor(int color) {
+        // TODO: Implement this method to set the color of the gesture trail
     }
 
     @UsedForTesting

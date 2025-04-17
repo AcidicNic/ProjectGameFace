@@ -583,8 +583,6 @@ public class ServiceUiManager {
     } catch (RuntimeException e) {
       Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
     }
-
-
   }
 
   public void setDragLineStart(float x, float y) {
