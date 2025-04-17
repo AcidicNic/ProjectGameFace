@@ -56,14 +56,14 @@ public class ServiceUiManager {
   private static final boolean SHOW_DEBUG_TEXT = true;
 
   /** For applying small offset to cursor image.*/
-  private static final int CURSOR_DP_SIZE = 60;
+  private static final int CURSOR_DP_SIZE = 46;
 
   Context parentContext;
 
   private final Point screenSize;
 
   /** Draw cursor image. */
-  public View cursorView;
+  public CursorView cursorView;
 
   /** Draw floating window that show video feed along with buttons and other information. */
   public View cameraBoxView;
@@ -96,11 +96,6 @@ public class ServiceUiManager {
   private float initialTouchX;
   private float initialTouchY;
 
-
-  /** Our cursor image is a circular so we
-   * make a small shift to match the touch point at the center*/
-  private final int shiftCursorImageX;
-  private final int shiftCursorImageY;
 
   public static final int DEFAULT_FLOATING_CAMERA_WIDTH = 330;
   public static final int DEFAULT_FLOATING_CAMERA_HEIGHT = 330;
@@ -142,8 +137,6 @@ public class ServiceUiManager {
 
     screenSize = new Point();
     float density = parentContext.getResources().getDisplayMetrics().density;
-    shiftCursorImageX = (int) (-CURSOR_DP_SIZE * density / 2);
-    shiftCursorImageY = (int) (-CURSOR_DP_SIZE * density / 2);
 
     floatWindowFlags =
         LayoutParams.FLAG_DISMISS_KEYGUARD
@@ -212,21 +205,23 @@ public class ServiceUiManager {
   /** Create floating cursor image on the screen. */
   private void createFloatingCursor() {
 
-    cursorView = View.inflate(parentContext, R.layout.cursor, null);
+    cursorView = new CursorView(parentContext);
+
+    // Calculate cursor size in pixels
+    float density = parentContext.getResources().getDisplayMetrics().density;
+    int cursorSizePx = (int) (CURSOR_DP_SIZE * density);
 
 
     cursorLayoutParams =
         new WindowManager.LayoutParams(
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.WRAP_CONTENT,
+            cursorSizePx,
+            cursorSizePx,
             LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             floatWindowFlags,
             PixelFormat.TRANSLUCENT);
     cursorLayoutParams.gravity = Gravity.TOP | Gravity.START;
-    cursorLayoutParams.x = screenSize.x / 2 - shiftCursorImageX ;
-    cursorLayoutParams.y = screenSize.y / 2 - shiftCursorImageY ;
-
-
+    cursorLayoutParams.x = screenSize.x / 2 - cursorSizePx / 2;
+    cursorLayoutParams.y = screenSize.y / 2 - cursorSizePx / 2;
   }
 
   /** Hide cursor view. */
@@ -574,12 +569,13 @@ public class ServiceUiManager {
   public void updateCursorImagePositionOnScreen(
       int[] cursorPosition) {
 
-    cursorLayoutParams.x = cursorPosition[0] + shiftCursorImageX;// + avoidNavBarX;
-    cursorLayoutParams.y = cursorPosition[1] + shiftCursorImageY;// + avoidNavBarY;
+    // Center the view's top-left corner on the cursor position
+    cursorLayoutParams.x = cursorPosition[0] - cursorView.getWidth() / 2;
+    cursorLayoutParams.y = cursorPosition[1] - cursorView.getHeight() / 2;
 
     try {
       windowManager.updateViewLayout(cursorView, cursorLayoutParams);
-      cursorView.requestLayout();
+      // cursorView.requestLayout();
     } catch (RuntimeException e) {
       Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
     }
@@ -753,7 +749,18 @@ public class ServiceUiManager {
     }
   }
 
+  // --- Optional: Add methods to control sweep ---
+  public void startCursorSweep() {
+      if (cursorView != null) {
+          cursorView.startSweep();
+      }
+  }
 
-
+  public void cancelCursorSweep() {
+      if (cursorView != null) {
+          cursorView.cancelSweep();
+      }
+  }
+  // --------------------------------------------
 
 }
