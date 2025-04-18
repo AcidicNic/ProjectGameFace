@@ -26,7 +26,6 @@ import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
-import android.net.VpnProfileState;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -749,18 +748,30 @@ public class ServiceUiManager {
     }
   }
 
-  // --- Optional: Add methods to control sweep ---
-  public void startCursorSweep() {
+  /**
+   * Animate cursor to the given color.
+   * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+   */
+  public void cursorAnimateToColor(String colorName, int duration) {
       if (cursorView != null) {
-          cursorView.startSweep();
+          cursorView.animateToColor(colorName, duration);
       }
   }
 
-  public void cancelCursorSweep() {
+    /**
+     * Set cursor color instantly.
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     */
+  public void cursorSetColor(String colorName) {
       if (cursorView != null) {
-          cursorView.cancelSweep();
+          cursorView.setColor(colorName);
       }
   }
-  // --------------------------------------------
+
+  public void cursorCancelAnimation() {
+      if (cursorView != null) {
+          cursorView.cancelAnimation();
+      }
+  }
 
 }

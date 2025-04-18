@@ -211,6 +211,11 @@ public class DispatchEventHelper {
       case SHOW_APPS:
         parentService.performGlobalAction(AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS);
         break;
+
+      case SMART_TOUCH:
+        parentService.smartTouch(keyEvent);
+        break;
+
       default:
     }
   }

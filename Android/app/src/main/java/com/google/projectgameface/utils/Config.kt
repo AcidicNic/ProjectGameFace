@@ -26,4 +26,6 @@ object Config {
     )
 
     // TODO: Move all constants here (default settings values and any other hard coded values)
+
+    const val DEFAULT_ANIMATION_DURATION = 1000
 }

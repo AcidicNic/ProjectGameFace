@@ -1379,11 +1379,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int[] cursorPosition = new int[2];
         cursorPosition = getCursorPosition();
 
-        if (eventAction == KeyEvent.ACTION_DOWN || !cursorController.continousTouchActive) {
+        if (eventAction == KeyEvent.ACTION_DOWN || !cursorController.continuousTouchActive) {
             if (keyCode <= 0) {
                 keyStates.put(keyCode, true);
             }
-            cursorController.continousTouchActive = true;
+            cursorController.continuousTouchActive = true;
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
 
             if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
@@ -1396,12 +1396,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
                 dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
             }
-        } else if (eventAction == KeyEvent.ACTION_UP || cursorController.continousTouchActive) {
+        } else if (eventAction == KeyEvent.ACTION_UP || cursorController.continuousTouchActive) {
             if (keyCode <= 0) {
                 keyStates.put(keyCode, false);
             }
 
-            cursorController.continousTouchActive = false;
+            cursorController.continuousTouchActive = false;
 
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_UP");
             if (isSwiping) {
@@ -1462,6 +1462,107 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
                     null);
         }
+    }
+
+
+    // Constants for smart touch timing
+    private static final int SMART_TOUCH_QUICK_THRESHOLD = 1000; // ms
+    private static final int SMART_TOUCH_LONG_THRESHOLD = 2000;  // ms
+
+    // Fields for smart touch state
+    private long smartTouchStartTime;
+    private int[] smartTouchStartPosition;
+    private boolean smartTouchCancelled = false;
+    private Handler smartTouchHandler = new Handler(Looper.getMainLooper());
+
+    // Runnables for quick and long touch
+    private final Runnable quickTouchRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!smartTouchCancelled && cursorController.smartTouchActive) {
+                // Start animating to red when we hit quick delay
+                serviceUiManager.cursorView.animateToColor("RED", SMART_TOUCH_LONG_THRESHOLD - SMART_TOUCH_QUICK_THRESHOLD);
+            }
+        }
+    };
+
+    private final Runnable longTouchRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!smartTouchCancelled && cursorController.smartTouchActive) {
+                // Execute long tap
+                quickTap(smartTouchStartPosition, 650);
+                serviceUiManager.drawTouchDot(smartTouchStartPosition);
+                // Reset cursor to white
+                serviceUiManager.cursorView.setColor("WHITE");
+                cursorController.smartTouchActive = false;
+            }
+        }
+    };
+
+    public boolean smartTouch(KeyEvent event) {
+        Log.d(TAG, "smartTouch() KeyEvent: " + event);
+
+        int keyCode = -1;
+        int eventAction = -1;
+        if (event != null) {
+            eventAction = event.getAction();
+            keyCode = event.getKeyCode();
+        }
+
+        if (eventAction == KeyEvent.ACTION_DOWN || !cursorController.smartTouchActive) {
+            if (keyCode <= 0) {
+                keyStates.put(keyCode, true);
+            }
+
+            // Start the smart touch sequence
+            cursorController.smartTouchActive = true;
+            smartTouchStartTime = SystemClock.uptimeMillis();
+            smartTouchCancelled = false;
+            smartTouchStartPosition = getCursorPosition();
+
+            // Start animating to green, duration matches quick delay
+            serviceUiManager.cursorAnimateToColor("GREEN", SMART_TOUCH_QUICK_THRESHOLD);
+
+            // Schedule both quick and long touch handlers
+            smartTouchHandler.postDelayed(quickTouchRunnable, SMART_TOUCH_QUICK_THRESHOLD);
+            smartTouchHandler.postDelayed(longTouchRunnable, SMART_TOUCH_LONG_THRESHOLD);
+
+        } else if (eventAction == KeyEvent.ACTION_UP || cursorController.smartTouchActive) {
+            if (keyCode <= 0) {
+                keyStates.put(keyCode, false);
+            }
+
+            // Calculate how long the touch has been active
+            long elapsedTime = SystemClock.uptimeMillis() - smartTouchStartTime;
+
+            // Remove pending handlers
+            smartTouchHandler.removeCallbacks(quickTouchRunnable);
+            smartTouchHandler.removeCallbacks(longTouchRunnable);
+
+            // Mark as cancelled to prevent pending callbacks from executing
+            smartTouchCancelled = true;
+            cursorController.smartTouchActive = false;
+
+            // Cancel any ongoing color animation
+            serviceUiManager.cursorCancelAnimation();
+
+            // Determine which action to take based on elapsed time
+            if (elapsedTime >= SMART_TOUCH_QUICK_THRESHOLD) {
+                // Long touch
+                quickTap(smartTouchStartPosition, 650);
+                serviceUiManager.drawTouchDot(smartTouchStartPosition);
+            } else if (elapsedTime >= SMART_TOUCH_QUICK_THRESHOLD) {
+                // Quick touch
+                quickTap(smartTouchStartPosition, 200);
+                serviceUiManager.drawTouchDot(smartTouchStartPosition);
+            }
+
+            // Reset cursor to white after any action
+            serviceUiManager.cursorView.setColor("WHITE");
+        }
+
+        return true;
     }
 
     private Handler dragToggleHandler = new Handler(Looper.getMainLooper());

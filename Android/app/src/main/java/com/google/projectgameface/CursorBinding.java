@@ -53,6 +53,7 @@ public class CursorBinding extends AppCompatActivity {
         R.id.startTouchLayout,
         R.id.endTouchLayout,
         R.id.deletePrevWordLayout,
+        R.id.smartTouchLayout,
     };
 
     TextView textTap;
@@ -83,6 +84,8 @@ public class CursorBinding extends AppCompatActivity {
     TextView endTouchLinear;
     TextView textDeletePrevWord;
     TextView deletePrevWordLinear;
+    TextView textSmartTouch;
+    TextView smartTouchLinear;
 
 
     protected String getDescriptionTextViewValue() {
@@ -212,6 +215,11 @@ public class CursorBinding extends AppCompatActivity {
                 deletePrevWordLinear,
                 (ImageView) findViewById(R.id.deletePrevWordIcon));
 
+        setUpActionList(
+                String.valueOf(BlendshapeEventTriggerConfig.EventType.SMART_TOUCH),
+                textSmartTouch,
+                smartTouchLinear,
+                (ImageView) findViewById(R.id.smartTouchIcon));
     }
 
 
@@ -254,6 +262,8 @@ public class CursorBinding extends AppCompatActivity {
         endTouchLinear = findViewById(R.id.endTouchLinear);
         textDeletePrevWord = findViewById(R.id.deletePrevWordBinding);
         deletePrevWordLinear = findViewById(R.id.deletePrevWordLinear);
+        textSmartTouch = findViewById(R.id.smartTouchBinding);
+        smartTouchLinear = findViewById(R.id.smartTouchLinear);
 
         refreshUI();
 
@@ -306,6 +316,9 @@ public class CursorBinding extends AppCompatActivity {
 
                 } else if (v.getId() == R.id.deletePrevWordLayout) {
                     intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.DELETE_PREVIOUS_WORD);
+
+                } else if (v.getId() == R.id.smartTouchLayout) {
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.SMART_TOUCH);
                 }
                 startActivity(intent);
 

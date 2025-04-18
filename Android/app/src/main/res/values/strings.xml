@@ -38,6 +38,7 @@
         <item>BEGIN_TOUCH</item>
         <item>END_TOUCH</item>
         <item>DELETE_PREVIOUS_WORD</item>
+        <item>SMART_TOUCH</item>
     </string-array>
 
 
@@ -58,6 +59,7 @@
         <item>Choose an input that will begin a touch</item>
         <item>Choose an input that will end a touch</item>
         <item>Remove previous word</item>
+        <item>Choose an input that will perform a combined tap on your phone</item>
 
     </string-array>
 

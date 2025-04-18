@@ -83,7 +83,8 @@ public class CursorController {
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
 
-    public boolean continousTouchActive = false;
+    public boolean continuousTouchActive = false;
+    public boolean smartTouchActive = false;
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -239,9 +240,12 @@ public class CursorController {
             } else if (eventTriggered && (score <= blendshapeAndThreshold.threshold())) {
                 // Reset the trigger.
                 blendshapeEventTriggeredTracker.put(eventType, false);
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH && continousTouchActive) {
-                    // returning eventType when gesture score for continuous touch is below threshold
-                    Log.d(TAG, "Continuous touch gesture score below threshold, returning eventType");
+
+                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH && continuousTouchActive) {
+                    // Return eventType when gesture score for is below threshold for continuous touch
+                    return eventType;
+                } else if (eventType == BlendshapeEventTriggerConfig.EventType.SMART_TOUCH && smartTouchActive) {
+                    // Return eventType when gesture score for is below threshold for smart touch
                     return eventType;
                 } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
                     isTeleportMode=false;

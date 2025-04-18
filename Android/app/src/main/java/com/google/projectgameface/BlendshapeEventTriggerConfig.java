@@ -30,7 +30,6 @@ import com.google.auto.value.AutoValue;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -68,6 +67,7 @@ public class BlendshapeEventTriggerConfig {
     BEGIN_TOUCH,
     END_TOUCH,
     DELETE_PREVIOUS_WORD,
+    SMART_TOUCH,
   }
 
   // EventType string name used in title bar UI.
@@ -91,6 +91,7 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.BEGIN_TOUCH, "Begin touch");
     put(EventType.END_TOUCH, "End touch");
     put(EventType.DELETE_PREVIOUS_WORD, "Delete previous word");
+    put(EventType.SMART_TOUCH, "Combined Tap");
   }};
 
   // String for display in the UI only.
@@ -130,6 +131,7 @@ public class BlendshapeEventTriggerConfig {
     put(EventType.BEGIN_TOUCH, false);
     put(EventType.END_TOUCH, false);
     put(EventType.DELETE_PREVIOUS_WORD, true);
+    put(EventType.SMART_TOUCH, false);
   }};
 
   public static final HashMap<Blendshape, Boolean> BLENDSHAPE_IS_SWIPING_INPUT = new HashMap<Blendshape, Boolean>() {{
