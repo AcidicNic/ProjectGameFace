@@ -55,6 +55,15 @@ public final class GestureTrailsDrawingPreview extends AbstractDrawingPreview im
         mGesturePaint = gesturePaint;
     }
 
+    public void setTrailColor(final int color) {
+        mDrawingParams.setTrailColor(color);
+        invalidateDrawingView();
+    }
+
+    public GestureTrailDrawingParams getDrawingParams() {
+        return mDrawingParams;
+    }
+
     @Override
     public void setKeyboardViewGeometry(final int[] originCoords, final int width,
             final int height) {

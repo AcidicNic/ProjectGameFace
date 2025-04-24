@@ -449,6 +449,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return (long) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION);
     }
 
+    public int getQuickTapThreshold() {
+        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
+    }
+
+    public int getLongTapThreshold() {
+        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
+    }
+
     /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
     private ImageAnalysis imageAnalyzer =
             new ImageAnalysis.Builder()
@@ -1334,6 +1342,29 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             result.newCursor = 0;
             return result;
         }
+
+        // First, find the start and end of the current word if cursor is inside a word
+        int wordStart = cursor;
+        int wordEnd = cursor;
+        
+        // Find start of current word
+        while (wordStart > 0 && Character.isLetterOrDigit(text.charAt(wordStart - 1))) {
+            wordStart--;
+        }
+        
+        // Find end of current word
+        while (wordEnd < text.length() && Character.isLetterOrDigit(text.charAt(wordEnd))) {
+            wordEnd++;
+        }
+
+        // If cursor is inside a word, delete that word
+        if (wordStart < cursor && wordEnd > cursor) {
+            result.text = text.substring(0, wordStart) + text.substring(wordEnd);
+            result.newCursor = wordStart;
+            return result;
+        }
+
+        // Otherwise, proceed with original logic
         int start = cursor;
         char ch = text.charAt(cursor - 1);
         if (ch == '\n') {
@@ -1466,8 +1497,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
 
     // Constants for smart touch timing
-    private static final int SMART_TOUCH_QUICK_THRESHOLD = 1000; // ms
-    private static final int SMART_TOUCH_LONG_THRESHOLD = 2000;  // ms
+    private int quickTapThreshold = getQuickTapThreshold();
+    private int longTapThreshold = getLongTapThreshold();
 
     // Fields for smart touch state
     private long smartTouchStartTime;
@@ -1481,7 +1512,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         public void run() {
             if (!smartTouchCancelled && cursorController.smartTouchActive) {
                 // Start animating to red when we hit quick delay
-                serviceUiManager.cursorView.animateToColor("RED", SMART_TOUCH_LONG_THRESHOLD - SMART_TOUCH_QUICK_THRESHOLD);
+                serviceUiManager.cursorView.animateToColor("RED", longTapThreshold - quickTapThreshold);
             }
         }
     };
@@ -1500,7 +1531,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     };
 
-    public boolean smartTouch(KeyEvent event) {
+    public boolean combinedTap(KeyEvent event) {
         Log.d(TAG, "smartTouch() KeyEvent: " + event);
 
         int keyCode = -1;
@@ -1515,6 +1546,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 keyStates.put(keyCode, true);
             }
 
+            quickTapThreshold = getQuickTapThreshold();
+            longTapThreshold = getLongTapThreshold();
+
             // Start the smart touch sequence
             cursorController.smartTouchActive = true;
             smartTouchStartTime = SystemClock.uptimeMillis();
@@ -1522,11 +1556,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             smartTouchStartPosition = getCursorPosition();
 
             // Start animating to green, duration matches quick delay
-            serviceUiManager.cursorAnimateToColor("GREEN", SMART_TOUCH_QUICK_THRESHOLD);
+            serviceUiManager.cursorAnimateToColor("GREEN", quickTapThreshold);
 
             // Schedule both quick and long touch handlers
-            smartTouchHandler.postDelayed(quickTouchRunnable, SMART_TOUCH_QUICK_THRESHOLD);
-            smartTouchHandler.postDelayed(longTouchRunnable, SMART_TOUCH_LONG_THRESHOLD);
+            smartTouchHandler.postDelayed(quickTouchRunnable, quickTapThreshold);
+            smartTouchHandler.postDelayed(longTouchRunnable, longTapThreshold);
 
         } else if (eventAction == KeyEvent.ACTION_UP || cursorController.smartTouchActive) {
             if (keyCode <= 0) {
@@ -1548,13 +1582,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             serviceUiManager.cursorCancelAnimation();
 
             // Determine which action to take based on elapsed time
-            if (elapsedTime >= SMART_TOUCH_QUICK_THRESHOLD) {
+            if (elapsedTime >= quickTapThreshold) {
                 // Long touch
                 quickTap(smartTouchStartPosition, 650);
                 serviceUiManager.drawTouchDot(smartTouchStartPosition);
-            } else if (elapsedTime >= SMART_TOUCH_QUICK_THRESHOLD) {
+            } else if (elapsedTime >= quickTapThreshold) {
                 // Quick touch
-                quickTap(smartTouchStartPosition, 200);
+                quickTap(smartTouchStartPosition, 250);
                 serviceUiManager.drawTouchDot(smartTouchStartPosition);
             }
 
@@ -1941,6 +1975,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
         intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
         intent.putExtra("color", color);
+        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+    }
+
+    private void sendLongPressDelayToIME(int delay) {
+        Log.d(TAG, "[openboard] Sending long press delay to IME");
+        Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
+        intent.putExtra("delay", delay);
         sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
     }
 

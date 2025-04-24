@@ -59,10 +59,10 @@ public class CursorView extends View {
         // Initialize the color states map in the constructor
         colorStatesMap = new HashMap<>();
         colorStatesMap.put("WHITE", new ColorState(FILL_WHITE, OUTLINE_WHITE));
-        colorStatesMap.put("GREEN", new ColorState(0xD900FF00, Color.GREEN));
-        colorStatesMap.put("RED", new ColorState(0xD9FF0000, Color.RED));
-        colorStatesMap.put("ORANGE", new ColorState(0xD9FFA500, Color.rgb(255, 165, 0)));
-        colorStatesMap.put("BLUE", new ColorState(0xD90000FF, Color.BLUE));
+        colorStatesMap.put("GREEN", new ColorState(0xD94CAF50, 0x4CAF50));
+        colorStatesMap.put("RED", new ColorState(0xD9FF5722, 0xFF5722));
+        colorStatesMap.put("ORANGE", new ColorState(0xD9FF9800, 0xFF9800));
+        colorStatesMap.put("BLUE", new ColorState(0xD92196F3, 0x2196F3));
 
         // Initialize CURRENT Paints
         fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

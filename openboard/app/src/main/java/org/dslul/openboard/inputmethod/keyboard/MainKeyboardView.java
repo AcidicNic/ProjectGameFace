@@ -572,6 +572,10 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 isGestureHandlingEnabledByUser && isGestureFloatingPreviewTextEnabled);
     }
 
+    public GestureTrailsDrawingPreview getGestureTrailsDrawingPreview() {
+        return mGestureTrailsDrawingPreview;
+    }
+
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();

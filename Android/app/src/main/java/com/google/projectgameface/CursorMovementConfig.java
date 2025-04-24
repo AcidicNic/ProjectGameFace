@@ -49,6 +49,8 @@ class CursorMovementConfig {
     HEAD_COORD_SCALE_FACTOR_X,
     HEAD_COORD_SCALE_FACTOR_Y,
     AVG_SMOOTHING,
+    QUICK_TAP_THRESHOLD,
+    LONG_TAP_THRESHOLD,
 
     LATEST_AVG_WPM,
     AVG_WPM,
@@ -106,13 +108,14 @@ class CursorMovementConfig {
     public static final int AVG_SMOOTHING = 5;
     public static final boolean DEFAULT_PITCH_YAW = true;
     public static final boolean DEFAULT_NOSE_TIP = true;
+    public static final int QUICK_TAP_THRESHOLD = 200;
+    public static final int LONG_TAP_THRESHOLD = 600;
 
     public static final float LATEST_AVG_WPM = 0.0f;
     public static final float AVG_WPM = 0.0f;
     public static final float AVG_WORDS_PER_PHRASE = 0.0f;
     public static final float AVG_SWIPE_DURATION = 0.0f;
     public static final float AVG_PHRASE_LENGTH = 0.0f;
-
 
     private InitialRawValue() {}
   }

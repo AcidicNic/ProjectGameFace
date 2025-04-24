@@ -67,6 +67,7 @@ import org.dslul.openboard.inputmethod.keyboard.KeyboardActionListener;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardId;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardSwitcher;
 import org.dslul.openboard.inputmethod.keyboard.MainKeyboardView;
+import org.dslul.openboard.inputmethod.keyboard.internal.GestureTrailsDrawingPreview;
 import org.dslul.openboard.inputmethod.latin.Suggest.OnGetSuggestedWordsCallback;
 import org.dslul.openboard.inputmethod.latin.SuggestedWords.SuggestedWordInfo;
 import org.dslul.openboard.inputmethod.latin.common.Constants;
@@ -671,12 +672,14 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         StatsUtils.onCreate(mSettings.getCurrent(), mRichImm);
 
         // Register the IMEEventReceiver
-        imeEventReceiver = new IMEEventReceiver();
+        imeEventReceiver = new IMEEventReceiver(this);
         IntentFilter eventFilter = new IntentFilter();
         eventFilter.addAction(IMEEventReceiver.ACTION_SEND_MOTION_EVENT);
         eventFilter.addAction(IMEEventReceiver.ACTION_SEND_KEY_EVENT);
+        eventFilter.addAction(IMEEventReceiver.ACTION_CHANGE_TRAIL_COLOR);
+        eventFilter.addAction(IMEEventReceiver.ACTION_SET_LONG_PRESS_DELAY);
         registerReceiver(imeEventReceiver, eventFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
-        Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
+        Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion, key, and long press delay events.");
     }
 
     // Has to be package-visible for unit tests
@@ -871,7 +874,18 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     public void setGestureTrailColor(int color) {
-        // TODO: Implement this method to set the color of the gesture trail
+        // Get the MainKeyboardView which contains the gesture trail preview
+        MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
+        if (mainKeyboardView != null) {
+            // Get the gesture trails drawing preview
+            GestureTrailsDrawingPreview gesturePreview = mainKeyboardView.getGestureTrailsDrawingPreview();
+            if (gesturePreview != null) {
+                // Update the trail color using the proper method
+                gesturePreview.setTrailColor(color);
+                // Force a redraw
+                mainKeyboardView.invalidate();
+            }
+        }
     }
 
     @UsedForTesting

@@ -43,12 +43,10 @@ public class DispatchEventHelper {
       BlendshapeEventTriggerConfig.EventType event,
       KeyEvent keyEvent) {
 
-
     int[] cursorPosition = cursorController.getCursorPositionXY();
 
     int  eventOffsetX = 0;
     int eventOffsetY = 0;
-
 
     switch (event) {
       case CONTINUOUS_TOUCH:
@@ -63,12 +61,14 @@ public class DispatchEventHelper {
         }
         break;
 
+      case SMART_TOUCH:
       case CURSOR_TOUCH:
         Log.d("dispatchEvent", "Cursor touch");
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
-          parentService.quickTap(cursorPosition, 200);
-          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
-        }
+//        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+//          parentService.quickTap(cursorPosition, 200);
+//          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+//        }
+        parentService.combinedTap(keyEvent);
         break;
 
       case CURSOR_LONG_TOUCH:
@@ -210,10 +210,6 @@ public class DispatchEventHelper {
 
       case SHOW_APPS:
         parentService.performGlobalAction(AccessibilityService.GLOBAL_ACTION_ACCESSIBILITY_ALL_APPS);
-        break;
-
-      case SMART_TOUCH:
-        parentService.smartTouch(keyEvent);
         break;
 
       default:

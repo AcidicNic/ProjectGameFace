@@ -398,11 +398,11 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     }
 
     public static boolean readSpaceTrackpadEnabled(final SharedPreferences prefs) {
-        return prefs.getBoolean(PREF_SPACE_TRACKPAD, true);
+        return prefs.getBoolean(PREF_SPACE_TRACKPAD, false);
     }
 
     public static boolean readDeleteSwipeEnabled(final SharedPreferences prefs) {
-        return prefs.getBoolean(PREF_DELETE_SWIPE, true);
+        return prefs.getBoolean(PREF_DELETE_SWIPE, false);
     }
 
     public static boolean readAutospaceAfterPunctuationEnabled(final SharedPreferences prefs) {

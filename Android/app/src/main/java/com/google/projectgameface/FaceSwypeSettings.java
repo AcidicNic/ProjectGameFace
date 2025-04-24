@@ -66,6 +66,14 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private ConstraintLayout headCoordScaleFactorLayout;
     private Button switchKeyboardBtn;
     private Button debuggingStatsBtn;
+    private SeekBar quickTapThresholdSeekBar;
+    private TextView progressQuickTapThreshold;
+    private TextView decreaseQuickTapThreshold;
+    private TextView increaseQuickTapThreshold;
+    private SeekBar longTapThresholdSeekBar;
+    private TextView progressLongTapThreshold;
+    private TextView decreaseLongTapThreshold;
+    private TextView increaseLongTapThreshold;
 
     private final int[] viewIds = {
             R.id.holdDurationFaster,
@@ -77,7 +85,11 @@ public class FaceSwypeSettings extends AppCompatActivity {
             R.id.decreaseDragToggleDelay,
             R.id.increaseDragToggleDelay,
             R.id.decreaseSmoothing,
-            R.id.increaseSmoothing
+            R.id.increaseSmoothing,
+            R.id.decreaseQuickTapThreshold,
+            R.id.increaseQuickTapThreshold,
+            R.id.decreaseLongTapThreshold,
+            R.id.increaseLongTapThreshold
     };
 
     @Override
@@ -215,6 +227,26 @@ public class FaceSwypeSettings extends AppCompatActivity {
             }
         });
 
+        // Quick Tap Threshold
+        quickTapThresholdSeekBar = findViewById(R.id.quickTapThresholdSeekBar);
+        progressQuickTapThreshold = findViewById(R.id.progressQuickTapThreshold);
+        decreaseQuickTapThreshold = findViewById(R.id.decreaseQuickTapThreshold);
+        increaseQuickTapThreshold = findViewById(R.id.increaseQuickTapThreshold);
+
+        setUpQuickTapThresholdSeekBarAndTextView(
+                quickTapThresholdSeekBar, progressQuickTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD)
+        );
+
+        // Long Tap Threshold
+        longTapThresholdSeekBar = findViewById(R.id.longTapThresholdSeekBar);
+        progressLongTapThreshold = findViewById(R.id.progressLongTapThreshold);
+        decreaseLongTapThreshold = findViewById(R.id.decreaseLongTapThreshold);
+        increaseLongTapThreshold = findViewById(R.id.increaseLongTapThreshold);
+
+        setUpLongTapThresholdSeekBarAndTextView(
+                longTapThresholdSeekBar, progressLongTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD)
+        );
+
         // Binding buttons
         for (int id : viewIds) {
             findViewById(id).setOnClickListener(buttonClickListener);
@@ -258,6 +290,18 @@ public class FaceSwypeSettings extends AppCompatActivity {
                 } else if (v.getId() == R.id.increaseDragToggleDelay) {
                     currentValue = dragToggleDurSeekBar.getProgress();
                     newValue = currentValue + 1;
+                } else if (v.getId() == R.id.decreaseQuickTapThreshold) {
+                    currentValue = quickTapThresholdSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.increaseQuickTapThreshold) {
+                    currentValue = quickTapThresholdSeekBar.getProgress();
+                    newValue = currentValue + 1;
+                } else if (v.getId() == R.id.decreaseLongTapThreshold) {
+                    currentValue = longTapThresholdSeekBar.getProgress();
+                    newValue = currentValue - 1;
+                } else if (v.getId() == R.id.increaseLongTapThreshold) {
+                    currentValue = longTapThresholdSeekBar.getProgress();
+                    newValue = currentValue + 1;
                 }
                 if (newValue >= 0) {
                     if (v.getId() == R.id.holdDurationFaster || v.getId() == R.id.holdDurationSlower) {
@@ -289,6 +333,18 @@ public class FaceSwypeSettings extends AppCompatActivity {
                             smoothingSeekBar.setProgress(newValue);
                             int smoothingVal = newValue + 1;
                             sendValueToService("AVG_SMOOTHING", smoothingVal);
+                        }
+                    } else if (v.getId() == R.id.decreaseQuickTapThreshold || v.getId() == R.id.increaseQuickTapThreshold) {
+                        if (quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
+                            quickTapThresholdSeekBar.setProgress(newValue);
+                            int value = 200 + (newValue * 100);
+                            sendValueToService("QUICK_TAP_THRESHOLD", value);
+                        }
+                    } else if (v.getId() == R.id.decreaseLongTapThreshold || v.getId() == R.id.increaseLongTapThreshold) {
+                        if (longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
+                            longTapThresholdSeekBar.setProgress(newValue);
+                            int value = 600 + (newValue * 100);
+                            sendValueToService("LONG_TAP_THRESHOLD", value);
                         }
                     }
                 }
@@ -416,6 +472,60 @@ public class FaceSwypeSettings extends AppCompatActivity {
         });
     }
 
+    private void setUpQuickTapThresholdSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(18); // 200-2000ms in steps of 100ms
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.QUICK_TAP_THRESHOLD);
+        int progress = (savedProgress - 200) / 100;
+        seekBar.setProgress(progress);
+        textView.setText(String.valueOf(savedProgress));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = 200 + (progress * 100);
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = 200 + (seekBar.getProgress() * 100);
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
+    private void setUpLongTapThresholdSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(14); // 600-2000ms in steps of 100ms
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.LONG_TAP_THRESHOLD);
+        int progress = (savedProgress - 600) / 100;
+        seekBar.setProgress(progress);
+        textView.setText(String.valueOf(savedProgress));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = 600 + (progress * 100);
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = 600 + (seekBar.getProgress() * 100);
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
     // Ensure to reload config on profile change
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -451,6 +561,18 @@ public class FaceSwypeSettings extends AppCompatActivity {
             int avgSmoothingProgress = Math.round(avgSmoothing);
             smoothingSeekBar.setProgress(avgSmoothingProgress);
             smoothingProgress.setText(String.valueOf(avgSmoothing));
+
+            // Update quick tap threshold
+            int quickTapThreshold = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
+            int quickTapProgress = (quickTapThreshold - 200) / 100;
+            quickTapThresholdSeekBar.setProgress(quickTapProgress);
+            progressQuickTapThreshold.setText(String.valueOf(quickTapThreshold));
+
+            // Update long tap threshold
+            int longTapThreshold = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
+            int longTapProgress = (longTapThreshold - 600) / 100;
+            longTapThresholdSeekBar.setProgress(longTapProgress);
+            progressLongTapThreshold.setText(String.valueOf(longTapThreshold));
         }
     };
 
