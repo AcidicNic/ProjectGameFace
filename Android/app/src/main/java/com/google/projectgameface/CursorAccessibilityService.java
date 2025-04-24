@@ -1497,8 +1497,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
 
     // Constants for smart touch timing
-    private int quickTapThreshold = getQuickTapThreshold();
-    private int longTapThreshold = getLongTapThreshold();
+    private int quickTapThreshold = 1000;
+    private int longTapThreshold = 1000;
 
     // Fields for smart touch state
     private long smartTouchStartTime;
