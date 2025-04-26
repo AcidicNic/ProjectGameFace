@@ -24,6 +24,9 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
+
+import com.google.projectgameface.utils.Config;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,30 +95,31 @@ class CursorMovementConfig {
   private final Map<CursorMovementBooleanConfigType, Boolean> rawBooleanValueMap;
 
   public static final class InitialRawValue {
-    public static final int DEFAULT_SPEED = 3;
+    public static final int SPEED = 3;
     public static final int SMOOTH_POINTER = 1;
     public static final int HOLD_TIME_MS = 5;
     public static final int HOLD_RADIUS = 2;
-    public static final boolean DEFAULT_REALTIME_SWIPE = true;
-    public static final boolean DEFAULT_DEBUG_SWIPE = false;
-    public static final boolean DEFAULT_DURATION_POP_OUT = true;
-    public static final boolean DEFAULT_DIRECT_MAPPING = true;
-    public static final boolean DEFAULT_ENABLE_FEATURE = false;
-    public static final int EDGE_HOLD_DURATION = 1000;
-    public static final int DRAG_TOGGLE_DURATION = 300;
-    public static final float HEAD_COORD_SCALE_FACTOR_X = 1.5f;
-    public static final float HEAD_COORD_SCALE_FACTOR_Y = 1.5f;
-    public static final int AVG_SMOOTHING = 5;
-    public static final boolean DEFAULT_PITCH_YAW = true;
-    public static final boolean DEFAULT_NOSE_TIP = true;
-    public static final int QUICK_TAP_THRESHOLD = 200;
-    public static final int LONG_TAP_THRESHOLD = 600;
+    public static final boolean REALTIME_SWIPE = Config.DEFAULT_REALTIME_SWIPE;
+    public static final boolean DEBUG_SWIPE = Config.DEFAULT_DEBUG_SWIPE;
+    public static final boolean DURATION_POP_OUT = Config.DEFAULT_DURATION_POP_OUT;
+    public static final boolean DIRECT_MAPPING = Config.DEFAULT_DIRECT_MAPPING;
+    public static final int EDGE_HOLD_DURATION = Config.DEFAULT_EDGE_HOLD_DURATION;
+    public static final int DRAG_TOGGLE_DURATION = Config.DEFAULT_DRAG_TOGGLE_DURATION;
+    public static final float HEAD_COORD_SCALE_FACTOR_X = Config.DEFAULT_HEAD_COORD_SCALE_FACTOR_X;
+    public static final float HEAD_COORD_SCALE_FACTOR_Y = Config.DEFAULT_HEAD_COORD_SCALE_FACTOR_Y;
+    public static final int AVG_SMOOTHING = Config.DEFAULT_SMOOTHING;
+    public static final boolean PITCH_YAW = Config.DEFAULT_PITCH_YAW;
+    public static final boolean NOSE_TIP = Config.DEFAULT_NOSE_TIP;
+    public static final int QUICK_TAP_THRESHOLD = Config.DEFAULT_QUICK_TAP_THRESHOLD;
+    public static final int LONG_TAP_THRESHOLD = Config.DEFAULT_LONG_TAP_THRESHOLD;
 
     public static final float LATEST_AVG_WPM = 0.0f;
     public static final float AVG_WPM = 0.0f;
     public static final float AVG_WORDS_PER_PHRASE = 0.0f;
     public static final float AVG_SWIPE_DURATION = 0.0f;
     public static final float AVG_PHRASE_LENGTH = 0.0f;
+
+    public static final boolean DEFAULT_ENABLE_FEATURE = false;
 
     private InitialRawValue() {}
   }
@@ -160,12 +164,12 @@ class CursorMovementConfig {
 
     // Initialize default slider values.
     rawValueMap = new HashMap<>();
-    rawValueMap.put(CursorMovementConfigType.UP_SPEED, InitialRawValue.DEFAULT_SPEED);
-    rawValueMap.put(CursorMovementConfigType.DOWN_SPEED, InitialRawValue.DEFAULT_SPEED);
-    rawValueMap.put(CursorMovementConfigType.RIGHT_SPEED, InitialRawValue.DEFAULT_SPEED);
-    rawValueMap.put(CursorMovementConfigType.LEFT_SPEED, InitialRawValue.DEFAULT_SPEED);
+    rawValueMap.put(CursorMovementConfigType.UP_SPEED, InitialRawValue.SPEED);
+    rawValueMap.put(CursorMovementConfigType.DOWN_SPEED, InitialRawValue.SPEED);
+    rawValueMap.put(CursorMovementConfigType.RIGHT_SPEED, InitialRawValue.SPEED);
+    rawValueMap.put(CursorMovementConfigType.LEFT_SPEED, InitialRawValue.SPEED);
     rawValueMap.put(CursorMovementConfigType.SMOOTH_POINTER, InitialRawValue.SMOOTH_POINTER);
-    rawValueMap.put(CursorMovementConfigType.SMOOTH_BLENDSHAPES, InitialRawValue.DEFAULT_SPEED);
+    rawValueMap.put(CursorMovementConfigType.SMOOTH_BLENDSHAPES, InitialRawValue.SPEED);
     rawValueMap.put(CursorMovementConfigType.HOLD_TIME_MS, InitialRawValue.HOLD_TIME_MS);
     rawValueMap.put(CursorMovementConfigType.HOLD_RADIUS, InitialRawValue.HOLD_RADIUS);
     rawValueMap.put(CursorMovementConfigType.EDGE_HOLD_DURATION, InitialRawValue.EDGE_HOLD_DURATION);
@@ -185,12 +189,12 @@ class CursorMovementConfig {
 
     // Initialize default boolean values.
     rawBooleanValueMap = new HashMap<>();
-    rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.DEFAULT_REALTIME_SWIPE);
-    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DEFAULT_DURATION_POP_OUT);
-    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DIRECT_MAPPING, InitialRawValue.DEFAULT_DIRECT_MAPPING);
-    rawBooleanValueMap.put(CursorMovementBooleanConfigType.PITCH_YAW, InitialRawValue.DEFAULT_PITCH_YAW);
-    rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.DEFAULT_NOSE_TIP);
-    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEFAULT_DEBUG_SWIPE);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.REALTIME_SWIPE);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DURATION_POP_OUT);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DIRECT_MAPPING, InitialRawValue.DIRECT_MAPPING);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.PITCH_YAW, InitialRawValue.PITCH_YAW);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.NOSE_TIP);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEBUG_SWIPE);
 
     // Register the receiver
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -422,22 +426,22 @@ class CursorMovementConfig {
     boolean defaultValue;
     switch (targetConfig) {
       case REALTIME_SWIPE:
-        defaultValue = InitialRawValue.DEFAULT_REALTIME_SWIPE;
+        defaultValue = InitialRawValue.REALTIME_SWIPE;
         break;
       case DURATION_POP_OUT:
-        defaultValue = InitialRawValue.DEFAULT_DURATION_POP_OUT;
+        defaultValue = InitialRawValue.DURATION_POP_OUT;
         break;
       case DIRECT_MAPPING:
-        defaultValue = InitialRawValue.DEFAULT_DIRECT_MAPPING;
+        defaultValue = InitialRawValue.DIRECT_MAPPING;
         break;
       case PITCH_YAW:
-        defaultValue = InitialRawValue.DEFAULT_PITCH_YAW;
+        defaultValue = InitialRawValue.PITCH_YAW;
         break;
       case NOSE_TIP:
-        defaultValue = InitialRawValue.DEFAULT_NOSE_TIP;
+        defaultValue = InitialRawValue.NOSE_TIP;
         break;
       case DEBUG_SWIPE:
-        defaultValue = InitialRawValue.DEFAULT_DEBUG_SWIPE;
+        defaultValue = InitialRawValue.DEBUG_SWIPE;
         break;
       default:
         defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;

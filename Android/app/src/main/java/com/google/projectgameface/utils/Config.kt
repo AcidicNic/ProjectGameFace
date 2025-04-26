@@ -28,4 +28,19 @@ object Config {
     // TODO: Move all constants here (default settings values and any other hard coded values)
 
     const val DEFAULT_ANIMATION_DURATION = 1000
+
+    /* Default HeadBoard Settings */
+    const val DEFAULT_QUICK_TAP_THRESHOLD = 1400
+    const val DEFAULT_LONG_TAP_THRESHOLD = 2000
+    const val DEFAULT_SMOOTHING = 5
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 1.5f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 1.5f
+    const val DEFAULT_EDGE_HOLD_DURATION = 1000
+    const val DEFAULT_DRAG_TOGGLE_DURATION = 300
+    const val DEFAULT_PITCH_YAW = true
+    const val DEFAULT_NOSE_TIP = true
+    const val DEFAULT_REALTIME_SWIPE = true
+    const val DEFAULT_DEBUG_SWIPE = false
+    const val DEFAULT_DURATION_POP_OUT = true
+    const val DEFAULT_DIRECT_MAPPING = true
 }

@@ -73,7 +73,7 @@ public class DispatchEventHelper {
 
       case CURSOR_LONG_TOUCH:
         if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
-          parentService.quickTap(cursorPosition, 650);
+          parentService.dispatchTapGesture(cursorPosition, 650);
           serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         }
         break;
@@ -88,7 +88,7 @@ public class DispatchEventHelper {
       case END_TOUCH:
         Log.d("dispatchEvent", "end touch");
         if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
-          parentService.endTouch();
+          parentService.stopTouch();
         }
         break;
 
@@ -173,27 +173,6 @@ public class DispatchEventHelper {
 
       case DRAG_TOGGLE:
         parentService.dispatchDragOrHold();
-        break;
-
-      case SWIPE_START:
-        if (cursorController.isRealtimeSwipe) {
-          break;
-        }
-        cursorController.startSwipe(cursorPosition[0], cursorPosition[1]);
-        break;
-
-      case SWIPE_STOP:
-        if (cursorController.isSwiping()) {
-          parentService.dispatchGesture(
-                  new GestureDescription.Builder()
-                          .addStroke(new GestureDescription.StrokeDescription(
-                                  cursorController.getSwipePath(), 0, 100))
-                          .build(),
-                  null,
-                  null
-          );
-          cursorController.stopSwipe();
-        }
         break;
 
       case HOME:

@@ -21,7 +21,6 @@ import static java.lang.Math.max;
 import static java.lang.Math.round;
 
 import android.accessibilityservice.AccessibilityService;
-import android.accessibilityservice.GestureDescription;
 import android.annotation.SuppressLint;
 import android.app.Instrumentation;
 import android.content.BroadcastReceiver;
@@ -34,18 +33,9 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.Path;
-import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
-import android.hardware.display.DisplayManager;
-import android.hardware.display.VirtualDisplay;
 import android.hardware.input.InputManager;
-import android.media.Image;
-import android.media.ImageReader;
-import android.media.projection.MediaProjection;
-import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -53,8 +43,6 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
-import android.provider.Settings;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseBooleanArray;
@@ -79,8 +67,6 @@ import androidx.lifecycle.LifecycleRegistry;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -90,9 +76,8 @@ import com.google.projectgameface.utils.CursorUtils;
 import com.google.projectgameface.utils.DebuggingStats;
 import com.google.projectgameface.utils.WriteToFile;
 import com.google.projectgameface.utils.Config;
-import android.graphics.Color;
 
-/** The cursor service of GameFace app. */
+/** The cursor service of HeadBoard app. */
 @SuppressLint("UnprotectedReceiver") // All of the broadcasts can only be sent by system.
 public class CursorAccessibilityService extends AccessibilityService implements LifecycleOwner {
     private static final String TAG = "CursorAccessibilityService";
@@ -106,12 +91,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private static final int IMAGE_ANALYZER_WIDTH = 300;
     private static final int IMAGE_ANALYZER_HEIGHT = 400;
-    ServiceUiManager serviceUiManager;
+    private ServiceUiManager serviceUiManager;
     public CursorController cursorController;
     private FaceLandmarkerHelper facelandmarkerHelper;
     public WindowManager windowManager;
     private Handler tickFunctionHandler;
     public Point screenSize;
+    private KeyboardManager keyboardManager;
 
     private ProcessCameraProvider cameraProvider;
 
@@ -128,12 +114,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
     private BroadcastReceiver resetDebuggingStatsReciever;
-    private BroadcastReceiver screenCaptureReceiver;
-    public boolean isSwiping = false;
-    private Rect keyboardBounds = new Rect();
-    private Rect _keyboardBounds = new Rect();
-    private Rect navBarBounds = new Rect();
-    private boolean isKeyboardOpen = false;
     private long startUptime;
     private long startTime;
     private long endUptime;
@@ -249,27 +229,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         resetDebuggingStatsReciever = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                checkForKeyboardType();
+                keyboardManager.checkForKeyboardType();
                 gboardDebuggingStats.load(context);
                 openboardDebuggingStats.load(context);
                 debuggingStats.load(context);
-            }
-        };
-
-        screenCaptureReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-//                Log.d(TAG, "screenCaptureReceiver: " + intent.getAction());
-//                int resultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED);
-//                Intent data = intent.getParcelableExtra("data");
-//
-//                if (resultCode == Activity.RESULT_OK && data != null) {
-//                    if (projectionManager == null) projectionManager = getSystemService(MediaProjectionManager.class);
-//                    if (mediaProjection != null) mediaProjection.stop();
-//
-//                    mediaProjection = projectionManager.getMediaProjection(resultCode, data);
-//                    attemptScreenCaptureSetup();
-//                }
             }
         };
 
@@ -309,18 +272,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /**
-     * One-time service setup. This will run immediately after user toggle grant Accessibility
-     *
-     * <p>permission.
+     * One-time service setup. This will run immediately after user toggle grant Accessibility permission.
      */
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "my onCreate");
-
 //        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY);
-
 
         instrumentation = new Instrumentation();
         handlerThread = new HandlerThread("MotionEventThread");
@@ -334,6 +292,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         cursorController = new CursorController(this, screenSize.x, screenSize.y);
         serviceUiManager = new ServiceUiManager(this, windowManager, cursorController);
+        keyboardManager = new KeyboardManager(this, cursorController, serviceUiManager);
 
         lifecycleRegistry = new LifecycleRegistry(this::getLifecycle);
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
@@ -359,221 +318,102 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         tickFunctionHandler = new Handler();
         tickFunctionHandler.postDelayed(tick, 0);
 
-        if (isPlatformSignedAndCanInjectEvents()) {
-            Log.d(TAG, "Platform signed and can inject events!");
-        }
+//        if (isPlatformSignedAndCanInjectEvents()) {
+//            Log.d(TAG, "Platform signed and can inject events!");
+//        }
         writeToFile = new WriteToFile(this);
 
         gboardDebuggingStats.load(this);
         openboardDebuggingStats.load(this);
-        checkForKeyboardType();
+        keyboardManager.checkForKeyboardType();
     }
-
-    private boolean isPlatformSigned() {
-        try {
-            PackageManager pm = getPackageManager();
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28 and above
-                PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-                PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNING_CERTIFICATES);
-
-                if (packageInfo.signingInfo != null && platformPackageInfo.signingInfo != null) {
-                    Signature[] appSignatures = packageInfo.signingInfo.getApkContentsSigners();
-                    Signature[] platformSignatures = platformPackageInfo.signingInfo.getApkContentsSigners();
-
-                    for (Signature appSignature : appSignatures) {
-                        for (Signature platformSignature : platformSignatures) {
-                            if (appSignature.equals(platformSignature)) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            } else { // Below API 28
-                PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
-                PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNATURES);
-
-                Signature[] appSignatures = packageInfo.signatures;
-                Signature[] platformSignatures = platformPackageInfo.signatures;
-
-                for (Signature appSignature : appSignatures) {
-                    for (Signature platformSignature : platformSignatures) {
-                        if (appSignature.equals(platformSignature)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    private boolean isPlatformSignedAndCanInjectEvents() {
-        boolean isPlatformSigned = isPlatformSigned();
-        boolean canInjectEvents = checkCallingOrSelfPermission("android.permission.INJECT_EVENTS") == PackageManager.PERMISSION_GRANTED;
-
-
-        if (canInjectEvents) {
-            Log.d(TAG, "INJECT_EVENTS permission granted!");
-        } else {
-            Log.d(TAG, "INJECT_EVENTS permission not granted.");
-        }
-
-        if (isPlatformSigned) {
-            Log.d(TAG, "App is platform signed!");
-        } else {
-            Log.d(TAG, "App is not platform signed.");
-        }
-        return canInjectEvents && isPlatformSigned;
-    }
-
-    public boolean isRealtimeSwipeEnabled() {
-        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE);
-    }
-
-    public boolean isPitchYawEnabled() {
-        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.PITCH_YAW);
-    }
-
-    public boolean isNoseTipEnabled() {
-        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP);
-    }
-
-    public boolean isDebugSwipeEnabled() {
-        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE);
-    }
-
-    public long getDragToggleDuration() {
-        return (long) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION);
-    }
-
-    public int getQuickTapThreshold() {
-        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
-    }
-
-    public int getLongTapThreshold() {
-        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
-    }
-
-    /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
-    private ImageAnalysis imageAnalyzer =
-            new ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                    .setResolutionSelector(
-                            new ResolutionSelector.Builder()
-                                    .setResolutionStrategy(
-                                            new ResolutionStrategy(
-                                                    new Size(IMAGE_ANALYZER_WIDTH, IMAGE_ANALYZER_HEIGHT),
-                                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
-                                    .build())
-                    .build();
 
     /**
      * Tick function of the service. This function runs every {@value UI_UPDATE}
      *
      * <p>Milliseconds. 1. Update cursor location on screen. 2. Dispatch event. 2. Change status icon.
      */
-    private final Runnable tick =
-            new Runnable() {
-                @Override
-                public void run() {
-                    if (facelandmarkerHelper == null) {
-                        // Back-off.
-                        tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
+    private final Runnable tick = new Runnable() {
+        @Override
+        public void run() {
+            if (facelandmarkerHelper == null) {
+                // Back-off.
+                tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
+            }
+            switch (serviceState) {
+                case GLOBAL_STICK:
+                    if (shouldSendScore) {
+                        sendBroadcastScore();
                     }
-                    switch (serviceState) {
-                        case GLOBAL_STICK:
-                            if (shouldSendScore) {
-                                sendBroadcastScore();
-                            }
-                        case ENABLE:
-                            // Drag drag line if in drag mode.
-                            if (cursorController.isDragging) {
-                                serviceUiManager.updateDragLine(cursorController.getCursorPositionXY());
-                            }
+                case ENABLE:
+                    // Drag drag line if in drag mode.
+                    if (cursorController.isDragging) {
+                        serviceUiManager.updateDragLine(cursorController.getCursorPositionXY());
+                    }
 
-                            // Use for smoothing.
+                    // Use for smoothing.
 //                        int gapFrames =
 //                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
 
-                            cursorController.updateInternalCursorPosition(
-                                    facelandmarkerHelper.getHeadCoordXY(false),
-                                    facelandmarkerHelper.getNoseCoordXY(false),
-                                    facelandmarkerHelper.getPitchYaw(),
-                                    new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
-                                    new int[]{screenSize.x, screenSize.y}
-                            );
+                    cursorController.updateInternalCursorPosition(
+                            facelandmarkerHelper.getHeadCoordXY(false),
+                            facelandmarkerHelper.getNoseCoordXY(false),
+                            facelandmarkerHelper.getPitchYaw(),
+                            new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
+                            new int[]{screenSize.x, screenSize.y}
+                    );
 
-                            // Actually update the UI cursor image.
-                            serviceUiManager.updateCursorImagePositionOnScreen(
-                                    cursorController.getCursorPositionXY()
-                            );
+                    // Actually update the UI cursor image.
+                    serviceUiManager.updateCursorImagePositionOnScreen(
+                            cursorController.getCursorPositionXY()
+                    );
 
-                            dispatchEvent(null, null);
+                    dispatchEvent(null, null);
 
-                            if (isPitchYawEnabled() && isNoseTipEnabled()) {
-                                serviceUiManager.drawHeadCenter(
-                                        facelandmarkerHelper.getNoseCoordXY(false),
-                                        facelandmarkerHelper.mpInputWidth,
-                                        facelandmarkerHelper.mpInputHeight
-                                );
-                                serviceUiManager.drawSecondDot(
-                                        facelandmarkerHelper.getHeadCoordXY(false),
-                                        facelandmarkerHelper.mpInputWidth,
-                                        facelandmarkerHelper.mpInputHeight
-                                );
-                            } else if (isPitchYawEnabled()) {
-                                serviceUiManager.drawHeadCenter(
-                                        facelandmarkerHelper.getHeadCoordXY(false),
-                                        facelandmarkerHelper.mpInputWidth,
-                                        facelandmarkerHelper.mpInputHeight
-                                );
-                            } else {
-                                serviceUiManager.drawHeadCenter(
-                                        facelandmarkerHelper.getNoseCoordXY(false),
-                                        facelandmarkerHelper.mpInputWidth,
-                                        facelandmarkerHelper.mpInputHeight
-                                );
-                            }
+                    if (isPitchYawEnabled() && isNoseTipEnabled()) {
+                        serviceUiManager.drawHeadCenter(
+                                facelandmarkerHelper.getNoseCoordXY(false),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight
+                        );
+                        serviceUiManager.drawSecondDot(
+                                facelandmarkerHelper.getHeadCoordXY(false),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight
+                        );
+                    } else if (isPitchYawEnabled()) {
+                        serviceUiManager.drawHeadCenter(
+                                facelandmarkerHelper.getHeadCoordXY(false),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight
+                        );
+                    } else {
+                        serviceUiManager.drawHeadCenter(
+                                facelandmarkerHelper.getNoseCoordXY(false),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight
+                        );
+                    }
 
-                            if (isDebugSwipeEnabled()) {
-                                serviceUiManager.updateDebugTextOverlay(
-                                        debugText[0],
-                                        debugText[1],
-                                        serviceState == ServiceState.PAUSE
-                                );
-                            } else {
-                                serviceUiManager.updateDebugTextOverlay(
-                                        "pre: " + facelandmarkerHelper.preprocessTimeMs + "ms",
-                                        "med: " + facelandmarkerHelper.mediapipeTimeMs + "ms",
-                                        serviceState == ServiceState.PAUSE
-                                );
-                            }
+                    if (isDebugSwipeEnabled()) {
+                        serviceUiManager.updateDebugTextOverlay(
+                                debugText[0],
+                                debugText[1],
+                                serviceState == ServiceState.PAUSE
+                        );
+                    } else {
+                        serviceUiManager.updateDebugTextOverlay(
+                                "pre: " + facelandmarkerHelper.preprocessTimeMs + "ms",
+                                "med: " + facelandmarkerHelper.mediapipeTimeMs + "ms",
+                                serviceState == ServiceState.PAUSE
+                        );
+                    }
 
-//                            if (mediaProjection != null && currentKeyboard == "GBoard") {
-//                                if (checkForPrediction && !previousWordPredictionCheckRunning) {
-//                                    if (startTime + 500 <= System.currentTimeMillis()) {
-//                                        checkForWordPrediction();
-//                                    }
-//                                }
-//                                if (updateCanvas) {
-//                                    serviceUiManager.updatePreviewBitmap(previousWordPredictionBitmap, predictionBounds);
-//                                    updateCanvas = false;
-//                                }
-//                            }
+                    break;
 
-                            if (cursorController.isSwiping() || previousWordPredictionCheckRunning) {
-                                serviceUiManager.fullScreenCanvas.invalidate();
-                            }
-
-                            break;
-
-                        case PAUSE:
-                            // In PAUSE state user cannot move cursor
-                            // but still can perform some event from face gesture.
+                case PAUSE:
+                    // In PAUSE state user cannot move cursor
+                    // but still can perform some event from face gesture.
 //                        dispatchEvent();
 //
 //                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
@@ -596,25 +436,25 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                            );
 //                        }
 
-                            serviceUiManager.updateDebugTextOverlay(
-                                    "",
-                                    "",
-                                    getServiceState() == ServiceState.PAUSE
-                            );
-
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    serviceUiManager.updateStatusIcon(
-                            serviceState == ServiceState.PAUSE, checkFaceVisibleInFrame()
+                    serviceUiManager.updateDebugTextOverlay(
+                            "",
+                            "",
+                            getServiceState() == ServiceState.PAUSE
                     );
 
-                    tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
-                }
-            };
+                    break;
+
+                default:
+                    break;
+            }
+
+            serviceUiManager.updateStatusIcon(
+                    serviceState == ServiceState.PAUSE, checkFaceVisibleInFrame()
+            );
+
+            tickFunctionHandler.postDelayed(this, CursorAccessibilityService.UI_UPDATE);
+        }
+    };
 
     /** Assign function to image analyzer to send it to MediaPipe */
     private void setImageAnalyzer() {
@@ -676,7 +516,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-
+    /** Send out service state to the front-end (MainActivity). */
     private void sendBroadcastServiceState(String state) {
         Intent intent;
         if (state.equals("main")) {
@@ -737,7 +577,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.setCameraBoxDraggable(false);
     }
 
-    /** Enable GameFace service. */
+    /** Enable HeadBoard service. */
     public void enableService() {
         Log.i(TAG, "enableService, current: " + serviceState);
 
@@ -780,7 +620,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     }
 
-    /** Disable GameFace service. */
+    /** Disable HeadBoard service. */
     public void disableService() {
         Log.i(TAG, "disableService");
         switch (serviceState) {
@@ -807,9 +647,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         },
                         ContextCompat.getMainExecutor(this));
 
-                // stop and cleanup mediaprojection
-                cleanupScreenCapture();
-
                 serviceState = ServiceState.DISABLE;
                 break;
             default:
@@ -817,7 +654,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-    /** Destroy GameFace service and unregister broadcasts. */
+    /** Destroy HeadBoard service and unregister broadcasts. */
     @Override
     public void onDestroy() {
         Log.i(TAG, "onDestroy");
@@ -825,7 +662,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         disableSelf();
         handlerThread.quitSafely();
         cursorController.cleanup();
-        cleanupScreenCapture();
+
         // Unregister when the service is destroyed
         unregisterReceiver(changeServiceStateReceiver);
         unregisterReceiver(loadSharedConfigBasicReceiver);
@@ -835,7 +672,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         unregisterReceiver(serviceUiManager.flyInWindowReceiver);
         unregisterReceiver(serviceUiManager.flyOutWindowReceiver);
         unregisterReceiver(profileChangeReceiver);
-        unregisterReceiver(screenCaptureReceiver);
 
         super.onDestroy();
     }
@@ -897,10 +733,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
+    /** Check if face is visible in frame. */
     private Boolean checkFaceVisibleInFrame() {
-        if (facelandmarkerHelper == null) {
-            return false;
-        }
+        if (facelandmarkerHelper == null) return false;
+
         return facelandmarkerHelper.isFaceVisible;
     }
 
@@ -948,17 +784,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 processTypedText(newText);
             }
         } else {
-            checkForKeyboardBounds(event);
+            keyboardManager.checkForKeyboardBounds(event);
         }
     }
 
     private StringBuilder typedText = new StringBuilder();
-
-    // TO/DO: MOVE TO DEBUGGINGSTATS CLASS
     private boolean checkForNewWord = false;
     private long checkForNewWordTimeStamp = 0;
     private String newWord;
 
+    /**
+     * Process the typed text and check for new words.
+     * This method is called when an accessibility event occurs.
+     * @param newText The new text that was typed.
+     */
     private void processTypedText(CharSequence newText) {
         typedText.append(newText);
         String[] words = typedText.toString().split("\\s+");
@@ -969,96 +808,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "processTypedText(): [newWord==" + newWord + "] [checkForNewWord==" + checkForNewWord + "] [(checkForNewWordTimeStamp + 1000 >= now)==" + (checkForNewWordTimeStamp + 1000 >= now) + "]");
             if (checkForNewWord && (checkForNewWordTimeStamp + 1000 >= now)) {
                 if (newWord != null) {
-                    debuggingStats.addWordSwiped(newWord, startTime, endTime);
-                    debuggingStats.save(this);
+                    keyboardManager.getCurrentDebuggingStats().addWordSwiped(newWord, startTime, endTime);
+                    keyboardManager.getCurrentDebuggingStats().save(this);
                     checkForNewWord = false;
                 }
             } else {
                 Log.d(TAG, "processTypedText(): checkForNewWord is false, not adding word to stats.");
             }
         }
-    }
-
-    private String currentKeyboard = "Unknown";
-
-    private void checkForKeyboardType() {
-        String currentKeyboardStr = Settings.Secure.getString(
-                getContentResolver(),
-                Settings.Secure.DEFAULT_INPUT_METHOD
-        );
-        if (currentKeyboardStr.toLowerCase().contains("openboard")) {
-//                Log.d(TAG, "OpenBoard keyboard detected");
-            currentKeyboard = "OpenBoard";
-            debuggingStats = openboardDebuggingStats;
-        } else if (currentKeyboardStr.toLowerCase().contains("google")) {
-//                Log.d(TAG, "GBoard keyboard detected");
-            currentKeyboard = "GBoard";
-            debuggingStats = gboardDebuggingStats;
-        } else {
-//                Log.d(TAG, "Unknown keyboard detected: " + currentKeyboardStr);
-            currentKeyboard = "Unknown";
-        }
-    }
-
-    private void checkForKeyboardBounds(AccessibilityEvent event) {
-//        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-        if (isSwiping) {
-            return;
-        }
-
-        boolean keyboardFound = false;
-        Rect tempBounds = new Rect();
-
-        List<AccessibilityWindowInfo> windows = getWindows();
-        for (AccessibilityWindowInfo window : windows) {
-            window.getBoundsInScreen(tempBounds);
-//                Log.d(TAG, "Window title: " + window.getTitle() + ", type: " + window.getType() + ", bounds: " + tempBounds);
-            if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-                keyboardFound = true;
-                window.getBoundsInScreen(_keyboardBounds);
-                window.getBoundsInScreen(keyboardBounds);
-//                for (int i = 0; i < window.getChildCount(); i++) {
-//                    Rect childBounds = new Rect();
-//                    window.getChild(i).getBoundsInScreen(childBounds);
-//                    Log.d(TAG, "child: " + window.getChild(i) + ", title: " + window.getChild(i).getTitle() + ", describeContents: " + window.getChild(i).describeContents() + ", bounds: " + childBounds);
-//                }
-                if (keyboardBounds.equals(cursorController.getTemporaryBounds())) {
-                    return;
-                }
-                Log.d(TAG, "keyboard Found @ : " + window);
-            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM
-                    && window.getTitle() != null && window.getTitle().equals("Navigation bar")
-            ) {
-                window.getBoundsInScreen(navBarBounds);
-            }
-        }
-
-        if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
-            return;
-        }
-        isKeyboardOpen = keyboardFound;
-
-        if (isKeyboardOpen) {
-//            int rotation = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay().getRotation();
-//            boolean isPortraitMode = rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180;
-//
-//            if (!navBarBounds.isEmpty() && isPortraitMode) {
-//                keyboardBounds.union(navBarBounds); // Expand the bounds to include the navigation bar
-//                Log.d(TAG, "Navigation bar bounds added: " + navBarBounds);
-//            }
-//            if (keyboardBounds.top > navBarBounds.top) {
-//                keyboardBounds.union(navBarBounds);
-//            }
-            cursorController.setTemporaryBounds(keyboardBounds);
-//            Log.d(TAG, "Temporary bounds set: " + keyboardBounds);
-
-            checkForKeyboardType();
-//            serviceUiManager.fullScreenCanvas.setRect(keyboardBounds);
-        } else {
-            cursorController.clearTemporaryBounds();
-//            serviceUiManager.fullScreenCanvas.setRect(null);
-        }
-//        Log.d(TAG, "Keyboard " + (isKeyboardOpen ? "opened" : "closed"));
     }
 
     @Override
@@ -1077,7 +834,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Log.i(TAG, "Service connected");
     }
 
-
     @Override
     public boolean onKeyEvent(KeyEvent event) {
         if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
@@ -1089,15 +845,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return false;
     }
 
-    private boolean swipeToggle = false;
-    private boolean dragToggle = false;
-
-
-//    public boolean handleSwipeAndTouch()
-
-
     /**
-     * Handle key event for swipe and touch.
+     * Handles a key event by dispatching it's corresponding action if applicable.
      *
      * @param event The key event.
      * @return True if the key event is handled.
@@ -1135,15 +884,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return true;
     }
 
-
-    public void quickTap(int[] cursorPosition, int duration) {
-        if (duration == -1) {
+    /**
+     * Dispatches a tap gesture at the specified cursor position.
+     *
+     * @param cursorPosition The cursor position in screen coordinates.
+     * @param duration The duration of the tap gesture in milliseconds.
+     */
+    public void dispatchTapGesture(int[] cursorPosition, Integer duration) {
+        if (duration == null) {
             duration = 200;
         }
         dispatchGesture(
             CursorUtils.createClick(
-                    cursorPosition[0] ,
-                    cursorPosition[1] ,
+                    cursorPosition[0],
+                    cursorPosition[1],
                     /* startTime= */ 0,
                     /* duration= */ duration),
             /* callback= */ null,
@@ -1152,7 +906,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.drawTouchDot(cursorPosition);
     }
 
-    private static final int DRAG_DURATION_MS = 250;
+    /** Dispatches a drag or hold action based on the current cursor position. */
     public void dispatchDragOrHold() {
         Log.d("dispatchDragOrHold", "dispatchDragOrHold");
         int[] cursorPosition = cursorController.getCursorPositionXY();
@@ -1195,8 +949,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             cursorController.dragStartY,
                             0,
                             (long)
-                                    cursorController.cursorMovementConfig.get(
-                                            CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
+                            cursorController.cursorMovementConfig.get(
+                                    CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
                     /* callback= */ null,
                     /* handler= */ null);
 
@@ -1209,33 +963,30 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             cursorController.dragStartY,
                             xOffset,
                             yOffset,
-                            /* duration= */ DRAG_DURATION_MS),
+                            /* duration= */ 250),
                     /* callback= */ null,
                     /* handler= */ null);
             }
         }
     }
 
-    boolean dragToggleActive = false;
+    /**
+     * Handles the toggle touch action.
+     *
+     * @return True if the touch is toggled.
+     */
     public boolean toggleTouch() {
         Log.d(TAG, "toggleTouch()");
         int[] cursorPosition = new int[2];
         cursorPosition = getCursorPosition();
 
-//        if (isGestureSwiping) {
-//            Log.d(TAG, "STOP GESTURE SWIPE KeyEvent.ACTION_DOWN");
-//            stopSwipeGesture();
-//        } else {
-//            Log.d(TAG, "START GESTURE SWIPE KeyEvent.ACTION_DOWN");
-//            startSwipeGesture();
-//        }
-        if (isSwiping && swipeToggle) {
+        if (cursorController.isSwiping && cursorController.swipeToggleActive) {
             Log.d(TAG, "STOP SWIPE TOGGLE KeyEvent.ACTION_DOWN");
-            swipeToggle = false;
+            cursorController.swipeToggleActive = false;
             stopRealtimeSwipe();
-        } else if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+        } else if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
             Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
-            swipeToggle = true;
+            cursorController.swipeToggleActive = true;
             startRealtimeSwipe();
         } else {
             Log.d(TAG, "DRAG TOGGLE KeyEvent.ACTION_DOWN");
@@ -1245,37 +996,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     serviceUiManager,
                     BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
                     null);
-
-            /* // drag toggle with delay for quick tap... not sure if this is useful?
-            if (cursorController.isDragging) {
-                DispatchEventHelper.checkAndDispatchEvent(
-                        CursorAccessibilityService.this,
-                        cursorController,
-                        serviceUiManager,
-                        BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE,
-                        null);
-                dragToggleActive = false;
-            } else if (!dragToggleActive) {
-                dragToggleStartTime = SystemClock.uptimeMillis();
-                dragToggleCancelled = false;
-                dragtoggleStartPosition = cursorPosition;
-                dragToggleActive = true;
-                dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
-            } else {
-                long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
-                dragToggleHandler.removeCallbacks(dragToggleRunnable);
-                if (elapsedTime < getDragToggleDuration()) {
-                    dragToggleCancelled = true;
-                    dragToggleActive = false;
-                    // Perform quick tap instead of enabling drag toggle
-                    quickTap(dragtoggleStartPosition, -1);
-                }
-            }
-            */
         }
         return true;
     }
 
+    /** Delete the last word in the focused EditText. */
     public void deleteLastWord() {
         Log.d(TAG, "deleteLastWord()");
         AccessibilityNodeInfo rootNode = getRootInActiveWindow();
@@ -1296,7 +1021,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (cursorPosition < 0) return;
             if (text.isEmpty() || cursorPosition == 0) return;
             DeleteResult modifiedTextResult = removeLastWord(text, cursorPosition);
-//            Log.d(TAG, "deleteLastWord(): modifiedText: " + modifiedTextResult.text + ", newCursor: " + modifiedTextResult.newCursor);
 
             Bundle setModifiedTextargs = new Bundle();
             setModifiedTextargs.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, modifiedTextResult.text);
@@ -1310,11 +1034,18 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
+    /** Class to hold the result of the delete operation. */
     private static class DeleteResult {
         String text;
         int newCursor;
     }
 
+    /**
+     * Find the focused EditText node in the accessibility tree.
+     *
+     * @param rootNode The root node of the accessibility tree.
+     * @return The focused EditText node, or null if not found.
+     */
     private AccessibilityNodeInfo findFocusedEditText(AccessibilityNodeInfo rootNode) {
         if (rootNode == null) {
             return null;
@@ -1335,6 +1066,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return null;
     }
 
+    /**
+     * Remove the last word from the given text and return the modified text and new cursor position.
+     *
+     * @param text The original text.
+     * @param cursor The current cursor position.
+     * @return A DeleteResult object containing the modified text and new cursor position.
+     */
     private DeleteResult removeLastWord(String text, int cursor) {
         DeleteResult result = new DeleteResult();
         if (text == null || text.isEmpty()) {
@@ -1392,12 +1130,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return result;
     }
 
-    public void dragToggle() {
-        dispatchEvent(BlendshapeEventTriggerConfig.EventType.DRAG_TOGGLE, null);
-    }
+    private int[] dragtoggleStartPosition = new int[2];
 
-    int[] dragtoggleStartPosition = new int[2];
-
+    /** Handle continuous touch action. */
     public boolean continuousTouch (KeyEvent event) {
         Log.d(TAG, "continuousTouch() SWIPE KeyEvent: " + event);
 
@@ -1411,31 +1146,31 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorPosition = getCursorPosition();
 
         if (eventAction == KeyEvent.ACTION_DOWN || !cursorController.continuousTouchActive) {
-            if (keyCode <= 0) {
+            if (keyCode >= 0) {
                 keyStates.put(keyCode, true);
             }
             cursorController.continuousTouchActive = true;
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
 
-            if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+            if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                 startRealtimeSwipe();
             } else {
                 dragToggleStartTime = SystemClock.uptimeMillis();
                 dragToggleCancelled = false;
                 dragtoggleStartPosition = cursorPosition;
-                dragToggle = true;
+                cursorController.dragToggleActive = true;
 //                Log.d(TAG, "DRAG TOGGLE DELAY " + getDragToggleDuration());
                 dragToggleHandler.postDelayed(dragToggleRunnable, getDragToggleDuration());
             }
         } else if (eventAction == KeyEvent.ACTION_UP || cursorController.continuousTouchActive) {
-            if (keyCode <= 0) {
+            if (keyCode >= 0) {
                 keyStates.put(keyCode, false);
             }
 
             cursorController.continuousTouchActive = false;
 
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_UP");
-            if (isSwiping) {
+            if (cursorController.isSwiping) {
                 stopRealtimeSwipe();
             } else {
                 long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
@@ -1443,9 +1178,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (elapsedTime < getDragToggleDuration()) {
                     dragToggleCancelled = true;
                     // Perform quick tap instead of enabling drag toggle
-                    quickTap(dragtoggleStartPosition, -1);
+                    dispatchTapGesture(dragtoggleStartPosition, null);
                 } else {
-                    dragToggle = false;
+                    cursorController.dragToggleActive = false;
                     if (cursorController.isDragging) {
                         DispatchEventHelper.checkAndDispatchEvent(
                                 CursorAccessibilityService.this,
@@ -1460,12 +1195,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return true;
     }
 
+    /** Handle start touch action. */
     public void startTouch() {
         int[] cursorPosition = new int[2];
         cursorPosition = getCursorPosition();
-        if (canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+        if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
             Log.d(TAG, "START SWIPE");
-            swipeToggle = true;
+            cursorController.swipeToggleActive = true;
             startRealtimeSwipe();
         } else if (!cursorController.isDragging) {
             Log.d(TAG, "START DRAG");
@@ -1478,10 +1214,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-    public void endTouch() {
+    /** Handle stop touch action. */
+    public void stopTouch() {
         int[] cursorPosition = new int[2];
         cursorPosition = getCursorPosition();
-        if (isSwiping) {
+        if (cursorController.isSwiping) {
             Log.d(TAG, "STOP SWIPE");
             stopRealtimeSwipe();
         } else if (cursorController.isDragging) {
@@ -1495,18 +1232,18 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-
-    // Constants for smart touch timing
-    private int quickTapThreshold = 1000;
-    private int longTapThreshold = 1000;
-
     // Fields for smart touch state
     private long smartTouchStartTime;
     private int[] smartTouchStartPosition;
     private boolean smartTouchCancelled = false;
     private Handler smartTouchHandler = new Handler(Looper.getMainLooper());
+    private int quickTapThreshold = CursorMovementConfig.InitialRawValue.QUICK_TAP_THRESHOLD;
+    private int longTapThreshold = CursorMovementConfig.InitialRawValue.LONG_TAP_THRESHOLD;
 
-    // Runnables for quick and long touch
+    /**
+     * Runnable for quick touch action.
+     * This will be executed after a delay to allow for quick touch to be cancelled.
+     */
     private final Runnable quickTouchRunnable = new Runnable() {
         @Override
         public void run() {
@@ -1517,12 +1254,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     };
 
+    /**
+     * Runnable for long touch action.
+     * This will be executed after a delay to allow for long touch to be cancelled.
+     */
     private final Runnable longTouchRunnable = new Runnable() {
         @Override
         public void run() {
             if (!smartTouchCancelled && cursorController.smartTouchActive) {
                 // Execute long tap
-                quickTap(smartTouchStartPosition, 650);
+                dispatchTapGesture(smartTouchStartPosition, 650);
                 serviceUiManager.drawTouchDot(smartTouchStartPosition);
                 // Reset cursor to white
                 serviceUiManager.cursorView.setColor("WHITE");
@@ -1531,6 +1272,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     };
 
+    /**
+     * Handle combined tap action.
+     *
+     * @param event The key event or null.
+     * @return True if the event is handled.
+     */
     public boolean combinedTap(KeyEvent event) {
         Log.d(TAG, "smartTouch() KeyEvent: " + event);
 
@@ -1542,7 +1289,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
 
         if (eventAction == KeyEvent.ACTION_DOWN || !cursorController.smartTouchActive) {
-            if (keyCode <= 0) {
+            if (keyCode >= 0) {
                 keyStates.put(keyCode, true);
             }
 
@@ -1563,7 +1310,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             smartTouchHandler.postDelayed(longTouchRunnable, longTapThreshold);
 
         } else if (eventAction == KeyEvent.ACTION_UP || cursorController.smartTouchActive) {
-            if (keyCode <= 0) {
+            if (keyCode >= 0) {
                 keyStates.put(keyCode, false);
             }
 
@@ -1584,11 +1331,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             // Determine which action to take based on elapsed time
             if (elapsedTime >= quickTapThreshold) {
                 // Long touch
-                quickTap(smartTouchStartPosition, 650);
+                dispatchTapGesture(smartTouchStartPosition, 650);
                 serviceUiManager.drawTouchDot(smartTouchStartPosition);
             } else if (elapsedTime >= quickTapThreshold) {
                 // Quick touch
-                quickTap(smartTouchStartPosition, 250);
+                dispatchTapGesture(smartTouchStartPosition, 250);
                 serviceUiManager.drawTouchDot(smartTouchStartPosition);
             }
 
@@ -1603,7 +1350,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean dragToggleCancelled = false;
     private long dragToggleStartTime;
 
-    // Runnable to handle delayed drag toggle start
+    /**
+     * Runnable to handle delayed drag toggle start.
+     * This will be executed after a delay to allow for drag toggle to be cancelled.
+     * If the drag toggle is cancelled, it will dispatch a CURSOR_TOUCH event instead.
+     */
     private Runnable dragToggleRunnable = new Runnable() {
         @Override
         public void run() {
@@ -1628,32 +1379,27 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     int[] lastValidCoords = new int[2];
 
+    /** Start realtime swipe event. */
     private void startRealtimeSwipe() {
-        isSwiping = true;
+        cursorController.isSwiping = true;
         cursorController.isRealtimeSwipe = true;
         startUptime = SystemClock.uptimeMillis();
         startTime = System.currentTimeMillis();
         int[] initialPosition = getCursorPosition();
 
-        if (checkForSwipingFromRightKbd) {
+        if (cursorController.checkForSwipingFromRightKbd) {
             lastValidCoords = initialPosition;
-            startedSwipeFromRightKbd = true;
+            cursorController.startedSwipeFromRightKbd = true;
 
-            /* Correct the cursor to start swipe */
+            // Correct the cursor position to start swipe
 //            initialPosition[0] = initialPosition[0] - 1;
             return;
         } else {
-            startedSwipeFromRightKbd = false;
+            cursorController.startedSwipeFromRightKbd = false;
         }
 
         new Thread(() -> {
-            if (isKeyboardOpen && initialPosition[1] > keyboardBounds.top) {
-//                checkForPrediction = true;
-//                 TODO: free up screencapture resources until ^^^
-//                Log.d(TAG, "kbd open and swipe starting inside of keyboard region");
-            }
-
-            if (canInjectEvent(initialPosition[0],  initialPosition[1])) {
+            if (keyboardManager.canInjectEvent(initialPosition[0],  initialPosition[1])) {
                 lastValidCoords = initialPosition;
                 MotionEvent event = MotionEvent.obtain(
                         startUptime,
@@ -1671,11 +1417,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
 
             long lastCheckTime = System.currentTimeMillis();
-            while (isSwiping) {
+            while (cursorController.isSwiping) {
                 int[] cursorPosition = getCursorPosition();
                 long now = SystemClock.uptimeMillis();
                 try {
-                    if (canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
+                    if (keyboardManager.canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
                         lastValidCoords = cursorPosition;
                         MotionEvent event = MotionEvent.obtain(
                                 startUptime,
@@ -1688,8 +1434,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         injectMotionEvent(event);
                         debugText[0] = "Swiping";
                         debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
-                    } else {
-                        Log.d(TAG, "Coords do not belong to either senderapp or IME. TODO: Implement for 3rd party apps.");
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Error while injecting swipe input event in startRealtimeSwipe: " + e);
@@ -1704,19 +1448,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }).start();
     }
 
+    /** Stop realtime swipe event by sending an ACTION_UP event. */
     private void stopRealtimeSwipe() {
         endUptime = SystemClock.uptimeMillis();
         endTime = System.currentTimeMillis();
         int[] cursorPosition = getCursorPosition();
         serviceUiManager.clearPreviewBitmap();
-        int keyWidth = keyboardBounds.width() / 10;
-        if (startedSwipeFromRightKbd &&
+        int keyWidth = keyboardManager.getKeyboardBounds().width() / 10;
+        if (cursorController.startedSwipeFromRightKbd &&
                 (cursorPosition[0] < screenSize.x) &&
                 (cursorPosition[0] >= screenSize.x - (keyWidth * 2)) /*(cursorPosition[0] (screenSize.x / 2))*/
             ) {
             handleSwipeFromRightKbd();
-            startedSwipeFromRightKbd = false;
-            isSwiping = false;
+            cursorController.startedSwipeFromRightKbd = false;
+            cursorController.isSwiping = false;
             cursorController.isRealtimeSwipe = false;
             return;
         }
@@ -1731,7 +1476,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     action = MotionEvent.ACTION_CANCEL;
                 }
                 // if current cursor position is outside of keyboard bounds, use last valid coords
-                else if (!canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
+                else if (!keyboardManager.canInjectEvent(cursorPosition[0],  cursorPosition[1])) {
                     cursorCoords = lastValidCoords;
                 }
 
@@ -1752,19 +1497,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 writeToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                 Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
             }
-            isSwiping = false;
+            cursorController.isSwiping = false;
             cursorController.isRealtimeSwipe = false;
-            if (checkForPrediction) {
-                checkForNewWord = true;
-                checkForNewWordTimeStamp = endTime;
-                checkForPrediction = false;
-                previousWordPredictionBitmap = null;
-                predictionBounds = null;
-            }
 //            displaySwipeInfo();
         }).start();
     }
 
+    /** Handle swipe from right keyboard event. */
     public void handleSwipeFromRightKbd() {
         SharedPreferences preferences = getSharedPreferences(ProfileManager.getCurrentProfile(this), Context.MODE_PRIVATE);
         String eventName = preferences.getString(BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD.toString() + "_event", BlendshapeEventTriggerConfig.Blendshape.NONE.toString());
@@ -1773,153 +1512,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-    private Handler gestureHandler = new Handler(Looper.getMainLooper());
-    private boolean isGestureSwiping = false;
-    private final int gestureInterval = 10; // Slightly longer for smoother tracking
-    private final LinkedList<int[]> gestureQueue = new LinkedList<>();
-    private float lastX, lastY;
-    private long gestureStartTime = 0;
-    private final long MAX_GESTURE_DURATION = 9000;
-    private boolean isGestureInProgress = false; // Tracks if a gesture is still running
-
-    public void startSwipeGesture() {
-        if (isGestureSwiping) return;
-        isGestureSwiping = true;
-        gestureQueue.clear();
-        gestureStartTime = SystemClock.uptimeMillis();
-        isGestureInProgress = false;
-
-        int[] pos = getCursorPosition();
-        lastX = pos[0];
-        lastY = pos[1];
-
-        simulateTouchDown(lastX, lastY);
-
-        gestureHandler.post(updateSwipeRunnable);
-    }
-
-    private Runnable updateSwipeRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (!isGestureSwiping) return;
-
-            // Add latest cursor position to the queue
-            gestureQueue.add(getCursorPosition());
-
-            if (!isGestureInProgress && gestureQueue.size() > 1) {
-                dispatchQueuedGestures();
-            }
-
-            // Keep adding points while a gesture is in progress
-            gestureHandler.post(this);
-        }
-    };
-
-    private void dispatchQueuedGestures() {
-        if (gestureQueue.isEmpty() || isGestureInProgress) return;
-        isGestureInProgress = true;
-
-        Path path = new Path();
-        path.moveTo(lastX, lastY);
-
-        // Use all points collected in the queue to form a smooth segment
-        while (!gestureQueue.isEmpty()) {
-            int[] next = gestureQueue.poll();
-            path.lineTo(next[0], next[1]);
-            lastX = next[0];
-            lastY = next[1];
-        }
-
-        long newStartTime = lastStroke == null ? 0 : lastStroke.getStartTime() + lastStroke.getDuration();
-
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-
-        if (lastStroke == null || !lastStroke.willContinue()) {
-            lastStroke = new GestureDescription.StrokeDescription(path, 0, gestureInterval, true);
-        } else {
-            lastStroke = lastStroke.continueStroke(path, newStartTime, gestureInterval, true);
-        }
-
-        builder.addStroke(lastStroke);
-        dispatchGesture(builder.build(), new GestureResultCallback() {
-            @Override
-            public void onCompleted(GestureDescription gesture) {
-                isGestureInProgress = false;
-                if (isGestureSwiping) {
-                    dispatchQueuedGestures(); // Immediately dispatch next segment if points exist
-                }
-            }
-        }, null);
-    }
-
-    // 🔄 Restart Gesture if near 10s limit
-//    private void restartGesture() {
-//        Log.d("GESTURE", "Restarting gesture to avoid 10s limit.");
-//
-//        int[] pos = getCursorPosition();
-//        stopSwipeGesture();
-//
-//        gestureHandler.postDelayed(() -> startSwipeGesture(), 15);
-//    }
-
-    public void stopSwipeGesture() {
-        if (!isGestureSwiping) return;
-        isGestureSwiping = false;
-
-        int[] pos = getCursorPosition();
-        gestureQueue.add(pos);
-
-        dispatchQueuedGestures();
-        gestureHandler.removeCallbacks(updateSwipeRunnable);
-
-        if (lastStroke != null && lastStroke.willContinue()) {
-            Path path = new Path();
-            path.moveTo(lastX, lastY);
-            path.lineTo(pos[0], pos[1]);
-
-            long newStartTime = lastStroke.getStartTime() + lastStroke.getDuration();
-
-            GestureDescription.Builder builder = new GestureDescription.Builder();
-            lastStroke = lastStroke.continueStroke(path, newStartTime, gestureInterval, false);
-
-            builder.addStroke(lastStroke);
-            dispatchGesture(builder.build(), new GestureResultCallback() {
-                @Override
-                public void onCompleted(GestureDescription gesture) {
-                    Log.d("GESTURE", "ACTION_UP Completed");
-                }
-            }, null);
-        }
-    }
-
-    private GestureDescription.StrokeDescription lastStroke;
-//    private float lastX, lastY;  // Track last touch position
-//
-//
-    // Start the gesture (ACTION_DOWN)
-    public void simulateTouchDown(float x, float y) {
-        if (isGestureSwiping) return; // Prevent multiple calls
-        isGestureSwiping = true;
-        gestureQueue.clear(); // Ensure old movements are discarded
-        lastX = x;
-        lastY = y;
-
-        Path path = new Path();
-        path.moveTo(x, y);
-
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        lastStroke = new GestureDescription.StrokeDescription(path, 0, gestureInterval, true); // First stroke, will continue
-
-        builder.addStroke(lastStroke);
-        dispatchGesture(builder.build(), new GestureResultCallback() {
-            @Override
-            public void onCompleted(GestureDescription gesture) {
-                Log.d("GESTURE", "ACTION_DOWN Completed at " + x + ", " + y);
-            }
-        }, null);
-    }
-
-    // Unified MotionEvent injection method
+    /**
+     * Inject a motion event into the system.
+     *
+     * @param event The motion event to inject.
+     */
     private void injectMotionEvent(MotionEvent event) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) { // Android 12 (API 31)
             Log.d(TAG, "[666] Sending MotionEvent to IME");
@@ -1936,157 +1533,48 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     /**
      * Send motion event to OpenBoard IME to simulate touch events
+     *
      * @param event The motion event to send.
      */
     private void sendMotionEventToIME(MotionEvent event) {
-        Log.d(TAG, "[openboard] Sending MotionEvent to IME");
-        Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
-        intent.putExtra("x", event.getX());
-        intent.putExtra("y", event.getY());
-        intent.putExtra("action", event.getAction());
-        intent.putExtra("downTime", event.getDownTime());
-        intent.putExtra("eventTime", event.getEventTime());
-        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+        keyboardManager.sendMotionEventToIME(event);
     }
 
     /**
      * Send key event to OpenBoard IME to simulate virtual keyboard key presses
+     *
      * @param keyCode The key code to send.
      * @param isDown Whether the key is pressed down or released.
      * @param isLongPress Whether the key is a long press.
      */
     private void sendKeyEventToIME(int keyCode, boolean isDown, boolean isLongPress) {
-        Log.d(TAG, "[openboard] Sending keyEvent to IME");
-        Intent intent = new Intent("com.headswype.ACTION_SEND_KEY_EVENT");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
-        intent.putExtra("keyCode", keyCode);
-        intent.putExtra("isDown", isDown);
-        intent.putExtra("isLongPress", isLongPress);
-        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+        keyboardManager.sendKeyEventToIME(keyCode, isDown, isLongPress);
     }
 
     /**
      * Send gesture trail color to OpenBoard IME.
+     *
      * @param color The color to send. ("green", "red", "orange")
      */
     private void sendGestureTrailColorToIME(String color) {
-        Log.d(TAG, "[openboard] Sending getsure trail color to IME");
-        Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
-        intent.putExtra("color", color);
-        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+        keyboardManager.sendGestureTrailColorToIME(color);
     }
 
+    /**
+     * Send long press delay to OpenBoard IME.
+     *
+     * @param delay The long press delay in milliseconds.
+     */
     private void sendLongPressDelayToIME(int delay) {
-        Log.d(TAG, "[openboard] Sending long press delay to IME");
-        Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin"); // Target the IME app
-        intent.putExtra("delay", delay);
-        sendBroadcast(intent, "com.headswype.permission.SEND_EVENT"); // Ensure only apps with the correct permission can send
+        keyboardManager.sendLongPressDelayToIME(delay);
     }
 
-    public int getNavigationBarHeight(Context context) {
-        Resources resources = context.getResources();
-        int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            return resources.getDimensionPixelSize(resourceId);
-        }
-        return 0; // Return 0 if no navigation bar is present
-    }
-
-    private boolean checkForSwipingFromRightKbd = false;
-    private boolean startedSwipeFromRightKbd = false;
-    private int navbarHeight = 0;
-    // Check if events can be injected into the window at (x, y)
-    public boolean canInjectEvent(float x, float y) {
-        for (AccessibilityWindowInfo window : getWindows()) {
-            // Get the bounds of the window
-            Rect bounds = new Rect();
-            window.getBoundsInScreen(bounds);
-
-            // Check if the coordinates fall within this window
-            if (isInjectableWindow(window)) {
-                if (bounds.contains((int) x, (int) y)) {
-                    navbarHeight = getNavigationBarHeight(this);
-                    Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
-                    checkForSwipingFromRightKbd = false;
-                    return true;
-                } else if (isKeyboardOpen && y >= keyboardBounds.top) {
-                    if (x == 0) {
-                        x = 1;
-                    } else if (x > screenSize.x - 1) {
-                        x = screenSize.x - 1;
-                        checkForSwipingFromRightKbd = true;
-                    }
-                    if (bounds.contains((int) x, (int) y)) {
-                        navbarHeight = getNavigationBarHeight(this);
-                        Log.d(TAG, "Injectable window found at (" + x + ", " + y + "). bounds" + bounds + " _keyboardbounds: " + _keyboardBounds + " keyboardBounds: " + keyboardBounds);
-                        return true;
-                    } else {
-                        checkForSwipingFromRightKbd = false;
-                    }
-                }
-            }
-        }
-
-        Log.d(TAG, "No window found at (" + x + ", " + y + ").");
-        checkForSwipingFromRightKbd = false;
-        return false;
-    }
-
-    // Helper method to check if a window is injectable
-    private boolean isInjectableWindow(AccessibilityWindowInfo window) {
-        if (window == null) {
-//            Log.e(TAG, "isInjectableWindow: Window is null.");
-            return false;
-        }
-
-        AccessibilityNodeInfo rootNode = window.getRoot();
-        if (rootNode == null) {
-//            Log.e(TAG, "isInjectableWindow: Root node is null for the window.");
-            return false;
-        }
-
-        CharSequence packageName = rootNode.getPackageName();
-        if (packageName == null) {
-//            Log.e(TAG, "isInjectableWindow: Package name is null for the root node.");
-            return false;
-        }
-
-//        Log.d(TAG, "isInjectableWindow: Found package " + packageName);
-        return isMyAppPackage(packageName.toString());
-    }
-
-    // Helper method to check if a package belongs to your apps
-    private boolean isMyAppPackage(String packageName) {
-        String[] myApps = {
-//                "com.google.projectgameface",
-                "org.dslul.openboard.inputmethod.latin"
-        };
-
-        for (String myApp : myApps) {
-            if (packageName.equals(myApp)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public double getDistanceBetweenPoints(double x1, double y1, double x2, double y2) {
-        return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
-    }
-
-    private boolean isSwipeKeyStillPressed() {
-        return keyStates.get(KeyEvent.KEYCODE_BUTTON_A, false) || keyStates.get(KeyEvent.KEYCODE_ENTER, false) || keyStates.get(KeyEvent.KEYCODE_1, false) || swipeToggle;
-    }
-
-
-    private int[] getCursorPosition() {
-        return cursorController.getCursorPositionXY();
-    }
-
-    /** old event inject method, requires platform signed app and INJECT_EVENTS perm. */
+    /**
+     * [OLD MOTION EVENT INJECTION METHOD, requires platform signed app and INJECT_EVENTS perm.]
+     * Injects the given input event into the system.
+     *
+     * @param event The input event to inject.
+     */
     private void injectInputEvent(MotionEvent event) {
         try {
             InputManager inputManager = (InputManager) this.getSystemService(Context.INPUT_SERVICE);
@@ -2102,312 +1590,132 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
+    /* Get settings from cursorMovementConfig */
 
-
-    // Class variables
-    private MediaProjection mediaProjection;
-    private VirtualDisplay virtualDisplay;
-    private MediaProjectionManager projectionManager;
-    private ImageReader imageReader;
-    private int screenWidth, screenHeight, screenDensity;
-    private Handler backgroundHandlerMP;
-    private HandlerThread handlerThreadMP;
-
-    private boolean attemptScreenCaptureSetup() {
-        if (startMediaProjectionBackgroundThread() && setupImageReader() && setupVirtualDisplay()) {
-            Log.d(TAG, "Screen capture setup.");
-            return true;
-        } else {
-            cleanupScreenCapture();
-            return false;
-        }
+    public boolean isRealtimeSwipeEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE);
     }
 
-    private void cleanupScreenCapture() {
-        if (virtualDisplay != null) {
-            virtualDisplay.release();
-            virtualDisplay = null;
-        }
-        if (imageReader != null) {
-            imageReader.close();
-            imageReader = null;
-        }
-        if (mediaProjection != null) {
-            mediaProjection.stop();
-            mediaProjection = null;
-        }
-        stopMediaProjectionBackgroundThread();
+    public boolean isPitchYawEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.PITCH_YAW);
     }
 
-    private boolean setupImageReader() {
-        try {
-            DisplayMetrics metrics = new DisplayMetrics();
-            windowManager.getDefaultDisplay().getRealMetrics(metrics);
-            int screenWidth = metrics.widthPixels;
-            int screenHeight = metrics.heightPixels;
-            int screenDensity = metrics.densityDpi;
-            imageReader = ImageReader.newInstance(screenWidth, screenHeight, PixelFormat.RGBA_8888, 2);
-            return true;
-        } catch (Exception e) {
-            writeToFile.logError(TAG, "setupImageReader() failed: " + e);
-            Log.e(TAG, "setupImageReader() failed: " + e);
-            return false;
-        }
+    public boolean isNoseTipEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.NOSE_TIP);
+    }
+
+    public boolean isDebugSwipeEnabled() {
+        return cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE);
+    }
+
+    public long getDragToggleDuration() {
+        return (long) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION);
+    }
+
+    public int getQuickTapThreshold() {
+        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
+    }
+
+    public int getLongTapThreshold() {
+        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
     }
 
     /**
-     * Create a virtual display to capture the screen.
-     * @return success: true if the virtual display was successfully created, false otherwise
+     * Get the height of the navigation bar.
+     *
+     * @param context The context of the application.
+     * @return The height of the navigation bar in pixels.
      */
-    private boolean setupVirtualDisplay() {
-        if (mediaProjection == null) {
-            Log.e(TAG, "setupVirtualDisplay() failed: mediaProjection is null");
-            return false;
+    public int getNavigationBarHeight(Context context) {
+        Resources resources = context.getResources();
+        int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return resources.getDimensionPixelSize(resourceId);
         }
+        return 0; // Return 0 if no navigation bar is present
+    }
+
+    /**
+     * Get the current cursor position.
+     *
+     * @return An array containing the x and y coordinates of the cursor.
+     */
+    private int[] getCursorPosition() {
+        return cursorController.getCursorPositionXY();
+    }
+
+    /** Check if the app is platform signed and has INJECT_EVENTS permission. */
+    private boolean isPlatformSignedAndCanInjectEvents() {
+        boolean isPlatformSigned = isPlatformSigned();
+        boolean canInjectEvents = checkCallingOrSelfPermission("android.permission.INJECT_EVENTS") == PackageManager.PERMISSION_GRANTED;
+
+
+        if (canInjectEvents) {
+            Log.d(TAG, "INJECT_EVENTS permission granted!");
+        } else {
+            Log.d(TAG, "INJECT_EVENTS permission not granted.");
+        }
+
+        if (isPlatformSigned) {
+            Log.d(TAG, "App is platform signed!");
+        } else {
+            Log.d(TAG, "App is not platform signed.");
+        }
+        return canInjectEvents && isPlatformSigned;
+    }
+
+    /** Check if the app is platform signed. */
+    private boolean isPlatformSigned() {
         try {
-            // Register the MediaProjection.Callback for cleanup on stop
-            mediaProjection.registerCallback(new MediaProjection.Callback() {
-                @Override
-                public void onStop() {
-                    Log.d(TAG, "MediaProjection stopped");
-                    cleanupScreenCapture(); // Custom method for cleanup
-                }
-            }, backgroundHandlerMP);
+            PackageManager pm = getPackageManager();
 
-            // Create a virtual display to capture the screen
-            virtualDisplay = mediaProjection.createVirtualDisplay("ScreenCapture",
-                    imageReader.getWidth(), imageReader.getHeight(), getResources().getDisplayMetrics().densityDpi,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    imageReader.getSurface(),
-                    new VirtualDisplay.Callback() {
-                        @Override
-                        public void onPaused() {
-                            Log.d(TAG, "VirtualDisplay paused");
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28 and above
+                PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+                PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNING_CERTIFICATES);
+
+                if (packageInfo.signingInfo != null && platformPackageInfo.signingInfo != null) {
+                    Signature[] appSignatures = packageInfo.signingInfo.getApkContentsSigners();
+                    Signature[] platformSignatures = platformPackageInfo.signingInfo.getApkContentsSigners();
+
+                    for (Signature appSignature : appSignatures) {
+                        for (Signature platformSignature : platformSignatures) {
+                            if (appSignature.equals(platformSignature)) {
+                                return true;
+                            }
                         }
+                    }
+                }
+            } else { // Below API 28
+                PackageInfo packageInfo = pm.getPackageInfo(getPackageName(), PackageManager.GET_SIGNATURES);
+                PackageInfo platformPackageInfo = pm.getPackageInfo("android", PackageManager.GET_SIGNATURES);
 
-                        @Override
-                        public void onResumed() {
-                            Log.d(TAG, "VirtualDisplay resumed");
+                Signature[] appSignatures = packageInfo.signatures;
+                Signature[] platformSignatures = platformPackageInfo.signatures;
+
+                for (Signature appSignature : appSignatures) {
+                    for (Signature platformSignature : platformSignatures) {
+                        if (appSignature.equals(platformSignature)) {
+                            return true;
                         }
-
-                        @Override
-                        public void onStopped() {
-                            Log.d(TAG, "VirtualDisplay stopped");
-                        }
-                    },
-                    backgroundHandlerMP);
-            Log.d(TAG, "setupVirtualDisplay() succeeded");
-            return true;
-        } catch (Exception e) {
-            writeToFile.logError(TAG, "setupVirtualDisplay() failed: " + e);
-            Log.e(TAG, "setupVirtualDisplay() failed: " + e);
-            return false;
-        }
-    }
-
-    private boolean startMediaProjectionBackgroundThread() {
-        try {
-            if (backgroundHandlerMP != null) {
-                stopMediaProjectionBackgroundThread();
-            }
-            handlerThreadMP = new HandlerThread("ScreenCaptureThread");
-            handlerThreadMP.start();
-            backgroundHandlerMP = new Handler(handlerThreadMP.getLooper());
-            return true;
-        } catch (Exception e) {
-            writeToFile.logError(TAG, "startBackgroundThread() failed: " + e);
-            Log.e(TAG, "startBackgroundThread() failed: " + e);
-            return false;
-        }
-    }
-
-    private void stopMediaProjectionBackgroundThread() {
-        if (handlerThreadMP != null) {
-            handlerThreadMP.quitSafely();
-            try {
-                handlerThreadMP.join();
-                handlerThreadMP = null;
-                backgroundHandlerMP = null;
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();  // Restore the interrupt status
-                Log.e(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
-                writeToFile.logError(TAG, "Thread interrupted while stopping handlerThreadMP: " + e);
-            }
-        }
-    }
-    private Image image = null;
-    private Bitmap getScreenCaptureBitmap() {
-        try {
-            if (image != null) {
-                image.close();
-                image = null;
-            }
-            image = imageReader.acquireLatestImage();
-            if (image == null) return null;
-
-            // Get the necessary information from the image
-            int width = image.getWidth();
-            int height = image.getHeight();
-            Image.Plane[] planes = image.getPlanes();
-            ByteBuffer buffer = planes[0].getBuffer();
-            int pixelStride = planes[0].getPixelStride();
-            int rowStride = planes[0].getRowStride();
-
-            // Create a bitmap with the correct width and height
-            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-            bitmap.copyPixelsFromBuffer(buffer);
-            // Handle row padding
-            int rowPadding = rowStride - pixelStride * width;
-            int[] pixels = new int[width * height];
-
-            buffer.rewind();
-            for (int y = 0; y < height; y++) {
-                int offset = y * width;
-                for (int x = 0; x < width; x++) {
-                    int pixel = 0;
-                    pixel |= (buffer.get() & 0xFF) << 16; // Red
-                    pixel |= (buffer.get() & 0xFF) << 8;  // Green
-                    pixel |= (buffer.get() & 0xFF);       // Blue
-                    pixel |= (buffer.get() & 0xFF) << 24; // Alpha
-                    pixels[offset + x] = pixel;
-                }
-                // Skip any padding bytes at the end of the row
-                buffer.position(buffer.position() + rowPadding);
-            }
-
-            // Set pixels in the bitmap
-            bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
-
-            // Close the image to prevent memory leaks
-            image.close();
-            image = null;
-
-            return bitmap;
-        } catch (Exception e) {
-            writeToFile.logError(TAG, "captureScreenshot() failed: " + e);
-            Log.e(TAG, "captureScreenshot() failed: " + e);
-            return null;
-        } finally {
-            if (image != null) {
-                image.close(); // Close image to prevent maxImages limit
-                image = null;
-            }
-        }
-    }
-
-    private Bitmap cropBitmapToRect(Bitmap originalBitmap, Rect region) {
-        // Ensure the Rect is within the bounds of the original Bitmap
-        int left = Math.max(0, region.left);
-        int top = Math.max(0, region.top);
-        int right = Math.min(originalBitmap.getWidth(), region.right);
-        int bottom = Math.min(originalBitmap.getHeight(), region.bottom);
-
-        // Check if the cropped area is valid
-        if (left >= right || top >= bottom) {
-            Log.e(TAG, "Invalid crop region");
-            return null;
-        }
-
-        // Create a cropped Bitmap
-        return Bitmap.createBitmap(originalBitmap, left, top, right - left, bottom - top);
-    }
-
-    public static Bitmap replaceColorWithTransparent(Bitmap original) {
-        // Get the color of the top-left pixel (0,0)
-        int targetColor = original.getPixel(0, 0);
-
-        // Create a mutable copy of the original bitmap
-        Bitmap resultBitmap = original.copy(Bitmap.Config.ARGB_8888, true);
-
-        // Iterate over each pixel in the bitmap
-        for (int x = 0; x < resultBitmap.getWidth(); x++) {
-            for (int y = 0; y < resultBitmap.getHeight(); y++) {
-                // Get the current pixel color
-                int pixelColor = resultBitmap.getPixel(x, y);
-
-                // Replace the target color with transparent
-                if (pixelColor == targetColor) {
-                    resultBitmap.setPixel(x, y, Color.TRANSPARENT);
+                    }
                 }
             }
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
         }
-
-        return resultBitmap;
+        return false;
     }
 
-    private void saveScreenshot() {
-        Bitmap screenshot = getScreenCaptureBitmap();
-        Bitmap croppedScreenshot = cropBitmapToRect(screenshot, keyboardBounds);
-        if (croppedScreenshot != null) {
-            writeToFile.saveBitmap(croppedScreenshot);
-        }
-    }
-
-    private Bitmap previousWordPredictionBitmap = null;
-    private Rect predictionBounds = new Rect();
-    private boolean previousWordPredictionCheckRunning = false;
-    private int WORD_PREDICTION_DELAY = 500;
-
-    private void checkForWordPrediction() {
-
-        new Thread(() -> {
-            try {
-                previousWordPredictionCheckRunning = true;
-                while (checkForPrediction) {
-                    int[] cursorPosition = cursorController.getCursorPositionXY();
-                    Bitmap screenshot = getScreenCaptureBitmap();
-                    if (screenshot == null) {
-                        Log.e(TAG, "Screenshot is null.");
-                        continue;
-                    }
-                    Rect cropWordPredictionRegion = new Rect(
-                            keyboardBounds.right / 4,
-                            keyboardBounds.top,
-                            keyboardBounds.right - (keyboardBounds.right / 4),
-                            keyboardBounds.top + (keyboardBounds.height() / 6)
-                    );
-                    // if cursorPosition is within the word prediction region, stop the task
-                    if (cursorPosition[0] >= cropWordPredictionRegion.left && cursorPosition[0] <= cropWordPredictionRegion.right && cursorPosition[1] >= cropWordPredictionRegion.top && cursorPosition[1] <= cropWordPredictionRegion.bottom) {
-                        Log.d(TAG, "Cursor is within word prediction region.");
-                        continue;
-                    }
-                    Bitmap croppedScreenshot = replaceColorWithTransparent(cropBitmapToRect(screenshot, cropWordPredictionRegion));
-                    if (previousWordPredictionBitmap != null && previousWordPredictionBitmap.sameAs(croppedScreenshot)) {
-                        Log.d(TAG, "Word prediction bitmap is the same as previous.");
-                        continue;
-                    }
-                    previousWordPredictionBitmap = croppedScreenshot;
-                    Rect showPredictionRegion = new Rect(
-                            0,
-                            keyboardBounds.top + (keyboardBounds.height() / 3) - croppedScreenshot.getHeight(),
-                            keyboardBounds.width(),
-                            keyboardBounds.top + (keyboardBounds.height() / 3) + croppedScreenshot.getHeight()
-                    );
-                    Log.d(TAG, "Showing word prediction region: " + showPredictionRegion);
-                    predictionBounds = showPredictionRegion;
-                    updateCanvas = true;
-//                    writeToFile.saveBitmap(croppedScreenshot);
-
-                    Thread.sleep(1);
-                }
-                previousWordPredictionBitmap = null;
-                previousWordPredictionCheckRunning = false;
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                Log.e(TAG, "Thread interrupted while waiting to stop task: " + e);
-                writeToFile.logError(TAG, "Thread interrupted while waiting to stop task: " + e);
-                previousWordPredictionBitmap = null;
-                previousWordPredictionCheckRunning = false;
-            } catch (Exception e) {
-                Log.e(TAG, "Error while checking for word prediction: " + e);
-                writeToFile.logError(TAG, "Error while checking for word prediction: " + e);
-                previousWordPredictionBitmap = null;
-                previousWordPredictionCheckRunning = false;
-            }
-        }).start();
-    }
-
-    private boolean checkForPrediction = false;
-    private boolean updateCanvas = false;
-
+    /** Set image property to match the MediaPipe model. - Using RGBA 8888. - Lowe the resolution. */
+    private ImageAnalysis imageAnalyzer = new ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+            .setResolutionSelector(
+                    new ResolutionSelector.Builder()
+                            .setResolutionStrategy(
+                                    new ResolutionStrategy(
+                                            new Size(IMAGE_ANALYZER_WIDTH, IMAGE_ANALYZER_HEIGHT),
+                                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
+                            .build())
+            .build();
 }

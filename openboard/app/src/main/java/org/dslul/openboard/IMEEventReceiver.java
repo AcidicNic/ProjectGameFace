@@ -27,7 +27,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
     public static final String ACTION_SET_LONG_PRESS_DELAY = "com.headswype.ACTION_SET_LONG_PRESS_DELAY";
     public static final String ACTION_CHANGE_TRAIL_COLOR = "com.headswype.ACTION_CHANGE_TRAIL_COLOR";
 
-    private LatinIME mIme;
+    private final LatinIME mIme;
 
     public IMEEventReceiver(LatinIME ime) {
         mIme = ime;
@@ -54,6 +54,10 @@ public class IMEEventReceiver extends BroadcastReceiver {
         }
     }
 
+    /**
+     * Handles motion events sent from the external application.
+     * @param intent The intent containing the motion event data.
+     */
     private void handleMotionEvent(Intent intent) {
         float x = intent.getFloatExtra("x", -1);
         float y = intent.getFloatExtra("y", -1);
@@ -63,7 +67,6 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
         Log.d(TAG, "Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
 
-//        Log.d(TAG, "context class of: " + context.getClass().getName());
         // Forward event to LatinIME
         if (mIme != null) {
             mIme.dispatchMotionEvent(x, y, action);
@@ -72,6 +75,10 @@ public class IMEEventReceiver extends BroadcastReceiver {
         }
     }
 
+    /**
+     * Handles key events sent from the external application.
+     * @param intent The intent containing the key event data.
+     */
     private void handleKeyEvent(Intent intent) {
         int keyCode = intent.getIntExtra("keyCode", -1);
         boolean isDown = intent.getBooleanExtra("isDown", true);
@@ -89,6 +96,10 @@ public class IMEEventReceiver extends BroadcastReceiver {
         }
     }
 
+    /**
+     * Handles setting the long press delay for the keyboard.
+     * @param intent The intent containing the delay value.
+     */
     private void handleSetLongPressDelay(Intent intent) {
         if (mIme == null) return;
 
@@ -99,6 +110,12 @@ public class IMEEventReceiver extends BroadcastReceiver {
         prefs.edit().putInt(Settings.PREF_KEY_LONGPRESS_TIMEOUT, delay).apply();
     }
 
+    /**
+     * Handles changing the gesture trail color.
+     * Changes the color of the trail for the CURRENT gesture. Color will revert to default on next gesture.
+     * @param context The context of the application.
+     * @param intent The intent containing the color value.
+     */
     private void handleTrailColorChange(Context context, Intent intent) {
         String colorName = intent.getStringExtra("color");
         int color;

@@ -73,18 +73,18 @@ public class CursorController {
     BlendshapeEventTriggerConfig blendshapeEventTriggerConfig;
     /** Keep tracking if any event is triggered. */
     private final HashMap<BlendshapeEventTriggerConfig.EventType, Boolean> blendshapeEventTriggeredTracker = new HashMap<>();
-    private boolean isSwiping = false;
-    private Path swipePath;
-    private static final int TRAIL_MAX_POINTS = 100;
-    private List<float[]> cursorTrail = new LinkedList<>();
     private long edgeHoldStartTime = 0;
     public boolean isRealtimeSwipe = false;
-    public List<float[]> swipePathPoints = new ArrayList<float[]>();
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
 
+    public boolean isSwiping = false;
     public boolean continuousTouchActive = false;
     public boolean smartTouchActive = false;
+    public boolean swipeToggleActive = false;
+    public boolean dragToggleActive = false;
+    public boolean checkForSwipingFromRightKbd = false;
+    public boolean startedSwipeFromRightKbd = false;
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -435,12 +435,12 @@ public class CursorController {
         cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
         cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
 
-        if (isSwiping) {
-            // Track path points for the swipe
-            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
-            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
-            updateTrail((float) cursorPositionX, (float) cursorPositionY);
-        }
+//        if (isSwiping) {
+//            // Track path points for the swipe
+//            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
+//            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
+//            updateTrail((float) cursorPositionX, (float) cursorPositionY);
+//        }
     }
 
     private float[] normalizeOffsetNose(float[] coordsXY, int[] inputSize) {
@@ -499,8 +499,12 @@ public class CursorController {
         float timeElapsed = (currentTime - lastOffsetUpdateTime) / (float) offsetTransitionDuration;
 
         if (timeElapsed < 1) {
-            appliedOffsetX += (targetOffsetX - appliedOffsetX) * timeElapsed;
-            appliedOffsetY += (targetOffsetY - appliedOffsetY) * timeElapsed;
+            if (targetOffsetX != 0) {
+                appliedOffsetX += (targetOffsetX - appliedOffsetX) * timeElapsed;
+            }
+            if (targetOffsetY != 0) {
+                appliedOffsetY += (targetOffsetY - appliedOffsetY) * timeElapsed;
+            }
         } else {
             appliedOffsetX = targetOffsetX;
             appliedOffsetY = targetOffsetY;
@@ -531,6 +535,8 @@ public class CursorController {
     private void handleBoundingLogic() {
         long currentTime = System.currentTimeMillis();
         boolean touchingTopEdge = cursorPositionY <= tempBoundTopY;
+
+        // ! TODO: Add logic for bottom edge, kbd bounds should not include navbar
 
         if (!isCursorOutsideBounds) {
             // Cursor is inside the bounds
@@ -615,51 +621,6 @@ public class CursorController {
             cursorPositionY = (double) this.screenHeight / 2;
         }
     }
-
-    public void startSwipe(float x, float y) {
-        cursorTrail.clear();
-        isSwiping = true;
-        swipePath = new Path();
-        swipePath.moveTo(x, y);
-    }
-
-    public void updateSwipe(float x, float y) {
-        if (isSwiping) {
-            swipePath.lineTo(x, y);
-        }
-    }
-
-    public void stopSwipe() {
-        cursorTrail.clear();
-        isSwiping = false;
-    }
-
-    public Path getSwipePath() {
-        return swipePath;
-    }
-
-    public boolean isSwiping() {
-        return isSwiping;
-    }
-
-    public void updateTrail(float x, float y) {
-        if (isSwiping) {
-            cursorTrail.add(new float[]{x, y});
-            if (cursorTrail.size() > TRAIL_MAX_POINTS) {
-                cursorTrail.remove(0);
-            }
-        } else {
-            cursorTrail.clear();
-        }
-    }
-
-    public List<float[]> getCursorTrail() {
-        return cursorTrail;
-    }
-
-//    public void updateRealtimeSwipe(float x, float y) {
-//        swipePathPoints.add(new Point((int) x, (int) y));
-//    }
 
     public boolean isDurationPopOutEnabled() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT);
