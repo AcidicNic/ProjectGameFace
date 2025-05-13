@@ -64,11 +64,17 @@ public class DispatchEventHelper {
       case SMART_TOUCH:
       case CURSOR_TOUCH:
         Log.d("dispatchEvent", "Cursor touch");
+//        parentService.combinedTap(keyEvent);
+
 //        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
 //          parentService.quickTap(cursorPosition, 200);
 //          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
-//        }
-        parentService.combinedTap(keyEvent);
+//    }
+
+
+        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+          parentService.handleTapEvent();
+        }
         break;
 
       case CURSOR_LONG_TOUCH:

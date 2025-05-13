@@ -148,6 +148,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean shouldSendScore = false;
     private String[] debugText = {"", ""};
 
+    private int[] tapStartPosition;
+    private boolean isInHoverZone = true;
+    private Handler tapSequenceHandler = new Handler(Looper.getMainLooper());
+    private Runnable hoverEndRunnable;
+    private Runnable blueSweepEndRunnable;
+    private long tapStartTime;
+
     @SuppressLint({"UnspecifiedRegisterReceiverFlag", "ObsoleteSdkInt"})
     private void defineAndRegisterBroadcastMessageReceivers() {
 
@@ -1718,4 +1725,198 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                                             ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER))
                             .build())
             .build();
+
+    /**
+     * Handles tap events when the switch is pressed or released.
+     * 
+     * @param isSwitchDown true if the switch is being pressed down, false if released
+     */
+    private boolean tapInsideKbd;
+    public boolean isTapEventHandled = false;
+    public void handleTapEvent() {
+        if (!isTapEventHandled) {
+            Log.d(TAG, "handleTapEvent Switch pressed");
+            int[] cursorPosition = getCursorPosition();
+
+            if (!keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+                tapInsideKbd = true;
+//                return;
+            }
+
+            startTapSequence(cursorPosition);
+        } else {
+            Log.d(TAG, "handleTapEvent Switch released");
+            endTapSequence();
+        }
+    }
+
+    /**
+     * Starts the tap sequence when the switch is pressed down.
+     * 
+     * @param initialPosition The initial cursor position when switch was pressed
+     */
+    private void startTapSequence(int[] initialPosition) {
+        // Store initial position and start time
+        tapStartPosition = initialPosition;
+        tapStartTime = System.currentTimeMillis();
+        isInHoverZone = true;
+        isTapEventHandled = true;
+
+        // Start initial hover period (D1A)
+        hoverEndRunnable = () -> {
+            if (isInHoverZone) {
+                // Start blue sweep animation (D1B)
+                serviceUiManager.cursorView.animateToColor("BLUE", getQuickTapThreshold());
+                
+                // Schedule end of blue sweep
+                blueSweepEndRunnable = () -> {
+                    if (isInHoverZone) {
+                        // TODO: Switch to alternate character
+                        // Start yellow sweep animation (D2A)
+                        serviceUiManager.cursorView.animateToColor("YELLOW", getLongTapThreshold());
+                    }
+                };
+                tapSequenceHandler.postDelayed(blueSweepEndRunnable, getQuickTapThreshold());
+            }
+        };
+        tapSequenceHandler.postDelayed(hoverEndRunnable, Config.D1A_DURATION);
+
+        // Start monitoring cursor position for hover zone
+        startHoverZoneMonitoring();
+    }
+
+    /**
+     * Starts monitoring the cursor position to check if it stays within the hover zone.
+     */
+    private void startHoverZoneMonitoring() {
+        new Thread(() -> {
+            while (isInHoverZone) {
+                int[] currentPosition = getCursorPosition();
+                int[] startPos = tapStartPosition; // Get local copy to avoid NPE
+                
+                // Skip if either position is null
+                if (currentPosition == null || startPos == null) {
+                    try {
+                        Thread.sleep(16);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                    continue;
+                }
+
+                double distance = Math.sqrt(
+                    Math.pow(currentPosition[0] - startPos[0], 2) +
+                    Math.pow(currentPosition[1] - startPos[1], 2)
+                );
+
+                if (distance > Config.HOVER_ZONE_RADIUS) {
+                    isInHoverZone = false;
+                    // Post UI updates to main thread
+                    tapSequenceHandler.post(() -> {
+                        // Cancel any ongoing animations
+                        endTapSequence();
+                    });
+                    break;
+                }
+
+                try {
+                    Thread.sleep(16); // ~60fps
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * Ends the tap sequence when the switch is released.
+     */
+    private void endTapSequence() {
+        // Cancel any pending runnables
+        isTapEventHandled = false;
+        if (hoverEndRunnable != null) {
+            tapSequenceHandler.removeCallbacks(hoverEndRunnable);
+        }
+        if (blueSweepEndRunnable != null) {
+            tapSequenceHandler.removeCallbacks(blueSweepEndRunnable);
+        }
+
+        // Cancel any ongoing animations
+        serviceUiManager.cursorView.cancelAnimation();
+
+        // If cursor left hover zone, turn red for 500ms then white
+//        if (!isInHoverZone) {
+//            serviceUiManager.cursorView.setColor("RED");
+//            tapSequenceHandler.postDelayed(() -> {
+//                serviceUiManager.cursorView.setColor("WHITE");
+//                resetTapSequence();
+//            }, 500);
+//            return;
+//        }
+
+        // Get current animation state
+        boolean isBlueSweepComplete = System.currentTimeMillis() - tapStartTime >= (Config.D1A_DURATION + getQuickTapThreshold());
+        boolean isYellowSweepComplete = System.currentTimeMillis() - tapStartTime >= (Config.D1A_DURATION + getQuickTapThreshold() + getLongTapThreshold());
+
+        if (isYellowSweepComplete) {
+            // Output alternate character
+            outputAlternateCharacter();
+        } else if (isBlueSweepComplete) {
+            // Output primary character
+            outputPrimaryCharacter();
+        } else {
+            // Output primary character (early release)
+//            outputPrimaryCharacter();
+        }
+
+        // Reset cursor to white
+        serviceUiManager.cursorView.setColor("WHITE");
+        resetTapSequence();
+    }
+
+    /**
+     * Resets all tap sequence state variables.
+     */
+    private void resetTapSequence() {
+        tapStartPosition = null;
+        isInHoverZone = true;
+        hoverEndRunnable = null;
+        blueSweepEndRunnable = null;
+    }
+
+    /**
+     * Outputs the primary character for the current key position.
+     * This is a placeholder that will be implemented later.
+     */
+    private void outputPrimaryCharacter() {
+        // TODO: Implement primary character output
+        Log.d(TAG, "Outputting primary character");
+        // Execute quick tap
+        dispatchTapGesture(tapStartPosition, 250);
+        serviceUiManager.drawTouchDot(tapStartPosition);
+        // Reset cursor to white
+        serviceUiManager.cursorView.setColor("WHITE");
+
+    }
+
+    /**
+     * Outputs the alternate character for the current key position.
+     * This is a placeholder that will be implemented later.
+     */
+    private void outputAlternateCharacter() {
+        // TODO: Implement alternate character output
+        Log.d(TAG, "Outputting alternate character");
+        // Execute long tap
+        dispatchTapGesture(tapStartPosition, 650);
+        serviceUiManager.drawTouchDot(tapStartPosition);
+        // Reset cursor to white
+        serviceUiManager.cursorView.setColor("WHITE");
+    }
+
+    /**
+     * Handles the case when the switch is pressed but cursor is not over a valid key.
+     */
+    private void handleInvalidTapPosition() {
+        // TODO: Implement invalid position handling
+    }
 }

@@ -63,6 +63,7 @@ public class CursorView extends View {
         colorStatesMap.put("RED", new ColorState(0xD9FF5722, 0xFF5722));
         colorStatesMap.put("ORANGE", new ColorState(0xD9FF9800, 0xFF9800));
         colorStatesMap.put("BLUE", new ColorState(0xD92196F3, 0x2196F3));
+        colorStatesMap.put("YELLOW", new ColorState(0xD9FFEB3B, 0xFFEB3B));
 
         // Initialize CURRENT Paints
         fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

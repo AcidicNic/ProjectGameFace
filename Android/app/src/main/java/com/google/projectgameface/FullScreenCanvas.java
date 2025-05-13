@@ -101,9 +101,9 @@ public class FullScreenCanvas extends View {
             canvas.drawCircle(dragStartX, dragStartY, holdRadius, holdCirclePaint);
         }
 
-        if (cursorController != null && cursorController.isSwiping()) {
-            drawCursorTrail(canvas);
-        }
+//        if (cursorController != null && cursorController.isSwiping) {
+//            drawCursorTrail(canvas);
+//        }
 
         if (rectCoords != null) {
 //            canvas.drawRect(rectCoords.left, rectCoords.top, rectCoords.right, rectCoords.bottom, holdCirclePaint);
@@ -134,18 +134,18 @@ public class FullScreenCanvas extends View {
         invalidate();
     }
 
-    private void drawCursorTrail(Canvas canvas) {
-        List<float[]> cursorTrail = cursorController.getCursorTrail();
-        if (cursorTrail.size() < 2) return;
-
-        for (int i = 0; i < cursorTrail.size() - 1; i++) {
-            float[] point1 = cursorTrail.get(i);
-            float[] point2 = cursorTrail.get(i + 1);
-            canvas.drawLine(point1[0], point1[1], point2[0], point2[1], trailPaint);
-        }
-        canvas.drawCircle(cursorTrail.get(cursorTrail.size() - 1)[0], cursorTrail.get(cursorTrail.size() - 1)[1], holdRadius, holdCirclePaint);
-        invalidate();
-    }
+//    private void drawCursorTrail(Canvas canvas) {
+//        List<float[]> cursorTrail = cursorController.getCursorTrail();
+//        if (cursorTrail.size() < 2) return;
+//
+//        for (int i = 0; i < cursorTrail.size() - 1; i++) {
+//            float[] point1 = cursorTrail.get(i);
+//            float[] point2 = cursorTrail.get(i + 1);
+//            canvas.drawLine(point1[0], point1[1], point2[0], point2[1], trailPaint);
+//        }
+//        canvas.drawCircle(cursorTrail.get(cursorTrail.size() - 1)[0], cursorTrail.get(cursorTrail.size() - 1)[1], holdRadius, holdCirclePaint);
+//        invalidate();
+//    }
 
     /**
      * Set draw radius size for hold action.

@@ -30,8 +30,6 @@ object Config {
     const val DEFAULT_ANIMATION_DURATION = 1000
 
     /* Default HeadBoard Settings */
-    const val DEFAULT_QUICK_TAP_THRESHOLD = 1400
-    const val DEFAULT_LONG_TAP_THRESHOLD = 2000
     const val DEFAULT_SMOOTHING = 5
     const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 1.5f
     const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 1.5f
@@ -43,4 +41,10 @@ object Config {
     const val DEFAULT_DEBUG_SWIPE = false
     const val DEFAULT_DURATION_POP_OUT = true
     const val DEFAULT_DIRECT_MAPPING = true
+
+
+    const val DEFAULT_QUICK_TAP_THRESHOLD = 1400 // ms - blue sweep time
+    const val DEFAULT_LONG_TAP_THRESHOLD = 2000 // ms - yellow sweep time
+    const val HOVER_ZONE_RADIUS: Int = 500 // pixels
+    const val D1A_DURATION: Int = 500 // ms - initial hover time
 }

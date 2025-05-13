@@ -50,6 +50,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.CompletionInfo;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
+import android.os.Bundle;
 
 import org.dslul.openboard.IMEEventReceiver;
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
@@ -62,6 +63,7 @@ import org.dslul.openboard.inputmethod.event.Event;
 import org.dslul.openboard.inputmethod.event.HardwareEventDecoder;
 import org.dslul.openboard.inputmethod.event.HardwareKeyboardEventDecoder;
 import org.dslul.openboard.inputmethod.event.InputTransaction;
+import org.dslul.openboard.inputmethod.keyboard.Key;
 import org.dslul.openboard.inputmethod.keyboard.Keyboard;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardActionListener;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardId;
@@ -158,7 +160,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     private SuggestionStripView mSuggestionStripView;
 
     private RichInputMethodManager mRichImm;
-    @UsedForTesting final KeyboardSwitcher mKeyboardSwitcher;
+    @UsedForTesting
+    public final KeyboardSwitcher mKeyboardSwitcher;
     private final SubtypeState mSubtypeState = new SubtypeState();
     private EmojiAltPhysicalKeyDetector mEmojiAltPhysicalKeyDetector;
     private StatsUtilsManager mStatsUtilsManager;
@@ -676,10 +679,13 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         IntentFilter eventFilter = new IntentFilter();
         eventFilter.addAction(IMEEventReceiver.ACTION_SEND_MOTION_EVENT);
         eventFilter.addAction(IMEEventReceiver.ACTION_SEND_KEY_EVENT);
-        eventFilter.addAction(IMEEventReceiver.ACTION_CHANGE_TRAIL_COLOR);
         eventFilter.addAction(IMEEventReceiver.ACTION_SET_LONG_PRESS_DELAY);
+        eventFilter.addAction(IMEEventReceiver.ACTION_CHANGE_TRAIL_COLOR);
+        eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_INFO);
+        eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_BOUNDS);
+        eventFilter.addAction(IMEEventReceiver.ACTION_SHOW_OR_HIDE_KEY_POPUP);
         registerReceiver(imeEventReceiver, eventFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
-        Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion, key, and long press delay events.");
+        Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
     }
 
     // Has to be package-visible for unit tests
@@ -886,6 +892,83 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 mainKeyboardView.invalidate();
             }
         }
+    }
+
+    public boolean showOrHideKeyPopup(boolean showKeyPreview, int keyCode, boolean withAnimation) {
+        MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
+        if (mainKeyboardView == null) {
+            Log.e(TAG, "MainKeyboardView is null. Cannot get key info.");
+            return false;
+        }
+        Keyboard keyboard = mainKeyboardView.getKeyboard();
+        if (keyboard == null) {
+            Log.e(TAG, "Keyboard is null. Cannot get key bounds.");
+            return false;
+        }
+
+        Key targetKey = null;
+        for (Key key : keyboard.getSortedKeys()) {
+            if (key.getCode() == keyCode) {
+                targetKey = key;
+                break;
+            }
+        }
+        if (showKeyPreview) {
+            mainKeyboardView.onKeyReleased(targetKey, withAnimation);
+            return true;
+        } else {
+            mainKeyboardView.onKeyPressed(targetKey, true);
+            return true;
+        }
+    }
+
+    public Key getKeyInfo(float x, float y) {
+        MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
+        if (mainKeyboardView == null) {
+            Log.e(TAG, "MainKeyboardView is null. Cannot get key info.");
+            return null;
+        }
+
+        // Get the keyboard and find the key with the specified code
+        Keyboard keyboard = mainKeyboardView.getKeyboard();
+        if (keyboard == null) {
+            Log.e(TAG, "Keyboard is null. Cannot get key bounds.");
+            return null;
+        }
+
+        // Get the key at the specified coordinates
+        Key key = null;
+        for (Key pKey : keyboard.getSortedKeys()) {
+            if (key.getHitBox().contains((int) x, (int) y)) {
+                key = pKey;
+                break;
+            }
+        }
+        if (key == null) {
+            Log.d(TAG, "No key found at coordinates: (" + x + ", " + y + ")");
+            return null;
+        }
+
+        // Get the key's bounds in screen coordinates
+        int[] location = new int[2];
+        mainKeyboardView.getLocationOnScreen(location);
+        Rect keyBounds = key.getHitBox();
+
+        // Log the key information
+        Log.d(TAG, String.format(
+                "Key found at coordinates (%f, %f):\n" +
+                        "  Label: %s\n" +
+                        "  Code: %d\n" +
+                        "  Bounds: [%d, %d, %d, %d]",
+                x, y,
+                key.getCode(),
+                key.getAltCode(),
+                keyBounds.left,
+                keyBounds.top,
+                keyBounds.right,
+                keyBounds.bottom
+        ));
+        return key;
     }
 
     @UsedForTesting

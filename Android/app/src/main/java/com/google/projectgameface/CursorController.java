@@ -247,8 +247,10 @@ public class CursorController {
                 } else if (eventType == BlendshapeEventTriggerConfig.EventType.SMART_TOUCH && smartTouchActive) {
                     // Return eventType when gesture score for is below threshold for smart touch
                     return eventType;
+                } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH) {
+                    return eventType;
                 } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
-                    isTeleportMode=false;
+                    isTeleportMode = false;
                 }
 
             } else {
