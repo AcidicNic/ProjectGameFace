@@ -195,19 +195,21 @@ public class KeyboardManager {
     }
 
     /**
-     * Inject a motion event into the system.
+     * Inject a motion event into OpenBoard.
      *
-     * @param event The motion event to inject.
+     * @param x The x coordinate of the touch event
+     * @param y The y coordinate of the touch event
+     * @param action The action of the touch event (e.g., MotionEvent.ACTION_DOWN)
      */
-    public void sendMotionEventToIME(MotionEvent event) {
+    public void sendMotionEventToIME(int x, int y, int action) {
         Log.d(TAG, "[openboard] Sending MotionEvent to IME");
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
-        intent.putExtra("x", event.getX());
-        intent.putExtra("y", event.getY());
-        intent.putExtra("action", event.getAction());
-        intent.putExtra("downTime", event.getDownTime());
-        intent.putExtra("eventTime", event.getEventTime());
+        intent.putExtra("x", x);
+        intent.putExtra("y", y);
+        intent.putExtra("action", action);
+//        intent.putExtra("downTime", event.getDownTime());
+//        intent.putExtra("eventTime", event.getEventTime());
         context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
     }
 
@@ -251,6 +253,50 @@ public class KeyboardManager {
         Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("delay", delay);
+        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+    }
+
+
+    public void getKeyInfoFromIME(float x, float y) {
+//        Log.d(TAG, "[openboard] Sending long press delay to IME");
+        Intent intent = new Intent("com.headswype.ACTION_GET_KEY_INFO");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        intent.putExtra("x", x);
+        intent.putExtra("y", y);
+        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+    }
+
+
+    public void getKeyBoundsFromIME(int keyCode) {
+//        Log.d(TAG, "[openboard] Sending long press delay to IME");
+        Intent intent = new Intent("com.headswype.ACTION_GET_KEY_BOUNDS");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        intent.putExtra("keyCode", keyCode);
+        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+    }
+
+
+    public void showOrHideKeyPopupIME(int keyCode, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
+//        Log.d(TAG, "[openboard] Sending long press delay to IME");
+        Intent intent = new Intent("com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        intent.putExtra("keyCode", keyCode);
+        intent.putExtra("showKeyPreview", showKeyPreview);
+        intent.putExtra("withAnimation", withAnimation);
+        intent.putExtra("isLongPress", isLongPress);
+        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+    }
+
+
+    public void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
+//        Log.d(TAG, "[openboard] Sending long press delay to IME");
+        Intent intent = new Intent("com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        intent.putExtra("x", x);
+        intent.putExtra("y", y);
+        intent.putExtra("showKeyPreview", showKeyPreview);
+        intent.putExtra("withAnimation", withAnimation);
+        intent.putExtra("isLongPress", isLongPress);
         context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
     }
 

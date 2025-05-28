@@ -890,4 +890,16 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         super.deallocateMemory();
         mDrawingPreviewPlacerView.deallocateMemory();
     }
+
+    public void showOrHideKeyPopup(final Key key, final boolean isLongPress) {
+        if (key == null) {
+            return;
+        }
+        if (isLongPress) {
+            final PointerTracker tracker = PointerTracker.getPointerTracker(0);
+            showMoreKeysKeyboard(key, tracker);
+        } else {
+            onDismissMoreKeysPanel();
+        }
+    }
 }

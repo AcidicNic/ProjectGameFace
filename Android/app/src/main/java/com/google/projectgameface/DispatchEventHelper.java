@@ -71,9 +71,9 @@ public class DispatchEventHelper {
 //          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
 //    }
 
-
         if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
           parentService.handleTapEvent();
+          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         }
         break;
 

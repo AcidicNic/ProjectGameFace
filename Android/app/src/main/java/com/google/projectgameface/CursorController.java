@@ -464,30 +464,19 @@ public class CursorController {
             return; // Skip offset updates while swiping
         }
 
-        // Normalize nose tip coordinates first
-        float normalizedNoseX = noseTipXY[0] / inputSize[0];
-        float normalizedNoseY = noseTipXY[1] / inputSize[1];
-
-        // Initialize offsets on first run if they haven't been set
-        if (targetOffsetX == 0 && targetOffsetY == 0 && appliedOffsetX == 0 && appliedOffsetY == 0) {
-            // Calculate offset based on normalized coordinates
-            targetOffsetX = (0.5f - normalizedNoseX) * inputSize[0];
-            targetOffsetY = (0.5f - normalizedNoseY) * inputSize[1];
-            appliedOffsetX = targetOffsetX;
-            appliedOffsetY = targetOffsetY;
-            lastOffsetUpdateTime = System.currentTimeMillis();
-            return;
-        }
-
         // Determine if pitch and yaw are close to center (0 degrees)
         boolean isCenteredX = Math.abs(pitchYawXY[1]) < 2.0f; // Yaw close to 0 degrees
         boolean isCenteredY = Math.abs(pitchYawXY[0]) < 2.0f; // Pitch close to 0 degrees
 
         if (isCenteredX) {
-            targetOffsetX = (0.5f - normalizedNoseX) * inputSize[0];
+            targetOffsetX = ((float) inputSize[0] / 2) - noseTipXY[0];
+        } else if (targetOffsetX == 0 && appliedOffsetX == 0) {
+            targetOffsetX = (float) inputSize[0] / 2;
         }
         if (isCenteredY) {
-            targetOffsetY = (0.5f - normalizedNoseY) * inputSize[1];
+            targetOffsetY = ((float) inputSize[1] / 2) - noseTipXY[1];
+        } else if (targetOffsetY == 0 && appliedOffsetY == 0) {
+            targetOffsetY = (float) inputSize[1] / 2;
         }
 
         if (targetOffsetY == 0 && targetOffsetX == 0) {

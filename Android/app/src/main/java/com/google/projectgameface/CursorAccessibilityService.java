@@ -1527,7 +1527,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void injectMotionEvent(MotionEvent event) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) { // Android 12 (API 31)
             Log.d(TAG, "[666] Sending MotionEvent to IME");
-            sendMotionEventToIME(event);
+            sendMotionEventToIME((int) event.getX(), (int) event.getY(), event.getAction());
         } else {
             try {
                 instrumentation.sendPointerSync(event);
@@ -1543,8 +1543,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      *
      * @param event The motion event to send.
      */
-    private void sendMotionEventToIME(MotionEvent event) {
-        keyboardManager.sendMotionEventToIME(event);
+    private void sendMotionEventToIME(int x, int y, int action) {
+        keyboardManager.sendMotionEventToIME(x, y, action);
     }
 
     /**
@@ -1767,11 +1767,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (isInHoverZone) {
                 // Start blue sweep animation (D1B)
                 serviceUiManager.cursorView.animateToColor("BLUE", getQuickTapThreshold());
-                
+                // Show primary key popup
+                keyboardManager.showOrHideKeyPopupIME(tapStartPosition[0], tapStartPosition[1], true, true, false);
+
                 // Schedule end of blue sweep
                 blueSweepEndRunnable = () -> {
                     if (isInHoverZone) {
-                        // TODO: Switch to alternate character
+                        // Show alternate character key popup
+                        keyboardManager.showOrHideKeyPopupIME(tapStartPosition[0], tapStartPosition[1], true, true, true);
                         // Start yellow sweep animation (D2A)
                         serviceUiManager.cursorView.animateToColor("YELLOW", getLongTapThreshold());
                     }
@@ -1845,14 +1848,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.cursorView.cancelAnimation();
 
         // If cursor left hover zone, turn red for 500ms then white
-//        if (!isInHoverZone) {
-//            serviceUiManager.cursorView.setColor("RED");
-//            tapSequenceHandler.postDelayed(() -> {
-//                serviceUiManager.cursorView.setColor("WHITE");
-//                resetTapSequence();
-//            }, 500);
-//            return;
-//        }
+        if (!isInHoverZone) {
+            serviceUiManager.cursorView.setColor("RED");
+            tapSequenceHandler.postDelayed(() -> {
+                serviceUiManager.cursorView.setColor("WHITE");
+                resetTapSequence();
+            }, 500);
+            return;
+        }
 
         // Get current animation state
         boolean isBlueSweepComplete = System.currentTimeMillis() - tapStartTime >= (Config.D1A_DURATION + getQuickTapThreshold());
@@ -1860,13 +1863,28 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         if (isYellowSweepComplete) {
             // Output alternate character
-            outputAlternateCharacter();
+//            if (tapInsideKbd) {
+////                int keyCode = keyboardManager.getKeyCodeAtPosition(tapStartPosition[0], tapStartPosition[1]);
+////                keyboardManager.showOrHideKeyPopupIME(tapStartPosition[0], tapStartPosition[1], true, true, true);
+//            }
+//            else
+                outputAlternateCharacter();
         } else if (isBlueSweepComplete) {
             // Output primary character
-            outputPrimaryCharacter();
-        } else {
-            // Output primary character (early release)
-//            outputPrimaryCharacter();
+//            if (tapInsideKbd) {
+//                keyboardManager.pressKeyAtPosition(tapStartPosition[0], tapStartPosition[1], true, false);
+//            }
+//            else
+                outputPrimaryCharacter();
+        } else { // early release
+//            if (tapInsideKbd) {
+//            }
+            // else: do nothing, just don't tap
+        }
+
+        // hide key popup
+        if (tapInsideKbd) {
+            keyboardManager.showOrHideKeyPopupIME(tapStartPosition[0], tapStartPosition[1], false, false, false);
         }
 
         // Reset cursor to white
@@ -1882,6 +1900,18 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         isInHoverZone = true;
         hoverEndRunnable = null;
         blueSweepEndRunnable = null;
+    }
+
+    private void cancelMotionEvent() {
+        MotionEvent event = MotionEvent.obtain(
+                startUptime,
+                endUptime,
+                MotionEvent.ACTION_CANCEL,
+                lastValidCoords[0],
+                lastValidCoords[1],
+                0
+        );
+        injectMotionEvent(event);
     }
 
     /**

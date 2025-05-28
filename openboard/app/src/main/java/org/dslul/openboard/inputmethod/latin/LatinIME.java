@@ -50,7 +50,6 @@ import android.view.WindowManager;
 import android.view.inputmethod.CompletionInfo;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
-import android.os.Bundle;
 
 import org.dslul.openboard.IMEEventReceiver;
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
@@ -69,6 +68,7 @@ import org.dslul.openboard.inputmethod.keyboard.KeyboardActionListener;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardId;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardSwitcher;
 import org.dslul.openboard.inputmethod.keyboard.MainKeyboardView;
+import org.dslul.openboard.inputmethod.keyboard.PointerTracker;
 import org.dslul.openboard.inputmethod.keyboard.internal.GestureTrailsDrawingPreview;
 import org.dslul.openboard.inputmethod.latin.Suggest.OnGetSuggestedWordsCallback;
 import org.dslul.openboard.inputmethod.latin.SuggestedWords.SuggestedWordInfo;
@@ -894,15 +894,15 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         }
     }
 
-    public boolean showOrHideKeyPopup(boolean showKeyPreview, int keyCode, boolean withAnimation) {
+    public boolean showOrHideKeyPopup(boolean showKeyPreview, int keyCode, boolean withAnimation, boolean isLongPressPopup) {
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView == null) {
-            Log.e(TAG, "MainKeyboardView is null. Cannot get key info.");
+            Log.e(TAG, "MainKeyboardView is null. Cannot show or hide key popup.");
             return false;
         }
         Keyboard keyboard = mainKeyboardView.getKeyboard();
         if (keyboard == null) {
-            Log.e(TAG, "Keyboard is null. Cannot get key bounds.");
+            Log.e(TAG, "Keyboard is null. Cannot show or hide key popup.");
             return false;
         }
 
@@ -913,16 +913,40 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 break;
             }
         }
-        if (showKeyPreview) {
+
+        if (targetKey == null) {
+            Log.d(TAG, "No key found with code: " + keyCode + " for popup action.");
+            return false;
+        }
+
+        if (!showKeyPreview) { // Corresponds to onPressKey logic path (showing a popup)
+            if (isLongPressPopup) {
+                // Attempt to show the long press/more keys popup
+                if (targetKey.getMoreKeys() != null && targetKey.getMoreKeys().length > 0) {
+                    final PointerTracker tracker = PointerTracker.getPointerTracker(0);
+                    mainKeyboardView.showMoreKeysKeyboard(targetKey, tracker);
+                    Log.d(TAG, "Showing long press popup for key code: " + keyCode);
+                    return true;
+                } else {
+                    Log.d(TAG, "Key with code " + keyCode + " has no more keys. Showing regular press preview instead.");
+                    // Fallback to regular key press preview if no more keys are available
+                    mainKeyboardView.onKeyPressed(targetKey, true);
+                    return true;
+                }
+            } else {
+                // Show regular key press preview
+                mainKeyboardView.onKeyPressed(targetKey, true);
+                Log.d(TAG, "Showing regular press popup for key code: " + keyCode);
+                return true;
+            }
+        } else { // Corresponds to onReleaseKey logic path (hiding the regular popup)
             mainKeyboardView.onKeyReleased(targetKey, withAnimation);
-            return true;
-        } else {
-            mainKeyboardView.onKeyPressed(targetKey, true);
+            Log.d(TAG, "Hiding regular popup for key code: " + keyCode);
             return true;
         }
     }
 
-    public Key getKeyInfo(float x, float y) {
+    public Key getKeyFromCoords(float x, float y) {
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView == null) {
             Log.e(TAG, "MainKeyboardView is null. Cannot get key info.");
@@ -936,10 +960,23 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return null;
         }
 
+        View rootView = getWindow().getWindow().getDecorView();
+        if (rootView != null) {
+            // Get the IME window location on screen
+            int[] location = new int[2];
+            rootView.getLocationOnScreen(location);
+            Log.d(TAG, "Root view rect: " + rootView.getLeft() + ", " + rootView.getTop() + ", " +
+                    rootView.getRight() + ", " + rootView.getBottom());
+
+            // Transform the coordinates from screen space to IME window space
+            x -= location[0];
+            y -= location[1];
+        }
+
         // Get the key at the specified coordinates
         Key key = null;
         for (Key pKey : keyboard.getSortedKeys()) {
-            if (key.getHitBox().contains((int) x, (int) y)) {
+            if (pKey.getHitBox().contains((int) x, (int) y)) {
                 key = pKey;
                 break;
             }

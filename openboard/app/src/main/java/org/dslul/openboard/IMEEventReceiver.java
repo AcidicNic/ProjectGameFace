@@ -175,7 +175,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
             return;
         }
 
-        Key key = mIme.getKeyInfo(x, y);
+        Key key = mIme.getKeyFromCoords(x, y);
 
     }
 
@@ -226,6 +226,8 @@ public class IMEEventReceiver extends BroadcastReceiver {
         mainKeyboardView.getLocationOnScreen(location);
         Rect keyBounds = targetKey.getHitBox();
 
+        sendKeyBounds(keyBounds);
+
         // Log the key information
         Log.d(TAG, String.format(
             "Key with code %d:\n" +
@@ -241,10 +243,32 @@ public class IMEEventReceiver extends BroadcastReceiver {
     }
 
     public void showOrHideKeyPopup(Intent intent) {
+        if (mIme == null) {
+            Log.e(TAG, "LatinIME instance is null. Cannot show/hide key popup.");
+            return;
+        }
+
         int keyCode = intent.getIntExtra("keyCode", -1);
+        if (keyCode == -1) {
+            int x = intent.getIntExtra("x", -1);
+            int y = intent.getIntExtra("y", -1);
+            if (x == -1 || y == -1) {
+                Log.e(TAG, "Invalid coordinates provided for key popup");
+                return;
+            }
+            Key key = mIme.getKeyFromCoords(x, y);
+            if (key == null) {
+                Log.e(TAG, "No key found at coordinates: (" + x + ", " + y + ")");
+                return;
+            }
+            keyCode = key.getCode();
+        }
+
         boolean showKeyPreview = intent.getBooleanExtra("showKeyPreview", true);
-        boolean animation = intent.getBooleanExtra("animation", false);
-        mIme.showOrHideKeyPopup(showKeyPreview, keyCode, animation);
+        boolean withAnimation = intent.getBooleanExtra("withAnimation", false);
+        boolean isLongPress = intent.getBooleanExtra("isLongPress", true);
+        
+        mIme.showOrHideKeyPopup(showKeyPreview, keyCode, withAnimation, isLongPress);
     }
 
 
@@ -272,9 +296,12 @@ public class IMEEventReceiver extends BroadcastReceiver {
         sendResponse("org.dslul.openboard.ACTION_GET_KEY_INFO", extras);
     }
 
-    public void sendKeyBounds(int keyCode) {
+    public void sendKeyBounds(Rect keyBounds) {
         Bundle extras = new Bundle();
-        extras.putInt("keyCode", keyCode);
+        extras.putInt("top", keyBounds.top);
+        extras.putInt("left", keyBounds.left);
+        extras.putInt("bottom", keyBounds.bottom);
+        extras.putInt("right", keyBounds.right);
         sendResponse("org.dslul.openboard.ACTION_GET_KEY_BOUNDS", extras);
     }
 }
