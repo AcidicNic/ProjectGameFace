@@ -676,6 +676,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
         // Register the IMEEventReceiver
         imeEventReceiver = new IMEEventReceiver(this);
+        IMEEventReceiver.setLatinIME(this);
         IntentFilter eventFilter = new IntentFilter();
         eventFilter.addAction(IMEEventReceiver.ACTION_SEND_MOTION_EVENT);
         eventFilter.addAction(IMEEventReceiver.ACTION_SEND_KEY_EVENT);
@@ -984,28 +985,30 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         if (key == null) {
             Log.d(TAG, "No key found at coordinates: (" + x + ", " + y + ")");
             return null;
+        } else {
+            Log.d(TAG, "Key found at coordinates: (" + x + ", " + y + ")");
+
+    //        // Get the key's bounds in screen coordinates
+    //        int[] location = new int[2];
+    //        mainKeyboardView.getLocationInSurface(location);
+            Rect keyBounds = key.getHitBox();
+
+            // Log the key information
+            Log.d(TAG, String.format(
+                    "Key found at coordinates (%f, %f):\n" +
+                            "  Label: %s\n" +
+                            "  Code: %d\n" +
+                            "  Bounds: [%d, %d, %d, %d]",
+                    x, y,
+                    key.getCode(),
+                    key.getAltCode(),
+                    keyBounds.left,
+                    keyBounds.top,
+                    keyBounds.right,
+                    keyBounds.bottom
+            ));
+            return key;
         }
-
-        // Get the key's bounds in screen coordinates
-        int[] location = new int[2];
-        mainKeyboardView.getLocationOnScreen(location);
-        Rect keyBounds = key.getHitBox();
-
-        // Log the key information
-        Log.d(TAG, String.format(
-                "Key found at coordinates (%f, %f):\n" +
-                        "  Label: %s\n" +
-                        "  Code: %d\n" +
-                        "  Bounds: [%d, %d, %d, %d]",
-                x, y,
-                key.getCode(),
-                key.getAltCode(),
-                keyBounds.left,
-                keyBounds.top,
-                keyBounds.right,
-                keyBounds.bottom
-        ));
-        return key;
     }
 
     @UsedForTesting

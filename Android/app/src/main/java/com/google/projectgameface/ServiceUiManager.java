@@ -393,6 +393,7 @@ public class ServiceUiManager {
         });
 
     cameraBoxState = CameraBoxState.MAXIMIZE;
+    minimizeCameraBox();
   }
 
   /** Should camera box draggable ? */

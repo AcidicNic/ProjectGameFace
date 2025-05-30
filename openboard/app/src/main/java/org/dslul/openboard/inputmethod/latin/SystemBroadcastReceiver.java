@@ -81,23 +81,30 @@ public final class SystemBroadcastReceiver extends BroadcastReceiver {
             KeyboardLayoutSet.onSystemLocaleChanged();
         }
 
-        // The process that hosts this broadcast receiver is invoked and remains alive even after
-        // 1) the package has been re-installed,
-        // 2) the device has just booted,
-        // 3) a new user has been created.
-        // There is no good reason to keep the process alive if this IME isn't a current IME.
-        final InputMethodManager imm = (InputMethodManager)
-                context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        // Called to check whether this IME has been triggered by the current user or not
-        final boolean isInputMethodManagerValidForUserOfThisProcess =
-                !imm.getInputMethodList().isEmpty();
-        final boolean isCurrentImeOfCurrentUser = isInputMethodManagerValidForUserOfThisProcess
-                && UncachedInputMethodManagerUtils.isThisImeCurrent(context, imm);
-        if (!isCurrentImeOfCurrentUser) {
-            final int myPid = Process.myPid();
-            Log.i(TAG, "Killing my process: pid=" + myPid);
-            Process.killProcess(myPid);
+        // Only kill the process if we're not in development mode
+        if (!isDebuggable(context)) {
+            // The process that hosts this broadcast receiver is invoked and remains alive even after
+            // 1) the package has been re-installed,
+            // 2) the device has just booted,
+            // 3) a new user has been created.
+            // There is no good reason to keep the process alive if this IME isn't a current IME.
+            final InputMethodManager imm = (InputMethodManager)
+                    context.getSystemService(Context.INPUT_METHOD_SERVICE);
+            // Called to check whether this IME has been triggered by the current user or not
+            final boolean isInputMethodManagerValidForUserOfThisProcess =
+                    !imm.getInputMethodList().isEmpty();
+            final boolean isCurrentImeOfCurrentUser = isInputMethodManagerValidForUserOfThisProcess
+                    && UncachedInputMethodManagerUtils.isThisImeCurrent(context, imm);
+            if (!isCurrentImeOfCurrentUser) {
+                final int myPid = Process.myPid();
+                Log.i(TAG, "Killing my process: pid=" + myPid);
+                Process.killProcess(myPid);
+            }
         }
+    }
+
+    private boolean isDebuggable(Context context) {
+        return (context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
     }
 
     public static void toggleAppIcon(final Context context) {

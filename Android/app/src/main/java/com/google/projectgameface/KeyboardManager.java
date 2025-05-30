@@ -60,7 +60,7 @@ public class KeyboardManager {
      * @param event The accessibility event to check.
      */
     public void checkForKeyboardBounds(AccessibilityEvent event) {
-        if (cursorController.isSwiping) return;
+        if (cursorController.isSwiping || cursorController.isCursorTap || cursorController.isRealtimeSwipe) return;
 
         boolean keyboardFound = false;
         Rect tempBounds = new Rect();
@@ -99,7 +99,7 @@ public class KeyboardManager {
      * Check for the current keyboard type and update the debugging stats accordingly.
      * This method is called when an accessibility event occurs.
      */
-    public void checkForKeyboardType() {
+    public String checkForKeyboardType() {
         String currentKeyboardStr = Settings.Secure.getString(
                 context.getContentResolver(),
                 Settings.Secure.DEFAULT_INPUT_METHOD
@@ -113,6 +113,7 @@ public class KeyboardManager {
         } else {
             currentKeyboard = "Unknown";
         }
+        return currentKeyboard;
     }
 
     /**
@@ -205,8 +206,8 @@ public class KeyboardManager {
         Log.d(TAG, "[openboard] Sending MotionEvent to IME");
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
-        intent.putExtra("x", x);
-        intent.putExtra("y", y);
+        intent.putExtra("x", (float) x);
+        intent.putExtra("y", (float) y);
         intent.putExtra("action", action);
 //        intent.putExtra("downTime", event.getDownTime());
 //        intent.putExtra("eventTime", event.getEventTime());

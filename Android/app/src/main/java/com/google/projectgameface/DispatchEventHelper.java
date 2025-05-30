@@ -110,12 +110,12 @@ public class DispatchEventHelper {
         }
         break;
 
-      case CURSOR_RESET:
-        if (cursorController.isRealtimeSwipe || cursorController.isDirectMappingEnabled()) {
-          break;
-        }
-        cursorController.resetCursorToCenter(false);
-        break;
+//      case CURSOR_RESET:
+//        if (cursorController.isRealtimeSwipe || cursorController.isDirectMappingEnabled()) {
+//          break;
+//        }
+//        cursorController.resetCursorToCenter(false);
+//        break;
 
       case SWIPE_LEFT:
         if (cursorController.isRealtimeSwipe) {

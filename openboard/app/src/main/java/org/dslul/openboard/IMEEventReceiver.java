@@ -31,20 +31,40 @@ public class IMEEventReceiver extends BroadcastReceiver {
     public static final String ACTION_GET_KEY_BOUNDS = "com.headswype.ACTION_GET_KEY_BOUNDS";
     public static final String ACTION_SHOW_OR_HIDE_KEY_POPUP = "com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP";
 
-    private final LatinIME mIme;
+    private LatinIME mIme;
+    private static IMEEventReceiver sInstance;
 
+    // Zero-argument constructor required for manifest registration
+    public IMEEventReceiver() {
+        sInstance = this;
+    }
+
+    // Constructor for dynamic registration with LatinIME instance
     public IMEEventReceiver(LatinIME ime) {
         mIme = ime;
+        sInstance = this;
+    }
+
+    public static void setLatinIME(LatinIME ime) {
+        if (sInstance != null) {
+            sInstance.mIme = ime;
+        }
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        // If this receiver was created via manifest and mIme is null,
+        // try to get the LatinIME instance from the context
+        if (mIme == null && context instanceof LatinIME) {
+            mIme = (LatinIME) context;
+        }
+
         String action = intent.getAction();
         if (action == null) return;
 
         switch (action) {
             case ACTION_SEND_MOTION_EVENT:
-                handleMotionEvent(intent);
+                handleMotionEvent(context, intent);
                 break;
             case ACTION_SEND_KEY_EVENT:
                 handleKeyEvent(intent);
@@ -71,7 +91,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
      * Handles motion events sent from the external application.
      * @param intent The intent containing the motion event data.
      */
-    private void handleMotionEvent(Intent intent) {
+    private void handleMotionEvent(Context context, Intent intent) {
         float x = intent.getFloatExtra("x", -1);
         float y = intent.getFloatExtra("y", -1);
         int action = intent.getIntExtra("action", MotionEvent.ACTION_DOWN);
@@ -80,12 +100,16 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
         Log.d(TAG, "Received MotionEvent: (" + x + ", " + y + ", action=" + action + ")");
 
-        // Forward event to LatinIME
-        if (mIme != null) {
-            mIme.dispatchMotionEvent(x, y, action);
-        } else {
-            Log.e(TAG, "LatinIME instance is null. Cannot dispatch motion event.");
+        if (context == null || !(context instanceof LatinIME)) {
+            Log.e(TAG, "[handleMotionEvent()] LatinIME instance is null. Cannot dispatch motion event.");
+            return;
+        } else if (x < 0 || y < 0) {
+            Log.e(TAG, "[handleMotionEvent()] invalid (x, y) coords: (" + x + ", " + y + ")");
+            return;
         }
+
+        // Forward event to LatinIME
+        ((LatinIME) context).dispatchMotionEvent(x, y, action);
     }
 
     /**
@@ -252,7 +276,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
         if (keyCode == -1) {
             int x = intent.getIntExtra("x", -1);
             int y = intent.getIntExtra("y", -1);
-            if (x == -1 || y == -1) {
+            if (x < 0 || y < 0) {
                 Log.e(TAG, "Invalid coordinates provided for key popup");
                 return;
             }
@@ -260,8 +284,10 @@ public class IMEEventReceiver extends BroadcastReceiver {
             if (key == null) {
                 Log.e(TAG, "No key found at coordinates: (" + x + ", " + y + ")");
                 return;
+            } else {
+                Log.d(TAG, "Getting keycode from key at coordinates: (" + x + ", " + y + ")");
+                keyCode = key.getCode();
             }
-            keyCode = key.getCode();
         }
 
         boolean showKeyPreview = intent.getBooleanExtra("showKeyPreview", true);

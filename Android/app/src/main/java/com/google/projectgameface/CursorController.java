@@ -75,6 +75,7 @@ public class CursorController {
     private final HashMap<BlendshapeEventTriggerConfig.EventType, Boolean> blendshapeEventTriggeredTracker = new HashMap<>();
     private long edgeHoldStartTime = 0;
     public boolean isRealtimeSwipe = false;
+    public boolean isCursorTap = false;
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
 
@@ -460,7 +461,7 @@ public class CursorController {
 
     private void handleCenterOffsetUpdate(float[] pitchYawXY, float[] noseTipXY, int[] inputSize) {
         // Check if swiping is active, and pause the offset updates
-        if (isRealtimeSwipe) {
+        if (isEventActive()) {
             return; // Skip offset updates while swiping
         }
 
@@ -531,7 +532,7 @@ public class CursorController {
 
         if (!isCursorOutsideBounds) {
             // Cursor is inside the bounds
-            if (touchingTopEdge && (cursorPositionY > 0 && cursorPositionY < screenHeight)) {
+            if (touchingTopEdge && (cursorPositionY > 0 && cursorPositionY < screenHeight) && !isEventActive()) {
                 if (edgeHoldStartTime == 0) {
                     edgeHoldStartTime = currentTime;
                 }
@@ -553,7 +554,7 @@ public class CursorController {
             }
         } else {
             // Cursor is outside the bounds
-            if (cursorPositionY >= tempBoundTopY || cursorPositionY <= tempBoundBottomY) {
+            if (cursorPositionY >= tempBoundTopY || cursorPositionY <= tempBoundBottomY && !isEventActive()) {
                 if (edgeHoldStartTime == 0) {
                     edgeHoldStartTime = currentTime;
                 }
@@ -574,6 +575,10 @@ public class CursorController {
                 cursorPositionY = clamp(cursorPositionY, 0, tempBoundTopY);
             }
         }
+    }
+
+    private boolean isEventActive() {
+        return isRealtimeSwipe || isCursorTap;
     }
 
     public Rect getTemporaryBounds() {
