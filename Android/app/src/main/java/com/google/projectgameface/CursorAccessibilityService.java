@@ -1924,7 +1924,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 outputPrimaryCharacter(tapStartPosition);
             }
         } else { // early release
-            Log.d(TAG, "endTapSequence() early release");
+            Log.d(TAG, "endTapSequence() early release, quick tap");
+            outputPrimaryCharacter(tapStartPosition);
 //            if (tapInsideKbd) {
 //                sendMotionEventToIME(tapStartPosition[0], tapStartPosition[1], MotionEvent.ACTION_CANCEL);
 //            }
