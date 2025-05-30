@@ -70,11 +70,8 @@ public class DispatchEventHelper {
 //          parentService.quickTap(cursorPosition, 200);
 //          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
 //    }
-
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
-          parentService.handleTapEvent();
-          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
-        }
+        parentService.handleTapEvent();
+        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         break;
 
       case CURSOR_LONG_TOUCH:
