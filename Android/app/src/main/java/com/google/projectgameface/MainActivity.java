@@ -222,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE,
                     BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 0);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO,
-                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH, 0);
+                    BlendshapeEventTriggerConfig.EventType.CURSOR_TAP, 0);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE,
                     BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 0);
             String profileName = ProfileManager.getCurrentProfile(this);

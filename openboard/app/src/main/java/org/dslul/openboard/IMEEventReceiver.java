@@ -55,12 +55,14 @@ public class IMEEventReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         // If this receiver was created via manifest and mIme is null,
         // try to get the LatinIME instance from the context
-        if (mIme == null && context instanceof LatinIME) {
+        if (context instanceof LatinIME) {
             mIme = (LatinIME) context;
         }
 
         String action = intent.getAction();
         if (action == null) return;
+
+        Log.d(TAG, "Received action: " + action);
 
         switch (action) {
             case ACTION_SEND_MOTION_EVENT:
@@ -267,37 +269,24 @@ public class IMEEventReceiver extends BroadcastReceiver {
     }
 
     public void showOrHideKeyPopup(Intent intent) {
+        Log.d(TAG, "showOrHideKeyPopup()");
         if (mIme == null) {
             Log.e(TAG, "LatinIME instance is null. Cannot show/hide key popup.");
             return;
         }
 
-        int keyCode = intent.getIntExtra("keyCode", -1);
-        if (keyCode == -1) {
-            int x = intent.getIntExtra("x", -1);
-            int y = intent.getIntExtra("y", -1);
-            if (x < 0 || y < 0) {
-                Log.e(TAG, "Invalid coordinates provided for key popup");
-                return;
-            }
-            Key key = mIme.getKeyFromCoords(x, y);
-            if (key == null) {
-                Log.e(TAG, "No key found at coordinates: (" + x + ", " + y + ")");
-                return;
-            } else {
-                Log.d(TAG, "Getting keycode from key at coordinates: (" + x + ", " + y + ")");
-                keyCode = key.getCode();
-            }
+        int x = intent.getIntExtra("x", -1);
+        int y = intent.getIntExtra("y", -1);
+        if (x < 0 || y < 0) {
+            Log.e(TAG, "Invalid coordinates provided for key popup");
+            return;
         }
-
-        boolean showKeyPreview = intent.getBooleanExtra("showKeyPreview", true);
+        boolean showKeyPreview = intent.getBooleanExtra("showKeyPreview", false);
         boolean withAnimation = intent.getBooleanExtra("withAnimation", false);
-        boolean isLongPress = intent.getBooleanExtra("isLongPress", true);
-        
-        mIme.showOrHideKeyPopup(showKeyPreview, keyCode, withAnimation, isLongPress);
+        boolean isLongPress = intent.getBooleanExtra("isLongPress", false);
+
+        mIme.showOrHideKeyPopup(showKeyPreview, new int[] {x, y}, withAnimation, isLongPress);
     }
-
-
 
     /**
      * Sends a broadcast request to the external application.

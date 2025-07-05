@@ -43,8 +43,9 @@ object Config {
     const val DEFAULT_DIRECT_MAPPING = true
 
 
-    const val DEFAULT_QUICK_TAP_THRESHOLD = 1400 // ms - blue sweep time
-    const val DEFAULT_LONG_TAP_THRESHOLD = 2000 // ms - yellow sweep time
-    const val HOVER_ZONE_RADIUS: Int = 500 // pixels
+    const val DEFAULT_UI_FEEDBACK_DELAY = 3 // (D1A)
+    const val DEFAULT_QUICK_TAP_THRESHOLD = 2000 // ms - blue sweep time (long tap timeout period)
+    const val DEFAULT_LONG_TAP_THRESHOLD = 2500 // ms - yellow sweep time
+    const val HOVER_ZONE_RADIUS: Int = 150 // pixels
     const val D1A_DURATION: Int = 500 // ms - initial hover time
 }

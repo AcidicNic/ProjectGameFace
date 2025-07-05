@@ -505,7 +505,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         return newKey;
     }
 
-    /* package */ static int getActivePointerTrackerCount() {
+    public static int getActivePointerTrackerCount() {
         return sPointerTrackerQueue.size();
     }
 

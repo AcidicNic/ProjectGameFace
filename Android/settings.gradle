@@ -29,3 +29,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ProjectGameFace"
 include ':app'
+include ':shared-library'

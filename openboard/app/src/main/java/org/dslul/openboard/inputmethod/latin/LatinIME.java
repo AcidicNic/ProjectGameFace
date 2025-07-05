@@ -68,6 +68,7 @@ import org.dslul.openboard.inputmethod.keyboard.KeyboardActionListener;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardId;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardSwitcher;
 import org.dslul.openboard.inputmethod.keyboard.MainKeyboardView;
+import org.dslul.openboard.inputmethod.keyboard.MoreKeysPanel;
 import org.dslul.openboard.inputmethod.keyboard.PointerTracker;
 import org.dslul.openboard.inputmethod.keyboard.internal.GestureTrailsDrawingPreview;
 import org.dslul.openboard.inputmethod.latin.Suggest.OnGetSuggestedWordsCallback;
@@ -100,8 +101,11 @@ import org.dslul.openboard.inputmethod.latin.utils.ViewLayoutUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
@@ -895,55 +899,95 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         }
     }
 
-    public boolean showOrHideKeyPopup(boolean showKeyPreview, int keyCode, boolean withAnimation, boolean isLongPressPopup) {
+    private Map<String, MoreKeysPanel[]> keyCoordsToAltPopups = new HashMap<>(2);
+
+    public void showOrHideKeyPopup(boolean showKeyPreview, int[] coords, boolean withAnimation, boolean isLongPressPopup) {
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView == null) {
             Log.e(TAG, "MainKeyboardView is null. Cannot show or hide key popup.");
-            return false;
-        }
-        Keyboard keyboard = mainKeyboardView.getKeyboard();
-        if (keyboard == null) {
-            Log.e(TAG, "Keyboard is null. Cannot show or hide key popup.");
-            return false;
+            return;
         }
 
-        Key targetKey = null;
-        for (Key key : keyboard.getSortedKeys()) {
-            if (key.getCode() == keyCode) {
-                targetKey = key;
-                break;
-            }
+        View rootView = getWindow().getWindow().getDecorView();
+        if (rootView == null) {
+            Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
+            return;
         }
 
+        // Adjust coordinates to the IME window space
+        int[] location = new int[2];
+        rootView.getLocationOnScreen(location);
+        int[] actualCoords = {coords[0] - location[0], coords[1] - location[1]};
+
+        Key targetKey = mainKeyboardView.getKey(actualCoords[0], actualCoords[1]);
         if (targetKey == null) {
-            Log.d(TAG, "No key found with code: " + keyCode + " for popup action.");
-            return false;
+            Log.w(TAG, "No key found at: (" + actualCoords[0] + ", " + actualCoords[1] + ") for popup action.");
+            return;
         }
+        String l = targetKey.getLabel().toUpperCase();
 
-        if (!showKeyPreview) { // Corresponds to onPressKey logic path (showing a popup)
-            if (isLongPressPopup) {
-                // Attempt to show the long press/more keys popup
-                if (targetKey.getMoreKeys() != null && targetKey.getMoreKeys().length > 0) {
-                    final PointerTracker tracker = PointerTracker.getPointerTracker(0);
-                    mainKeyboardView.showMoreKeysKeyboard(targetKey, tracker);
-                    Log.d(TAG, "Showing long press popup for key code: " + keyCode);
-                    return true;
-                } else {
-                    Log.d(TAG, "Key with code " + keyCode + " has no more keys. Showing regular press preview instead.");
-                    // Fallback to regular key press preview if no more keys are available
-                    mainKeyboardView.onKeyPressed(targetKey, true);
-                    return true;
-                }
-            } else {
-                // Show regular key press preview
-                mainKeyboardView.onKeyPressed(targetKey, true);
-                Log.d(TAG, "Showing regular press popup for key code: " + keyCode);
-                return true;
+        Log.d(TAG, "ActivePointerTrackerCount: " + mainKeyboardView.getActivePointerTrackerCount());
+
+//        if (showKeyPreview && mainKeyboardView.getActivePointerTrackerCount() > 1) {
+//            Log.w(TAG, "Cannot show key preview with multiple active pointer trackers.");
+//            return;
+//        }
+
+        if (isLongPressPopup && showKeyPreview) { // show longpress popup
+            if (targetKey.getMoreKeys() == null) {
+                Log.w(TAG, "No long press popup available for key: " + l);
+                return;
             }
-        } else { // Corresponds to onReleaseKey logic path (hiding the regular popup)
-            mainKeyboardView.onKeyReleased(targetKey, withAnimation);
-            Log.d(TAG, "Hiding regular popup for key code: " + keyCode);
-            return true;
+            mainKeyboardView.dismissKeyPreviewWithoutDelay(targetKey);
+            Log.d(TAG, "Attempting to show long press popup for key: " + l);
+            MoreKeysPanel moreKeysPanel = mainKeyboardView.showMoreKeysKeyboard(targetKey, actualCoords);
+            if (moreKeysPanel == null) {
+                Log.w(TAG, "Failed to show long press popup for key: " + l);
+                return;
+            }
+            Log.d(TAG, "success");
+            MoreKeysPanel[] moreKeysPanels = keyCoordsToAltPopups.get(actualCoords[0] + "," + actualCoords[1]);
+            if (moreKeysPanels == null) {
+                moreKeysPanels = new MoreKeysPanel[1];
+            } else {
+                MoreKeysPanel[] newPanels = Arrays.copyOf(moreKeysPanels, moreKeysPanels.length + 1);
+                moreKeysPanels = newPanels;
+            }
+            moreKeysPanels[moreKeysPanels.length - 1] = moreKeysPanel;
+            keyCoordsToAltPopups.put(l, moreKeysPanels);
+            return;
+        }
+        if (isLongPressPopup && !showKeyPreview) { // hide longpress popup
+            MoreKeysPanel[] moreKeysPanels = keyCoordsToAltPopups.get(actualCoords[0] + "," + actualCoords[1]);
+            if (moreKeysPanels == null || moreKeysPanels.length == 0) {
+                Log.w(TAG, "No open long press popups found for key: " + l);
+                return;
+            }
+            for (MoreKeysPanel panel : moreKeysPanels) {
+                if (panel != null) {
+                    Log.d(TAG, "Dismissing a long press popup for key: " + l);
+                    panel.dismissMoreKeysPanel();
+                    keyCoordsToAltPopups.remove(actualCoords[0] + "," + actualCoords[1]);
+                }
+            }
+            return;
+        }
+        if (targetKey.noKeyPreview()) {
+            Log.w(TAG, "Key popup is disabled for key: " + l);
+            return;
+        }
+        // show key preview
+        if (showKeyPreview) {
+            Log.d(TAG, "Showing popup for key: " + l);
+            mainKeyboardView.showKeyPreview(targetKey);
+            return;
+        }
+        // hide key preview
+        Log.d(TAG, "Hiding popup for key: " + l);
+        if (withAnimation) {
+            mainKeyboardView.dismissKeyPreview(targetKey);
+        } else {
+            mainKeyboardView.dismissKeyPreviewWithoutDelay(targetKey);
         }
     }
 

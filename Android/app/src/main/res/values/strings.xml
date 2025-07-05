@@ -23,7 +23,7 @@
 
 
     <string-array name="event_type_description_keys">
-        <item>CURSOR_TOUCH</item>
+        <item>CURSOR_TAP</item>
         <item>CONTINUOUS_TOUCH</item>
         <item>TOGGLE_TOUCH</item>
         <item>HOME</item>

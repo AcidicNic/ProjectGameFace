@@ -40,9 +40,10 @@ public final class CoordinateUtils {
         return coords[INDEX_Y];
     }
 
-    public static void set(@Nonnull final int[] coords, final int x, final int y) {
+    public static int[] set(@Nonnull final int[] coords, final int x, final int y) {
         coords[INDEX_X] = x;
         coords[INDEX_Y] = y;
+        return coords;
     }
 
     public static void copy(@Nonnull final int[] destination, @Nonnull final int[] source) {

@@ -28,11 +28,8 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.util.Log;
 
-import android.graphics.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 public class CursorController {
@@ -43,7 +40,6 @@ public class CursorController {
     private double cursorPositionY = 0;
     private double teleportShadowX;
     private double teleportShadowY;
-    private boolean isTeleportMode = false;
     public boolean isDragging = false;
     private static final int MAX_BUFFER_SIZE = 100;
     /** Array for storing user face coordinate x coordinate (detected from FaceLandmarks). */
@@ -78,6 +74,7 @@ public class CursorController {
     public boolean isCursorTap = false;
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
+    private KeyboardManager mKeyboardManager;
 
     public boolean isSwiping = false;
     public boolean continuousTouchActive = false;
@@ -195,7 +192,7 @@ public class CursorController {
      * @param blendshapes The blendshapes array from MediaPipe FaceLandmarks model.
      * @return EventType that should be trigger. Will be {@link BlendshapeEventTriggerConfig.EventType#NONE} if no valid event.
      */
-    public BlendshapeEventTriggerConfig.EventType createCursorEvent(float[] blendshapes) {
+    public BlendshapeEventTriggerConfig.EventDetails createCursorEvent(float[] blendshapes) {
         // Loop over registered event-blendshape-threshold pairs.
         for (Map.Entry<BlendshapeEventTriggerConfig.EventType, BlendshapeEventTriggerConfig.BlendshapeAndThreshold> entry :
                 blendshapeEventTriggerConfig.getAllConfig().entrySet()) {
@@ -219,39 +216,20 @@ public class CursorController {
             // new event triggered
             if (!eventTriggered && (score > blendshapeAndThreshold.threshold())) {
                 blendshapeEventTriggeredTracker.put(eventType, true);
-                if (eventType == BlendshapeEventTriggerConfig.EventType.SHOW_APPS) {
-                    Log.i(TAG, eventType + " " + blendshapeAndThreshold.shape() + " " + score + " " + blendshapeAndThreshold.threshold());
-                }
 
-                // Return the correspond event (te be trigger in Accessibility service).
-
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
-                    isTeleportMode = true;
-                    if (tempBoundsSet && !isCursorOutsideBounds) {
-                        teleportShadowX = (double) (tempBoundLeftX + tempBoundRightX) / 2;
-                        teleportShadowY = (double) (tempBoundTopY + tempBoundBottomY) / 2;
-                    } else {
-                        teleportShadowX = (double) this.screenWidth / 2;
-                        teleportShadowY = (double) this.screenHeight / 2;
-                    }
-                }
-
-                return eventType;
+                return new BlendshapeEventTriggerConfig.EventDetails(
+                        eventType, blendshapeAndThreshold.shape(), true);
 
             } else if (eventTriggered && (score <= blendshapeAndThreshold.threshold())) {
                 // Reset the trigger.
                 blendshapeEventTriggeredTracker.put(eventType, false);
 
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH && continuousTouchActive) {
-                    // Return eventType when gesture score for is below threshold for continuous touch
-                    return eventType;
-                } else if (eventType == BlendshapeEventTriggerConfig.EventType.SMART_TOUCH && smartTouchActive) {
-                    // Return eventType when gesture score for is below threshold for smart touch
-                    return eventType;
-                } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH) {
-                    return eventType;
-                } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
-                    isTeleportMode = false;
+                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH ||
+                        eventType == BlendshapeEventTriggerConfig.EventType.SMART_TOUCH ||
+                        eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_TAP
+                ) {
+                    return new BlendshapeEventTriggerConfig.EventDetails(
+                            eventType, blendshapeAndThreshold.shape(), false);
                 }
 
             } else {
@@ -261,7 +239,7 @@ public class CursorController {
         }
 
         // No action.
-        return BlendshapeEventTriggerConfig.EventType.NONE;
+        return new BlendshapeEventTriggerConfig.EventDetails();
     }
 
     /**
@@ -577,8 +555,8 @@ public class CursorController {
         }
     }
 
-    private boolean isEventActive() {
-        return isRealtimeSwipe || isCursorTap;
+    public boolean isEventActive() {
+        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive;
     }
 
     public Rect getTemporaryBounds() {
@@ -653,4 +631,7 @@ public class CursorController {
         return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
     }
 
+    public void setKeyboardManager(KeyboardManager keyboardManager) {
+        mKeyboardManager = keyboardManager;
+    }
 }

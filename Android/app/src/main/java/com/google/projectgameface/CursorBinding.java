@@ -128,7 +128,7 @@ public class CursorBinding extends AppCompatActivity {
     {
         Log.i(TAG, "refreshUI");
         setUpActionList(
-            String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH),
+            String.valueOf(BlendshapeEventTriggerConfig.EventType.CURSOR_TAP),
             textTap,
             tapTxtLinear,
             (ImageView) findViewById(R.id.tapIcon));
@@ -276,7 +276,7 @@ public class CursorBinding extends AppCompatActivity {
                     ChooseGestureActivity.class);
 
                 if (v.getId() == R.id.tapLayout) {
-                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH);
+                    intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CURSOR_TAP);
 
                 } else if (v.getId() == R.id.continuousTouchLayout) {
                     intent.putExtra("eventType", BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH);

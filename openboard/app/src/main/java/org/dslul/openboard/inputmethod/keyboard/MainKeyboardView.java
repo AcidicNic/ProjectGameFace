@@ -34,6 +34,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
 import org.dslul.openboard.inputmethod.accessibility.MainKeyboardAccessibilityDelegate;
 import org.dslul.openboard.inputmethod.annotations.ExternallyReferenced;
@@ -468,7 +470,12 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         }
     }
 
-    private void showKeyPreview(@Nonnull final Key key) {
+
+    public Key getKey(int x, int y) {
+        return mKeyDetector.detectHitKey(x, y);
+    }
+
+    public void showKeyPreview(@Nonnull final Key key) {
         final Keyboard keyboard = getKeyboard();
         if (keyboard == null) {
             return;
@@ -485,7 +492,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 getWidth(), mOriginCoords, mDrawingPreviewPlacerView);
     }
 
-    private void dismissKeyPreviewWithoutDelay(@Nonnull final Key key) {
+    public void dismissKeyPreviewWithoutDelay(@Nonnull final Key key) {
         mKeyPreviewChoreographer.dismissKeyPreview(key);
         invalidateKey(key);
     }
@@ -504,9 +511,13 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         }
     }
 
-    private void dismissKeyPreview(@Nonnull final Key key) {
+    public void dismissKeyPreview(@Nonnull final Key key) {
         if (isHardwareAccelerated()) {
             mKeyPreviewChoreographer.dismissKeyPreview(key);
+        } else {
+            // If the view is not hardware-accelerated, we cannot use the animation.
+            // So we just dismiss the preview without animation.
+            dismissKeyPreviewWithoutDelay(key);
         }
     }
 
@@ -572,6 +583,10 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 isGestureHandlingEnabledByUser && isGestureFloatingPreviewTextEnabled);
     }
 
+    public int getActivePointerTrackerCount() {
+        return PointerTracker.getActivePointerTrackerCount();
+    }
+
     public GestureTrailsDrawingPreview getGestureTrailsDrawingPreview() {
         return mGestureTrailsDrawingPreview;
     }
@@ -592,7 +607,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     @Override
     @Nullable
     public MoreKeysPanel showMoreKeysKeyboard(@Nonnull final Key key,
-            @Nonnull final PointerTracker tracker) {
+                                              @Nonnull final PointerTracker tracker) {
         final MoreKeySpec[] moreKeys = key.getMoreKeys();
         if (moreKeys == null) {
             return null;
@@ -631,6 +646,55 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         // keys keyboard is placed at the touch point of the parent key.
         final int pointX = (mConfigShowMoreKeysKeyboardAtTouchedPoint && !keyPreviewEnabled)
                 ? CoordinateUtils.x(lastCoords)
+                : key.getX() + key.getWidth() / 2;
+        // The more keys keyboard is usually vertically aligned with the top edge of the parent key
+        // (plus vertical gap). If the key preview is enabled, the more keys keyboard is vertically
+        // aligned with the bottom edge of the visible part of the key preview.
+        // {@code mPreviewVisibleOffset} has been set appropriately in
+        // {@link KeyboardView#showKeyPreview(PointerTracker)}.
+        final int pointY = key.getY() + mKeyPreviewDrawParams.getVisibleOffset();
+        moreKeysKeyboardView.showMoreKeysPanel(this, this, pointX, pointY, mKeyboardActionListener);
+        return moreKeysKeyboardView;
+    }
+
+    @Nullable
+    public MoreKeysPanel showMoreKeysKeyboard(@Nonnull final Key key, int[] coords) {
+        final MoreKeySpec[] moreKeys = key.getMoreKeys();
+        if (moreKeys == null) {
+            return null;
+        }
+        Keyboard moreKeysKeyboard = mMoreKeysKeyboardCache.get(key);
+        if (moreKeysKeyboard == null) {
+            // {@link KeyPreviewDrawParams#mPreviewVisibleWidth} should have been set at
+            // {@link KeyPreviewChoreographer#placeKeyPreview(Key,TextView,KeyboardIconsSet,KeyDrawParams,int,int[]},
+            // though there may be some chances that the value is zero. <code>width == 0</code>
+            // will cause zero-division error at
+            // {@link MoreKeysKeyboardParams#setParameters(int,int,int,int,int,int,boolean,int)}.
+            final boolean isSingleMoreKeyWithPreview = mKeyPreviewDrawParams.isPopupEnabled()
+                    && !key.noKeyPreview() && moreKeys.length == 1
+                    && mKeyPreviewDrawParams.getVisibleWidth() > 0;
+            final MoreKeysKeyboard.Builder builder = new MoreKeysKeyboard.Builder(
+                    getContext(), key, getKeyboard(), isSingleMoreKeyWithPreview,
+                    mKeyPreviewDrawParams.getVisibleWidth(),
+                    mKeyPreviewDrawParams.getVisibleHeight(), newLabelPaint(key));
+            moreKeysKeyboard = builder.build();
+            mMoreKeysKeyboardCache.put(key, moreKeysKeyboard);
+        }
+
+        final View container = key.isActionKey() ? mMoreKeysKeyboardForActionContainer
+                : mMoreKeysKeyboardContainer;
+        final MoreKeysKeyboardView moreKeysKeyboardView =
+                container.findViewById(R.id.more_keys_keyboard_view);
+        moreKeysKeyboardView.setKeyboard(moreKeysKeyboard);
+        container.measure(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+        final boolean keyPreviewEnabled = mKeyPreviewDrawParams.isPopupEnabled()
+                && !key.noKeyPreview();
+        // The more keys keyboard is usually horizontally aligned with the center of the parent key.
+        // If showMoreKeysKeyboardAtTouchedPoint is true and the key preview is disabled, the more
+        // keys keyboard is placed at the touch point of the parent key.
+        final int pointX = (mConfigShowMoreKeysKeyboardAtTouchedPoint && !keyPreviewEnabled)
+                ? CoordinateUtils.x(coords)
                 : key.getX() + key.getWidth() / 2;
         // The more keys keyboard is usually vertically aligned with the top edge of the parent key
         // (plus vertical gap). If the key preview is enabled, the more keys keyboard is vertically
@@ -708,7 +772,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         return processMotionEvent(event);
     }
 
-    public boolean processMotionEvent(final MotionEvent event) {
+    public boolean processMotionEvent(@NonNull final MotionEvent event) {
         final int index = event.getActionIndex();
         final int id = event.getPointerId(index);
         final PointerTracker tracker = PointerTracker.getPointerTracker(id);
@@ -889,17 +953,5 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     public void deallocateMemory() {
         super.deallocateMemory();
         mDrawingPreviewPlacerView.deallocateMemory();
-    }
-
-    public void showOrHideKeyPopup(final Key key, final boolean isLongPress) {
-        if (key == null) {
-            return;
-        }
-        if (isLongPress) {
-            final PointerTracker tracker = PointerTracker.getPointerTracker(0);
-            showMoreKeysKeyboard(key, tracker);
-        } else {
-            onDismissMoreKeysPanel();
-        }
     }
 }

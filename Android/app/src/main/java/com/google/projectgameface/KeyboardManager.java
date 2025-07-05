@@ -2,12 +2,10 @@ package com.google.projectgameface;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -60,7 +58,7 @@ public class KeyboardManager {
      * @param event The accessibility event to check.
      */
     public void checkForKeyboardBounds(AccessibilityEvent event) {
-        if (cursorController.isSwiping || cursorController.isCursorTap || cursorController.isRealtimeSwipe) return;
+        if (cursorController.isEventActive()) return;
 
         boolean keyboardFound = false;
         Rect tempBounds = new Rect();
@@ -203,7 +201,7 @@ public class KeyboardManager {
      * @param action The action of the touch event (e.g., MotionEvent.ACTION_DOWN)
      */
     public void sendMotionEventToIME(int x, int y, int action) {
-        Log.d(TAG, "[openboard] Sending MotionEvent to IME");
+        Log.d(TAG, "[openboard] Sending MotionEvent to IME - (" + x + ", " + y + ") action: " + action);
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("x", (float) x);
@@ -222,7 +220,9 @@ public class KeyboardManager {
      * @param isLongPress Whether the key is a long press.
      */
     public void sendKeyEventToIME(int keyCode, boolean isDown, boolean isLongPress) {
-        Log.d(TAG, "[openboard] Sending keyEvent to IME");
+        Log.d(TAG, "[openboard] Sending keyEvent to IME - keyCode: " + keyCode
+                + ", isDown: " + isDown
+                + ", isLongPress: " + isLongPress);
         Intent intent = new Intent("com.headswype.ACTION_SEND_KEY_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("keyCode", keyCode);
@@ -237,7 +237,7 @@ public class KeyboardManager {
      * @param color The color to send. ("green", "red", "orange")
      */
     public void sendGestureTrailColorToIME(String color) {
-        Log.d(TAG, "[openboard] Sending gesture trail color to IME");
+        Log.d(TAG, "[openboard] Sending gesture trail color to IME - " + color);
         Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("color", color);
@@ -250,13 +250,12 @@ public class KeyboardManager {
      * @param delay The long press delay in milliseconds.
      */
     public void sendLongPressDelayToIME(int delay) {
-        Log.d(TAG, "[openboard] Sending long press delay to IME");
+        Log.d(TAG, "[openboard] Sending long press delay to IME - " + delay + "ms");
         Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("delay", delay);
         context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
     }
-
 
     public void getKeyInfoFromIME(float x, float y) {
 //        Log.d(TAG, "[openboard] Sending long press delay to IME");
@@ -267,38 +266,38 @@ public class KeyboardManager {
         context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
     }
 
+    private void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
+        int adjustedX = x - keyboardBounds.left;
+        int adjustedY = y - keyboardBounds.top;
 
-    public void getKeyBoundsFromIME(int keyCode) {
-//        Log.d(TAG, "[openboard] Sending long press delay to IME");
-        Intent intent = new Intent("com.headswype.ACTION_GET_KEY_BOUNDS");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
-        intent.putExtra("keyCode", keyCode);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
-    }
-
-
-    public void showOrHideKeyPopupIME(int keyCode, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
-//        Log.d(TAG, "[openboard] Sending long press delay to IME");
         Intent intent = new Intent("com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
-        intent.putExtra("keyCode", keyCode);
+        intent.putExtra("x", adjustedX);
+        intent.putExtra("y", adjustedY);
         intent.putExtra("showKeyPreview", showKeyPreview);
         intent.putExtra("withAnimation", withAnimation);
         intent.putExtra("isLongPress", isLongPress);
         context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
     }
 
+    public void showKeyPopupIME(int x, int y, boolean withAnimation) {
+        Log.d(TAG, "showKeyPopupIME() - (" + x + ", " + y + ") withAnimation: " + withAnimation);
+        showOrHideKeyPopupIME(x, y, true, withAnimation, false);
+    }
 
-    public void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
-//        Log.d(TAG, "[openboard] Sending long press delay to IME");
-        Intent intent = new Intent("com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
-        intent.putExtra("x", x);
-        intent.putExtra("y", y);
-        intent.putExtra("showKeyPreview", showKeyPreview);
-        intent.putExtra("withAnimation", withAnimation);
-        intent.putExtra("isLongPress", isLongPress);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+    public void showAltKeyPopupIME(int x, int y) {
+        Log.d(TAG, "showAltKeyPopupIME() - (" + x + ", " + y + ")");
+        showOrHideKeyPopupIME(x, y, true, false, true);
+    }
+
+    public void hideKeyPopupIME(int x, int y, boolean withAnimation) {
+        Log.d(TAG, "hideKeyPopupIME() - (" + x + ", " + y + ") withAnimation: " + withAnimation);
+        showOrHideKeyPopupIME(x, y, false, withAnimation, false);
+    }
+
+    public void hideAltKeyPopupIME(int x, int y) {
+        Log.d(TAG, "hideAltKeyPopupIME() - (" + x + ", " + y + ")");
+        showOrHideKeyPopupIME(x, y, false, false, true);
     }
 
     // Getters and setters
@@ -317,4 +316,4 @@ public class KeyboardManager {
     public DebuggingStats getCurrentDebuggingStats() {
         return currentDebuggingStats;
     }
-} 
+}

@@ -51,14 +51,11 @@ public class HeadBoardSettings extends AppCompatActivity {
     private SeekBar holdDurationSeekBar;
     private SeekBar dragToggleDurSeekBar;
     private SeekBar smoothingSeekBar;
-    private TextView smoothingTxt;
     private TextView smoothingProgress;
     private SeekBar headCoordScaleFactorXSeekBar;
     private SeekBar headCoordScaleFactorYSeekBar;
     private TextView holdDurationTxt;
     private TextView dragToggleDurTxt;
-    private TextView headCoordScaleFactorXTxt;
-    private TextView headCoordScaleFactorYTxt;
     private TextView headCoordScaleFactorXProgress;
     private TextView headCoordScaleFactorYProgress;
     private ConstraintLayout holdDurationLayout;
@@ -67,12 +64,11 @@ public class HeadBoardSettings extends AppCompatActivity {
     private Button debuggingStatsBtn;
     private SeekBar quickTapThresholdSeekBar;
     private TextView progressQuickTapThreshold;
-    private TextView decreaseQuickTapThreshold;
-    private TextView increaseQuickTapThreshold;
     private SeekBar longTapThresholdSeekBar;
     private TextView progressLongTapThreshold;
-    private TextView decreaseLongTapThreshold;
-    private TextView increaseLongTapThreshold;
+
+    private SeekBar uiFeedbackDelaySeekBar;
+    private TextView progressUiFeedbackDelay;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,17 +88,15 @@ public class HeadBoardSettings extends AppCompatActivity {
         realtimeSwipeSwitch = findViewById(R.id.realtimeSwipeSwitch);
         realtimeSwipeSwitch.setChecked(
                 cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE));
-        realtimeSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sendValueToService("REALTIME_SWIPE", isChecked);
-        });
+        realtimeSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                sendValueToService("REALTIME_SWIPE", isChecked));
 
         // Debug Swipe
         debugSwipeSwitch = findViewById(R.id.debugSwipeSwitch);
         debugSwipeSwitch.setChecked(
                 cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE));
-        debugSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sendValueToService("DEBUG_SWIPE", isChecked);
-        });
+        debugSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                sendValueToService("DEBUG_SWIPE", isChecked));
 
         // Pop Out Method
         holdDurationLayout = findViewById(R.id.edgeHoldDurationLayout);
@@ -143,10 +137,8 @@ public class HeadBoardSettings extends AppCompatActivity {
         headCoordScaleFactorLayout = findViewById(R.id.headCoordScaleFactorLayout);
         headCoordScaleFactorXSeekBar = findViewById(R.id.headCoordScaleFactorXSeekBar);
         headCoordScaleFactorXProgress = findViewById(R.id.headCoordScaleFactorXProgress);
-        headCoordScaleFactorXTxt = findViewById(R.id.headCoordScaleFactorXTxt);
         headCoordScaleFactorYSeekBar = findViewById(R.id.headCoordScaleFactorYSeekBar);
         headCoordScaleFactorYProgress = findViewById(R.id.headCoordScaleFactorYProgress);
-        headCoordScaleFactorYTxt = findViewById(R.id.headCoordScaleFactorYTxt);
 
         setUpScaleFactorSeekBarAndTextView(
                 headCoordScaleFactorXSeekBar, headCoordScaleFactorXProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X)
@@ -206,11 +198,17 @@ public class HeadBoardSettings extends AppCompatActivity {
             }
         });
 
+        // Ui feedback delay
+        uiFeedbackDelaySeekBar = findViewById(R.id.uiFeedbackDelaySeekBar);
+        progressUiFeedbackDelay = findViewById(R.id.progressUiFeedbackDelay);
+
+        setUpUiFeedbackDelaySeekBarAndTextView(
+                uiFeedbackDelaySeekBar, progressUiFeedbackDelay, String.valueOf(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY)
+        );
+
         // Quick Tap Threshold
         quickTapThresholdSeekBar = findViewById(R.id.quickTapThresholdSeekBar);
         progressQuickTapThreshold = findViewById(R.id.progressQuickTapThreshold);
-        decreaseQuickTapThreshold = findViewById(R.id.decreaseQuickTapThreshold);
-        increaseQuickTapThreshold = findViewById(R.id.increaseQuickTapThreshold);
 
         setUpQuickTapThresholdSeekBarAndTextView(
                 quickTapThresholdSeekBar, progressQuickTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD)
@@ -219,8 +217,6 @@ public class HeadBoardSettings extends AppCompatActivity {
         // Long Tap Threshold
         longTapThresholdSeekBar = findViewById(R.id.longTapThresholdSeekBar);
         progressLongTapThreshold = findViewById(R.id.progressLongTapThreshold);
-        decreaseLongTapThreshold = findViewById(R.id.decreaseLongTapThreshold);
-        increaseLongTapThreshold = findViewById(R.id.increaseLongTapThreshold);
 
         setUpLongTapThresholdSeekBarAndTextView(
                 longTapThresholdSeekBar, progressLongTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD)
@@ -310,7 +306,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         findViewById(R.id.decreaseDragToggleDelay).setOnClickListener(v -> {
             int currentValue = dragToggleDurSeekBar.getProgress();
             int newValue = currentValue - 1;
-            if (newValue >= 0 && dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
+            if (newValue >= dragToggleDurSeekBar.getMin() && dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
                 dragToggleDurSeekBar.setProgress(newValue);
                 int duration = (newValue + 1) * 100;
                 sendValueToService("DRAG_TOGGLE_DURATION", duration);
@@ -320,7 +316,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         findViewById(R.id.increaseDragToggleDelay).setOnClickListener(v -> {
             int currentValue = dragToggleDurSeekBar.getProgress();
             int newValue = currentValue + 1;
-            if (newValue >= 0 && dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
+            if (newValue >= dragToggleDurSeekBar.getMin() && dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
                 dragToggleDurSeekBar.setProgress(newValue);
                 int duration = (newValue + 1) * 100;
                 sendValueToService("DRAG_TOGGLE_DURATION", duration);
@@ -330,7 +326,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         findViewById(R.id.decreaseQuickTapThreshold).setOnClickListener(v -> {
             int currentValue = quickTapThresholdSeekBar.getProgress();
             int newValue = currentValue - 1;
-            if (newValue >= 0 && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
+            if (newValue >= quickTapThresholdSeekBar.getMin() && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
                 quickTapThresholdSeekBar.setProgress(newValue);
                 int value = 200 + (newValue * 100);
                 sendValueToService("QUICK_TAP_THRESHOLD", value);
@@ -340,7 +336,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         findViewById(R.id.increaseQuickTapThreshold).setOnClickListener(v -> {
             int currentValue = quickTapThresholdSeekBar.getProgress();
             int newValue = currentValue + 1;
-            if (newValue >= 0 && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
+            if (newValue >= quickTapThresholdSeekBar.getMin() && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
                 quickTapThresholdSeekBar.setProgress(newValue);
                 int value = 200 + (newValue * 100);
                 sendValueToService("QUICK_TAP_THRESHOLD", value);
@@ -350,7 +346,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         findViewById(R.id.decreaseLongTapThreshold).setOnClickListener(v -> {
             int currentValue = longTapThresholdSeekBar.getProgress();
             int newValue = currentValue - 1;
-            if (newValue >= 0 && longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
+            if (newValue >= longTapThresholdSeekBar.getMin() && longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
                 longTapThresholdSeekBar.setProgress(newValue);
                 int value = 600 + (newValue * 100);
                 sendValueToService("LONG_TAP_THRESHOLD", value);
@@ -360,10 +356,30 @@ public class HeadBoardSettings extends AppCompatActivity {
         findViewById(R.id.increaseLongTapThreshold).setOnClickListener(v -> {
             int currentValue = longTapThresholdSeekBar.getProgress();
             int newValue = currentValue + 1;
-            if (newValue >= 0 && longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
+            if (newValue >= longTapThresholdSeekBar.getMin() && longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
                 longTapThresholdSeekBar.setProgress(newValue);
                 int value = 600 + (newValue * 100);
                 sendValueToService("LONG_TAP_THRESHOLD", value);
+            }
+        });
+
+        findViewById(R.id.decreaseUiFeedbackDelay).setOnClickListener(v -> {
+            int currentValue = uiFeedbackDelaySeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= uiFeedbackDelaySeekBar.getMin() && uiFeedbackDelaySeekBar.getProgress() <= uiFeedbackDelaySeekBar.getMax()) {
+                uiFeedbackDelaySeekBar.setProgress(newValue);
+                int value = newValue + 1; // Convert 0-8 back to 1-9
+                sendValueToService("UI_FEEDBACK_DELAY", value);
+            }
+        });
+
+        findViewById(R.id.increaseUiFeedbackDelay).setOnClickListener(v -> {
+            int currentValue = uiFeedbackDelaySeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= uiFeedbackDelaySeekBar.getMin() && uiFeedbackDelaySeekBar.getProgress() <= uiFeedbackDelaySeekBar.getMax()) {
+                uiFeedbackDelaySeekBar.setProgress(newValue);
+                int value = newValue + 1; // Convert 0-8 back to 1-9
+                sendValueToService("UI_FEEDBACK_DELAY", value);
             }
         });
     }
@@ -490,18 +506,18 @@ public class HeadBoardSettings extends AppCompatActivity {
     }
 
     private void setUpQuickTapThresholdSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
-        seekBar.setMax(18); // 200-2000ms in steps of 100ms
+        seekBar.setMax(7); // 500-4000ms in steps of 500ms
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.QUICK_TAP_THRESHOLD);
-        int progress = (savedProgress - 200) / 100;
+        int progress = (savedProgress - 500) / 500;
         seekBar.setProgress(progress);
         textView.setText(String.valueOf(savedProgress));
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int value = 200 + (progress * 100);
+                int value = 500 + (progress * 500);
                 textView.setText(String.valueOf(value));
             }
 
@@ -510,25 +526,51 @@ public class HeadBoardSettings extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                int value = 200 + (seekBar.getProgress() * 100);
+                int value = 500 + (seekBar.getProgress() * 500);
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
+    private void setUpUiFeedbackDelaySeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(8); // 1-9 in steps of 1
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedValue = preferences.getInt(preferencesId, 1); // Default to 1 if not set
+        seekBar.setProgress(savedValue - 1); // Convert 1-9 to 0-8 for progress
+        textView.setText(String.valueOf(savedValue));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = progress + 1; // Convert 0-8 back to 1-9
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress() + 1; // Convert 0-8 back to 1-9
                 sendValueToService(preferencesId, value);
             }
         });
     }
 
     private void setUpLongTapThresholdSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
-        seekBar.setMax(14); // 600-2000ms in steps of 100ms
+        seekBar.setMax(7); // 500-4000ms in steps of 500ms
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.LONG_TAP_THRESHOLD);
-        int progress = (savedProgress - 600) / 100;
+        int progress = (savedProgress - 500) / 500;
         seekBar.setProgress(progress);
         textView.setText(String.valueOf(savedProgress));
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int value = 600 + (progress * 100);
+                int value = 500 + (progress * 500);
                 textView.setText(String.valueOf(value));
             }
 
@@ -537,7 +579,7 @@ public class HeadBoardSettings extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                int value = 600 + (seekBar.getProgress() * 100);
+                int value = 500 + (seekBar.getProgress() * 500);
                 sendValueToService(preferencesId, value);
             }
         });
@@ -590,6 +632,11 @@ public class HeadBoardSettings extends AppCompatActivity {
             int longTapProgress = (longTapThreshold - 600) / 100;
             longTapThresholdSeekBar.setProgress(longTapProgress);
             progressLongTapThreshold.setText(String.valueOf(longTapThreshold));
+
+            // Update UI feedback delay
+            int uiFeedbackDelay = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY);
+            uiFeedbackDelaySeekBar.setProgress(uiFeedbackDelay - 1); // Convert 1-9 to 0-8 for progress
+            progressUiFeedbackDelay.setText(String.valueOf(uiFeedbackDelay));
         }
     };
 

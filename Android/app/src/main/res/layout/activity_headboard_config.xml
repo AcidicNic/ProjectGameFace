@@ -470,6 +470,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/dragToggleDurLayout"
+            android:visibility="gone"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/debuggingStatsBtn"
             android:layout_marginTop="10dp"
@@ -538,9 +539,78 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/quickTapThresholdLayout"
+            android:id="@+id/uiFeedbackDelayLayout"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/dragToggleDurLayout"
+            android:layout_marginTop="10dp"
+            >
+            <TextView
+                android:id="@+id/progressUiFeedbackDelay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="5"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+            <TextView
+                android:id="@+id/uiFeedbackDelayTxt"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="UI Feedback Delay"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+            <SeekBar
+                android:id="@+id/uiFeedbackDelaySeekBar"
+                style="@style/Widget.AppCompat.SeekBar.Discrete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:max="10"
+                android:maxHeight="3dp"
+                android:min="0"
+                android:progressDrawable="@drawable/custom_seekbar"
+                android:thumbTint="#1a73e8"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="1.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/uiFeedbackDelayTxt" />
+            <TextView
+                android:id="@+id/decreaseUiFeedbackDelay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="#444746"
+                android:text="Decrease"
+                android:paddingTop="4dp"
+                android:paddingBottom="5dp"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:background="@drawable/textview_custom"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/uiFeedbackDelaySeekBar" />
+            <TextView
+                android:id="@+id/increaseUiFeedbackDelay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Increase"
+                android:paddingTop="4dp"
+                android:paddingBottom="5dp"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:background="@drawable/textview_custom"
+                android:textColor="#444746"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/uiFeedbackDelaySeekBar" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/quickTapThresholdLayout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/uiFeedbackDelayLayout"
             android:layout_marginTop="10dp"
             >
             <TextView
@@ -557,7 +627,7 @@
                 android:layout_height="wrap_content"
                 android:text="Quick Tap Threshold (ms)"
                 android:textStyle="bold"
-                android:textColor="@color/green"
+                android:textColor="#FFC107"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
             <SeekBar
@@ -627,7 +697,7 @@
                 android:layout_height="wrap_content"
                 android:text="Long Tap Threshold (ms)"
                 android:textStyle="bold"
-                android:textColor="@color/red"
+                android:textColor="#1a73e8"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
             <SeekBar

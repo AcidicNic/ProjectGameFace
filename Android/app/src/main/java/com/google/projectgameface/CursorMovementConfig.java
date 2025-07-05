@@ -54,6 +54,7 @@ class CursorMovementConfig {
     AVG_SMOOTHING,
     QUICK_TAP_THRESHOLD,
     LONG_TAP_THRESHOLD,
+    UI_FEEDBACK_DELAY,
 
     LATEST_AVG_WPM,
     AVG_WPM,
@@ -112,6 +113,7 @@ class CursorMovementConfig {
     public static final boolean NOSE_TIP = Config.DEFAULT_NOSE_TIP;
     public static final int QUICK_TAP_THRESHOLD = Config.DEFAULT_QUICK_TAP_THRESHOLD;
     public static final int LONG_TAP_THRESHOLD = Config.DEFAULT_LONG_TAP_THRESHOLD;
+    public static final int UI_FEEDBACK_DELAY = Config.DEFAULT_UI_FEEDBACK_DELAY;
 
     public static final float LATEST_AVG_WPM = 0.0f;
     public static final float AVG_WPM = 0.0f;
@@ -387,7 +389,26 @@ class CursorMovementConfig {
         int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.AVG_SMOOTHING);
         setRawValueFromUi(configName, configValueInUi);
         Log.i(TAG, "Set raw int value to: " + configValueInUi);
-
+      } else if (targetConfig == CursorMovementConfigType.EDGE_HOLD_DURATION) {
+        int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.EDGE_HOLD_DURATION);
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.DRAG_TOGGLE_DURATION) {
+        int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.DRAG_TOGGLE_DURATION);
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.QUICK_TAP_THRESHOLD) {
+        int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.QUICK_TAP_THRESHOLD);
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.LONG_TAP_THRESHOLD) {
+        int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.LONG_TAP_THRESHOLD);
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw value to: " + configValueInUi);
+      } else if (targetConfig == CursorMovementConfigType.UI_FEEDBACK_DELAY) {
+        int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.UI_FEEDBACK_DELAY);
+        setRawValueFromUi(configName, configValueInUi);
+        Log.i(TAG, "Set raw value to: " + configValueInUi);
       } else {
         int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);
         if (configValueInUi == PREFERENCE_INT_NOT_FOUND) {

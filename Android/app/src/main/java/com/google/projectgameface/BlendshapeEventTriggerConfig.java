@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.util.Log;
+
 import androidx.annotation.Nullable;
 import com.google.auto.value.AutoValue;
 
@@ -41,13 +42,47 @@ public class BlendshapeEventTriggerConfig {
   /** Persistent storage on device (Data/data/{app}) */
   SharedPreferences sharedPreferences;
 
+  public static class EventDetails {
+    public EventType eventType;
+    public TriggerType triggerType;
+    public Blendshape blendshape;
+    public boolean isStartingEvent;
+
+    public EventDetails(EventType eventType, Blendshape blendshape, boolean isStartingEvent) {
+      this.eventType = eventType;
+      this.blendshape = blendshape;
+      this.isStartingEvent = isStartingEvent;
+      // Get the trigger type from the blendshape.
+      this.triggerType = BLENDSHAPE_TO_TRIGGER_TYPE.get(blendshape);
+    }
+
+    public EventDetails(EventType eventType, boolean isStartingEvent) {
+      this.eventType = eventType;
+      this.isStartingEvent = isStartingEvent;
+      this.triggerType = TriggerType.INTERNAL;
+    }
+
+    public EventDetails() {
+      this.eventType = EventType.NONE;
+      this.blendshape = Blendshape.NONE;
+      this.triggerType = TriggerType.NONE;
+    }
+  }
+
+  public enum TriggerType {
+    NONE,
+    INTERNAL, // Triggered by internal app logic.
+    GESTURE, // Triggered by facial gesture.
+    KEY_EVENT, // Triggered by key event from bluetooth switch, joystick, keyboard, controller, etc.
+  }
+
   /**
    * Events this app can create. such as touch, swipe or some button action. (created event will be
    * dispatch in Accessibility service)
    */
   public enum EventType {
     NONE,
-    CURSOR_TOUCH,
+    CURSOR_TAP,
     CURSOR_PAUSE,
     CURSOR_RESET,
     SWIPE_LEFT,
@@ -73,7 +108,7 @@ public class BlendshapeEventTriggerConfig {
   // EventType string name used in title bar UI.
   public static final HashMap<EventType, String> BEATIFY_EVENT_TYPE_NAME = new HashMap<EventType, String>() {{
     put(EventType.NONE, "None");
-    put(EventType.CURSOR_TOUCH, "Select");
+    put(EventType.CURSOR_TAP, "Tap");
     put(EventType.CURSOR_PAUSE, "Pause / Unpause");
     put(EventType.CURSOR_RESET, "Reset");
     put(EventType.SWIPE_LEFT, "Swipe left");
@@ -111,9 +146,26 @@ public class BlendshapeEventTriggerConfig {
     put(Blendshape.SWIPE_FROM_RIGHT_KBD, "Swipe from right side of keyboard");
   }};
 
+  // String for display in the UI only.
+  public static final HashMap<Blendshape, TriggerType> BLENDSHAPE_TO_TRIGGER_TYPE = new HashMap<Blendshape, TriggerType>() {{
+    put(Blendshape.NONE, null);
+    put(Blendshape.OPEN_MOUTH, TriggerType.GESTURE);
+    put(Blendshape.MOUTH_LEFT, TriggerType.GESTURE);
+    put(Blendshape.MOUTH_RIGHT, TriggerType.GESTURE);
+    put(Blendshape.ROLL_LOWER_MOUTH, TriggerType.GESTURE);
+    put(Blendshape.RAISE_RIGHT_EYEBROW, TriggerType.GESTURE);
+    put(Blendshape.RAISE_LEFT_EYEBROW, TriggerType.GESTURE);
+    put(Blendshape.LOWER_RIGHT_EYEBROW, TriggerType.GESTURE);
+    put(Blendshape.LOWER_LEFT_EYEBROW, TriggerType.GESTURE);
+    put(Blendshape.SWITCH_ONE, TriggerType.KEY_EVENT);
+    put(Blendshape.SWITCH_TWO, TriggerType.KEY_EVENT);
+    put(Blendshape.SWITCH_THREE, TriggerType.KEY_EVENT);
+    put(Blendshape.SWIPE_FROM_RIGHT_KBD, TriggerType.INTERNAL);
+  }};
+
   public static final HashMap<EventType, Boolean> EVENT_TYPE_SHOULD_SHOW_SWIPING_INPUTS = new HashMap<EventType, Boolean>() {{
     put(EventType.NONE, false);
-    put(EventType.CURSOR_TOUCH, false);
+    put(EventType.CURSOR_TAP, false);
     put(EventType.CURSOR_PAUSE, false);
     put(EventType.CURSOR_RESET, false);
     put(EventType.SWIPE_LEFT, false);

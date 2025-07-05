@@ -12,6 +12,11 @@ import android.util.Log;
 import java.util.HashMap;
 import android.view.View;
 
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Collections;
+
+import com.google.projectgameface.utils.Colors;
 import com.google.projectgameface.utils.Config;
 
 public class CursorView extends View {
@@ -23,6 +28,11 @@ public class CursorView extends View {
         public int fillColor;
         public int outlineColor;
 
+        public ColorState(Colors color) {
+            this.fillColor = color.cursorFill();
+            this.outlineColor = color.cursorOutline();
+        }
+
         public ColorState(int fillColor, int outlineColor) {
             this.fillColor = fillColor;
             this.outlineColor = outlineColor;
@@ -33,6 +43,34 @@ public class CursorView extends View {
 
     private float sweepAngle;
     private ValueAnimator animator;
+    private boolean isAnimationHidden = false;
+    private String hiddenColor = null;
+    private long animationStartTime = 0;
+    private int animationDuration = 0;
+    private String targetColorName = null;
+    private String lastColorName = "WHITE"; // Track the last non-hidden color
+    private Queue<AnimationStep> animationQueue = new LinkedList<>();
+    private boolean isAnimating = false;
+
+    public static class AnimationStep {
+        String targetColor;
+        int duration;
+        int startOffset;  // Where in the animation to start (0 to duration-1)
+        long startTime;
+
+        AnimationStep(String targetColor, int duration) {
+            this(targetColor, duration, 0);
+        }
+
+        AnimationStep(String targetColor, int duration, int startOffset) {
+            if (startOffset >= duration) {
+                throw new IllegalArgumentException("startOffset must be less than duration");
+            }
+            this.targetColor = targetColor;
+            this.duration = duration;
+            this.startOffset = startOffset;
+        }
+    }
 
     // Paints for the CURRENT state
     private Paint fillPaint;
@@ -58,12 +96,12 @@ public class CursorView extends View {
 
         // Initialize the color states map in the constructor
         colorStatesMap = new HashMap<>();
-        colorStatesMap.put("WHITE", new ColorState(FILL_WHITE, OUTLINE_WHITE));
-        colorStatesMap.put("GREEN", new ColorState(0xD94CAF50, 0x4CAF50));
-        colorStatesMap.put("RED", new ColorState(0xD9FF5722, 0xFF5722));
-        colorStatesMap.put("ORANGE", new ColorState(0xD9FF9800, 0xFF9800));
-        colorStatesMap.put("BLUE", new ColorState(0xD92196F3, 0x2196F3));
-        colorStatesMap.put("YELLOW", new ColorState(0xD9FFEB3B, 0xFFEB3B));
+        colorStatesMap.put("WHITE", new ColorState(Colors.WHITE));
+        colorStatesMap.put("GREEN", new ColorState(Colors.GREEN));
+        colorStatesMap.put("RED", new ColorState(Colors.RED));
+        colorStatesMap.put("ORANGE", new ColorState(Colors.ORANGE));
+        colorStatesMap.put("BLUE", new ColorState(Colors.BLUE));
+        colorStatesMap.put("YELLOW", new ColorState(Colors.YELLOW));
 
         // Initialize CURRENT Paints
         fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -114,6 +152,7 @@ public class CursorView extends View {
             }
         });
     }
+
     /**
      * Instantly changes the cursor color without animation.
      *
@@ -131,6 +170,7 @@ public class CursorView extends View {
 
         fillPaint.setColor(colorState.fillColor);
         outlinePaint.setColor(colorState.outlineColor);
+        lastColorName = colorName; // Update last color
         invalidate(); // Redraw with the new colors
     }
 
@@ -144,12 +184,151 @@ public class CursorView extends View {
     }
 
     /**
+     * Queues a series of animations to be played back to back.
+     * Each animation will start immediately after the previous one finishes.
+     *
+     * @param animations Array of animation steps, each containing a color and duration
+     */
+    public void queueAnimations(AnimationStep... animations) {
+        if (animations == null || animations.length == 0) return;
+
+        // Add all animations to queue
+        Collections.addAll(animationQueue, animations);
+
+        // If not currently animating, start the first animation
+        if (!isAnimating) {
+            startNextAnimation();
+        }
+    }
+
+    /**
+     * Starts the next animation in the queue if one exists.
+     */
+    private void startNextAnimation() {
+        if (animationQueue.isEmpty()) {
+            isAnimating = false;
+            return;
+        }
+
+        isAnimating = true;
+        AnimationStep step = animationQueue.poll();
+        step.startTime = System.currentTimeMillis();
+        
+        // Store animation info
+        targetColorName = step.targetColor;
+        animationStartTime = step.startTime - step.startOffset;
+        animationDuration = step.duration;
+
+        // If animation is hidden, don't start the animator
+        if (isAnimationHidden) {
+            return;
+        }
+
+        // Start the animation with offset
+        animateToColor(step.targetColor, step.duration, step.startOffset);
+    }
+
+    /**
+     * Temporarily hides all animations and shows a different color.
+     * The animations continue running in the background.
+     *
+     * @param colorName The color to show while animations are hidden
+     */
+    public void hideAnimation(String colorName) {
+        if (isAnimationHidden) return;
+        
+        isAnimationHidden = true;
+        hiddenColor = colorName;
+        
+        // Cancel current animation if running
+        if (animator.isRunning()) {
+            animator.cancel();
+        }
+        
+        // Show the temporary color without updating lastColorName
+        ColorState colorState = colorStatesMap.get(colorName);
+        if (colorState != null) {
+            fillPaint.setColor(colorState.fillColor);
+            outlinePaint.setColor(colorState.outlineColor);
+            invalidate();
+        }
+    }
+
+    /**
+     * Shows animations again after they were hidden.
+     * If there was an animation in progress when hidden, it will continue from where it left off.
+     * Otherwise, returns to the last color state.
+     */
+    public void showAnimation() {
+        if (!isAnimationHidden) return;
+        isAnimationHidden = false;
+        hiddenColor = null;
+        
+        // If we have a target color and animation duration, restart the animation
+        if (targetColorName != null && animationDuration > 0) {
+            long currentTime = System.currentTimeMillis();
+            long elapsedTime = currentTime - animationStartTime;
+            
+            // If animation hasn't completed, continue from where it left off
+            if (elapsedTime < animationDuration) {
+                setColor(lastColorName);
+                animateToColor(targetColorName, animationDuration, (int)elapsedTime);
+            } else {
+                // Animation would have completed, just set the final color
+                setColor(targetColorName);
+            }
+        } else {
+            // No animation in progress, return to last color state
+            setColor(lastColorName);
+        }
+    }
+
+    /**
+     * Cancels all animations and resets the cursor to the last color state.
+     */
+    public void cancelAllAnimations() {
+        // Clear the animation queue
+        animationQueue.clear();
+        isAnimating = false;
+        
+        // Cancel current animation if running
+        if (animator.isRunning()) {
+            animator.cancel();
+        }
+        
+        // Reset animation state
+        isAnimationHidden = false;
+        hiddenColor = null;
+        targetColorName = null;
+        animationStartTime = 0;
+        animationDuration = 0;
+        
+        // Reset to last color state
+        setColor(lastColorName);
+    }
+
+    /**
      * Animates the cursor color change using a sweep effect with specified duration.
      *
      * @param targetColorName The name of the target color state (e.g., "WHITE", "GREEN").
      * @param durationMs The duration of the animation in milliseconds.
      */
     public void animateToColor(String targetColorName, int durationMs) {
+        animateToColor(targetColorName, durationMs, 0);
+    }
+
+    /**
+     * Animates the cursor color change using a sweep effect with specified duration and start offset.
+     *
+     * @param targetColorName The name of the target color state (e.g., "WHITE", "GREEN").
+     * @param durationMs The duration of the animation in milliseconds.
+     * @param startOffsetMs Where in the animation to start (0 to durationMs-1).
+     */
+    public void animateToColor(String targetColorName, int durationMs, int startOffsetMs) {
+        if (startOffsetMs >= durationMs) {
+            throw new IllegalArgumentException("startOffsetMs must be less than durationMs");
+        }
+
         ColorState targetColor = colorStatesMap.get(targetColorName);
         if (targetColor == null) {
             Log.e("CursorView", "Invalid color state: " + targetColorName);
@@ -173,13 +352,33 @@ public class CursorView extends View {
         // Set the animation duration
         animator.setDuration(durationMs);
         
+        // Store animation info
+        this.targetColorName = targetColorName;
+        animationStartTime = System.currentTimeMillis() - startOffsetMs;
+        animationDuration = durationMs;
+        
+        // Add listener to start next animation when this one finishes
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                // Update last color when animation completes successfully
+                lastColorName = targetColorName;
+                // Animation finished naturally, start next one
+                startNextAnimation();
+            }
+        });
+
+        // Calculate the starting value based on offset
+        float startValue = (startOffsetMs * 360f) / durationMs;
+        animator.setCurrentPlayTime(startOffsetMs);
+        
         // Start the animation
         animator.start();
     }
 
     /**
-     * Cancels any ongoing color change animation. The cursor color remains
-     * whatever it was when cancel was called (or before animation started).
+     * Cancels the current animation. The cursor color remains
+     * whatever it was when cancel was called.
      */
     public void cancelAnimation() {
         if (animator != null && animator.isRunning()) {
@@ -210,7 +409,7 @@ public class CursorView extends View {
         float cx = circleBounds.centerX();
         float cy = circleBounds.centerY();
 
-        if (animator.isRunning()) {
+        if (animator.isRunning() && !isAnimationHidden) {
             // Draw during animation
             float startAngleCurrent = -90f + sweepAngle;
             float sweepAngleCurrent = 360f - sweepAngle;
@@ -226,7 +425,7 @@ public class CursorView extends View {
             canvas.drawArc(circleBounds, -90f, sweepAngle, false, targetOutlinePaint);
 
         } else {
-            // Draw when idle
+            // Draw when idle or animation is hidden
             canvas.drawCircle(cx, cy, radius, fillPaint);
             canvas.drawCircle(cx, cy, radius, outlinePaint);
         }

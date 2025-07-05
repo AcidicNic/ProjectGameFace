@@ -18,7 +18,6 @@ package com.google.projectgameface;
 
 
 import android.accessibilityservice.AccessibilityService;
-import android.accessibilityservice.GestureDescription;
 import android.util.Log;
 import android.view.KeyEvent;
 
@@ -40,69 +39,61 @@ public class DispatchEventHelper {
       CursorAccessibilityService parentService,
       CursorController cursorController,
       ServiceUiManager serviceUiManager,
-      BlendshapeEventTriggerConfig.EventType event,
-      KeyEvent keyEvent) {
+      BlendshapeEventTriggerConfig.EventDetails event) {
 
     int[] cursorPosition = cursorController.getCursorPositionXY();
 
     int  eventOffsetX = 0;
     int eventOffsetY = 0;
 
-    switch (event) {
+    switch (event.eventType) {
       case CONTINUOUS_TOUCH:
         Log.d("dispatchEvent", "continuous touch");
-        parentService.continuousTouch(keyEvent);
+        parentService.continuousTouch(event.isStartingEvent);
         break;
 
       case TOGGLE_TOUCH:
         Log.d("dispatchEvent", "toggle touch");
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+        if (event.isStartingEvent) {
           parentService.toggleTouch();
         }
         break;
 
       case SMART_TOUCH:
-      case CURSOR_TOUCH:
+      case CURSOR_TAP:
         Log.d("dispatchEvent", "Cursor touch");
 //        parentService.combinedTap(keyEvent);
-
-//        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
-//          parentService.quickTap(cursorPosition, 200);
-//          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
-//    }
-        parentService.handleTapEvent();
-        serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
+        parentService.handleTapEvent(event.isStartingEvent);
         break;
 
       case CURSOR_LONG_TOUCH:
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+        if (event.isStartingEvent) {
           parentService.dispatchTapGesture(cursorPosition, 650);
-          serviceUiManager.drawTouchDot(cursorController.getCursorPositionXY());
         }
         break;
 
       case BEGIN_TOUCH:
         Log.d("dispatchEvent", "start touch");
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+        if (event.isStartingEvent) {
           parentService.startTouch();
         }
         break;
 
       case END_TOUCH:
         Log.d("dispatchEvent", "end touch");
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+        if (event.isStartingEvent) {
           parentService.stopTouch();
         }
         break;
 
       case CURSOR_PAUSE:
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+        if (event.isStartingEvent) {
           parentService.togglePause();
         }
         break;
 
       case DELETE_PREVIOUS_WORD:
-        if (keyEvent == null || keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
+        if (event.isStartingEvent) {
           parentService.deleteLastWord();
         }
         break;
@@ -115,7 +106,7 @@ public class DispatchEventHelper {
 //        break;
 
       case SWIPE_LEFT:
-        if (cursorController.isRealtimeSwipe) {
+        if (cursorController.isRealtimeSwipe || !event.isStartingEvent) {
           break;
         }
         parentService.dispatchGesture(
@@ -130,7 +121,7 @@ public class DispatchEventHelper {
         break;
 
       case SWIPE_RIGHT:
-        if (cursorController.isRealtimeSwipe) {
+        if (cursorController.isRealtimeSwipe || !event.isStartingEvent) {
           break;
         }
         parentService.dispatchGesture(
@@ -145,7 +136,7 @@ public class DispatchEventHelper {
         break;
 
       case SWIPE_UP:
-        if (cursorController.isRealtimeSwipe) {
+        if (cursorController.isRealtimeSwipe || !event.isStartingEvent) {
           break;
         }
         parentService.dispatchGesture(
@@ -160,7 +151,7 @@ public class DispatchEventHelper {
         break;
 
       case SWIPE_DOWN:
-        if (cursorController.isRealtimeSwipe) {
+        if (cursorController.isRealtimeSwipe || !event.isStartingEvent) {
           break;
         }
         parentService.dispatchGesture(
