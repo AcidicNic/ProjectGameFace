@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.WindowManager;
@@ -209,7 +210,7 @@ public class KeyboardManager {
         intent.putExtra("action", action);
 //        intent.putExtra("downTime", event.getDownTime());
 //        intent.putExtra("eventTime", event.getEventTime());
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sendBroadcastToIME(intent);
     }
 
     /**
@@ -228,7 +229,7 @@ public class KeyboardManager {
         intent.putExtra("keyCode", keyCode);
         intent.putExtra("isDown", isDown);
         intent.putExtra("isLongPress", isLongPress);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sendBroadcastToIME(intent);
     }
 
     /**
@@ -241,7 +242,7 @@ public class KeyboardManager {
         Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("color", color);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sendBroadcastToIME(intent);
     }
 
     /**
@@ -254,7 +255,7 @@ public class KeyboardManager {
         Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("delay", delay);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sendBroadcastToIME(intent);
     }
 
     public void getKeyInfoFromIME(float x, float y) {
@@ -263,7 +264,7 @@ public class KeyboardManager {
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("x", x);
         intent.putExtra("y", y);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sendBroadcastToIME(intent);
     }
 
     private void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
@@ -277,7 +278,15 @@ public class KeyboardManager {
         intent.putExtra("showKeyPreview", showKeyPreview);
         intent.putExtra("withAnimation", withAnimation);
         intent.putExtra("isLongPress", isLongPress);
-        context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sendBroadcastToIME(intent);
+    }
+
+    private void sendBroadcastToIME(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
+            context.sendOrderedBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        } else {
+            context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        }
     }
 
     public void showKeyPopupIME(int x, int y, boolean withAnimation) {
