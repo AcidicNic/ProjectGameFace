@@ -30,8 +30,8 @@ object Config {
     const val DEFAULT_ANIMATION_DURATION = 1000
 
     /* Default HeadBoard Settings */
-    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 2f
-    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 2f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 4f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 4f
     const val DEFAULT_EDGE_HOLD_DURATION = 1000
     const val DEFAULT_DRAG_TOGGLE_DURATION = 300
     const val DEFAULT_PITCH_YAW = true
