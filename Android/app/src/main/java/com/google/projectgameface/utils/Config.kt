@@ -46,7 +46,7 @@ object Config {
     const val DEFAULT_EXPONENTIAL_SMOOTHING = false
     const val MIN_SMOOTHING_FACTOR = 0.01f // 0 freezes the cursor
     const val MAX_SMOOTHING_FACTOR = 0.3f // 0.25 is a reasonable upper limit for responsiveness
-,
+
     /* Cursor Settings */
     const val DEFAULT_UI_FEEDBACK_DELAY = 3 // (D1A)
     const val DEFAULT_QUICK_TAP_THRESHOLD = 2000 // ms - blue sweep time (long tap timeout period)
