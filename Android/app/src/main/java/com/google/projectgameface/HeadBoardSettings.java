@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager.LayoutParams;
@@ -69,6 +70,7 @@ public class HeadBoardSettings extends AppCompatActivity {
 
     private SeekBar uiFeedbackDelaySeekBar;
     private TextView progressUiFeedbackDelay;
+    private Switch exponentialSmoothingSwitch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -173,6 +175,13 @@ public class HeadBoardSettings extends AppCompatActivity {
         setUpSmoothingSeekBarAndTextView(
                 smoothingSeekBar, smoothingProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING)
         );
+
+        // Exponential Smoothing
+        exponentialSmoothingSwitch = findViewById(R.id.exponentialSmoothingSwitch);
+        exponentialSmoothingSwitch.setChecked(
+                cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING));
+        exponentialSmoothingSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                sendValueToService("EXPONENTIAL_SMOOTHING", isChecked));
 
         // Switch Keyboard
         switchKeyboardBtn = findViewById(R.id.switchKeyboardBtn);

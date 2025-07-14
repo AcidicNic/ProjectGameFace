@@ -30,9 +30,8 @@ object Config {
     const val DEFAULT_ANIMATION_DURATION = 1000
 
     /* Default HeadBoard Settings */
-    const val DEFAULT_SMOOTHING = 5
-    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 1.5f
-    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 1.5f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 2f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 2f
     const val DEFAULT_EDGE_HOLD_DURATION = 1000
     const val DEFAULT_DRAG_TOGGLE_DURATION = 300
     const val DEFAULT_PITCH_YAW = true
@@ -42,7 +41,13 @@ object Config {
     const val DEFAULT_DURATION_POP_OUT = true
     const val DEFAULT_DIRECT_MAPPING = true
 
+    /* Cursor Smoothing */
+    const val DEFAULT_RAW_SMOOTHING = 7
+    const val DEFAULT_EXPONENTIAL_SMOOTHING = false
+    const val MIN_SMOOTHING_FACTOR = 0.0001f // 0 freezes the cursor
+    const val MAX_SMOOTHING_FACTOR = 1.00f // 0.25 is a reasonable upper limit for responsiveness
 
+    /* Cursor Settings */
     const val DEFAULT_UI_FEEDBACK_DELAY = 3 // (D1A)
     const val DEFAULT_QUICK_TAP_THRESHOLD = 2000 // ms - blue sweep time (long tap timeout period)
     const val DEFAULT_LONG_TAP_THRESHOLD = 2500 // ms - yellow sweep time

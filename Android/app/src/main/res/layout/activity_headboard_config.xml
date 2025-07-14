@@ -376,13 +376,22 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
 
         <Switch
+            android:id="@+id/exponentialSmoothingSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Exponential Smoothing Slider"
+            android:layout_marginTop="10dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/smoothingLayout" />
+
+        <Switch
             android:id="@+id/debugSwipeSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Debug Swipe Info"
             android:layout_marginTop="10dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/smoothingLayout" />
+            app:layout_constraintTop_toBottomOf="@+id/exponentialSmoothingSwitch" />
 
         <Button
             android:id="@+id/switchKeyboardBtn"

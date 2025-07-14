@@ -147,6 +147,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
         final SharedPreferences prefs = getSharedPreferences(mIme);
         prefs.edit().putInt(Settings.PREF_KEY_LONGPRESS_TIMEOUT, delay).apply();
+        Log.d(TAG, "Long press delay to: " + delay + " ms");
     }
 
     /**

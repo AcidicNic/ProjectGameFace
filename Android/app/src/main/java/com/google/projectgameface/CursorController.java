@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.projectgameface.utils.Config;
+
 public class CursorController {
     private static final String TAG = "CursorController";
     private float velX = 0.f;
@@ -339,9 +341,6 @@ public class CursorController {
      * @param screenSize Screen size.
      *                   screenSize[0] = width.
      *                   screenSize[1] = height.
-//     * @param gapFrames How many frames we use to wait for the FaceLandmarks model.
-//     * @param screenWidth Screen size for prevent cursor move out of of the screen.
-//     * @param screenHeight Screen size for prevent cursor move out of of the screen.
      */
     public void updateInternalCursorPosition(float[] headTiltXY, float[] noseTipXY, float[] pitchYawXY, int[] inputSize, int[] screenSize) {
         this.screenWidth = screenSize[0];
@@ -397,7 +396,7 @@ public class CursorController {
         float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
 
         // Smoothing
-        float smoothingFactor = getSmoothFactor(0.01f, 0.3f);
+        float smoothingFactor = getSmoothFactor(Config.MIN_SMOOTHING_FACTOR, Config.MAX_SMOOTHING_FACTOR); // min=0.01f, max=0.3f
         if (smoothedCursorPositionX != smoothedCursorPositionX || smoothedCursorPositionY != smoothedCursorPositionY) {
             smoothedCursorPositionX = centeredX;
             smoothedCursorPositionY = centeredY;
@@ -424,6 +423,15 @@ public class CursorController {
 //        }
     }
 
+    /**
+     * Normalize the nose tip coordinates to a range of 0 to 1 based on the input size.
+     * This is used to ensure that the nose tip coordinates are within a consistent range for cursor
+     * movement calculations.
+     *
+     * @param coordsXY The x and y coordinates of the nose tip.
+     * @param inputSize The size of the input image (width and height).
+     * @return Normalized coordinates as an array of floats.z
+     */
     private float[] normalizeOffsetNose(float[] coordsXY, int[] inputSize) {
         float AREA = 0.25f;
         float minX = (inputSize[0] / 2) - AREA * inputSize[0];
@@ -485,7 +493,7 @@ public class CursorController {
     /**
      * Calculate smoothing factor using FaceSwype smoothing config var.
      * @param minSmoothingFactor Minimum smoothing factor (Typically 0.01f)
-     * @param maxSmoothingFactor Maximum smoothing factor (Typically 0.5f)
+     * @param maxSmoothingFactor Maximum smoothing factor (Typically 0.3f)
      * @return Smoothing factor (Between minSmoothingFactor and maxSmoothingFactor)
      */
     public float getSmoothFactor(float minSmoothingFactor, float maxSmoothingFactor) {
@@ -495,22 +503,26 @@ public class CursorController {
         // Ensure the intValue is within the expected range [0, 9]
         smoothInt = clamp(smoothInt, 0, 9);
 
-        // Calculate the smoothing factor using linear interpolation
-        float smoothingFactor = minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
+        boolean useExponential = cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING);
 
-//        Log.d(TAG, "Smoothing factor: " + smoothingFactor + " (int: " + getSmoothing() + ")");
-        return smoothingFactor;
+        if (useExponential) {
+            // Use exponential mapping for a more balanced feel
+            // The base of 1.6 was chosen to provide a good distribution of values
+            float normalizedValue = (float) (Math.pow(1.6, smoothInt) - 1) / (float) (Math.pow(1.6, 9) - 1);
+            return minSmoothingFactor + (maxSmoothingFactor - minSmoothingFactor) * normalizedValue;
+        } else {
+            // Use linear mapping
+            return minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
+        }
     }
 
     private void handleBoundingLogic() {
         long currentTime = System.currentTimeMillis();
         boolean touchingTopEdge = cursorPositionY <= tempBoundTopY;
 
-        // ! TODO: Add logic for bottom edge, kbd bounds should not include navbar
-
         if (!isCursorOutsideBounds) {
             // Cursor is inside the bounds
-            if (touchingTopEdge && (cursorPositionY > 0 && cursorPositionY < screenHeight) && !isEventActive()) {
+            if (touchingTopEdge && (cursorPositionY > 0 && cursorPositionY < screenHeight)) {
                 if (edgeHoldStartTime == 0) {
                     edgeHoldStartTime = currentTime;
                 }
@@ -532,7 +544,7 @@ public class CursorController {
             }
         } else {
             // Cursor is outside the bounds
-            if (cursorPositionY >= tempBoundTopY || cursorPositionY <= tempBoundBottomY && !isEventActive()) {
+            if (cursorPositionY >= tempBoundTopY || cursorPositionY <= tempBoundBottomY) {
                 if (edgeHoldStartTime == 0) {
                     edgeHoldStartTime = currentTime;
                 }
@@ -635,3 +647,4 @@ public class CursorController {
         mKeyboardManager = keyboardManager;
     }
 }
+

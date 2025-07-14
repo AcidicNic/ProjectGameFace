@@ -70,6 +70,7 @@ class CursorMovementConfig {
     NOSE_TIP,
     PITCH_YAW,
     DEBUG_SWIPE,
+    EXPONENTIAL_SMOOTHING,
   }
 
   private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
@@ -104,11 +105,12 @@ class CursorMovementConfig {
     public static final boolean DEBUG_SWIPE = Config.DEFAULT_DEBUG_SWIPE;
     public static final boolean DURATION_POP_OUT = Config.DEFAULT_DURATION_POP_OUT;
     public static final boolean DIRECT_MAPPING = Config.DEFAULT_DIRECT_MAPPING;
+    public static final boolean EXPONENTIAL_SMOOTHING = Config.DEFAULT_EXPONENTIAL_SMOOTHING;
     public static final int EDGE_HOLD_DURATION = Config.DEFAULT_EDGE_HOLD_DURATION;
     public static final int DRAG_TOGGLE_DURATION = Config.DEFAULT_DRAG_TOGGLE_DURATION;
     public static final float HEAD_COORD_SCALE_FACTOR_X = Config.DEFAULT_HEAD_COORD_SCALE_FACTOR_X;
     public static final float HEAD_COORD_SCALE_FACTOR_Y = Config.DEFAULT_HEAD_COORD_SCALE_FACTOR_Y;
-    public static final int AVG_SMOOTHING = Config.DEFAULT_SMOOTHING;
+    public static final int AVG_SMOOTHING = Config.DEFAULT_RAW_SMOOTHING;
     public static final boolean PITCH_YAW = Config.DEFAULT_PITCH_YAW;
     public static final boolean NOSE_TIP = Config.DEFAULT_NOSE_TIP;
     public static final int QUICK_TAP_THRESHOLD = Config.DEFAULT_QUICK_TAP_THRESHOLD;
@@ -197,6 +199,7 @@ class CursorMovementConfig {
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.PITCH_YAW, InitialRawValue.PITCH_YAW);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.NOSE_TIP);
     rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEBUG_SWIPE);
+    rawBooleanValueMap.put(CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING, InitialRawValue.EXPONENTIAL_SMOOTHING);
 
     // Register the receiver
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -463,6 +466,9 @@ class CursorMovementConfig {
         break;
       case DEBUG_SWIPE:
         defaultValue = InitialRawValue.DEBUG_SWIPE;
+        break;
+      case EXPONENTIAL_SMOOTHING:
+        defaultValue = InitialRawValue.EXPONENTIAL_SMOOTHING;
         break;
       default:
         defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;
