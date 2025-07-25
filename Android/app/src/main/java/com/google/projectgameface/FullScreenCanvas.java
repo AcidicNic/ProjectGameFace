@@ -26,9 +26,9 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
-import java.util.List;
-
-/** The drag cursor of cursor service. */
+/**
+ * The drag cursor of cursor service.
+ */
 public class FullScreenCanvas extends View {
 
     private int holdRadius = 75;
@@ -55,6 +55,7 @@ public class FullScreenCanvas extends View {
     private Rect previewRegion = null;
 
     public FullScreenCanvas(Context context, AttributeSet attributeSet) {
+
         super(context, attributeSet);
 
         touchCirclePaint = new Paint();
@@ -79,11 +80,12 @@ public class FullScreenCanvas extends View {
     }
 
     public void initialize(CursorController cursorController) {
+
         this.cursorController = cursorController;
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
+    @Override protected void onDraw(Canvas canvas) {
+
         super.onDraw(canvas);
 
         if (previewBitmap != null && previewRegion != null) {
@@ -111,6 +113,7 @@ public class FullScreenCanvas extends View {
     }
 
     public void drawTouchCircle(float x, float y) {
+
         drawX = x;
         drawY = y;
         invalidate();
@@ -118,18 +121,21 @@ public class FullScreenCanvas extends View {
     }
 
     public void setDragLineStart(float x, float y) {
+
         dragStartX = x;
         dragStartY = y;
         isShowingDrag = true;
     }
 
     public void updateDragLine(float x, float y) {
+
         dragEndX = x;
         dragEndY = y;
         invalidate();
     }
 
     public void clearDragLine() {
+
         isShowingDrag = false;
         invalidate();
     }
@@ -152,14 +158,17 @@ public class FullScreenCanvas extends View {
      * @param holdRadius
      */
     public void setHoldRadius(float holdRadius) {
+
         this.holdRadius = (int) holdRadius;
     }
 
     public void setRect(Rect rect) {
+
         rectCoords = rect;
     }
 
     public void setPreviewBitmap(Bitmap bitmap, Rect region) {
+
         Log.d("FullScreenCanvas", "Setting preview bitmap");
         previewBitmap = bitmap;
         previewRegion = region;
@@ -167,6 +176,7 @@ public class FullScreenCanvas extends View {
     }
 
     public void clearPreviewBitmap() {
+
         Log.d("FullScreenCanvas", "Clearing preview bitmap");
         previewBitmap = null;
         previewRegion = null;

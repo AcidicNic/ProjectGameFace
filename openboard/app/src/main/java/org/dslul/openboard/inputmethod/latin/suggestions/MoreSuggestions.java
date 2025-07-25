@@ -237,12 +237,14 @@ public final class MoreSuggestions extends Keyboard {
     static final class MoreSuggestionKey extends Key {
         public final int mSuggestedWordIndex;
 
-        public MoreSuggestionKey(final String word, final String info, final int index,
-                final MoreSuggestionsParam params) {
+        public MoreSuggestionKey(final String word, final String info,
+                                 final int index, final MoreSuggestionsParam params
+        ) {
             super(word /* label */, KeyboardIconsSet.ICON_UNDEFINED, Constants.CODE_OUTPUT_TEXT,
                     word /* outputText */, info, 0 /* labelFlags */, Key.BACKGROUND_TYPE_NORMAL,
                     params.getX(index), params.getY(index), params.getWidth(index),
                     params.mDefaultRowHeight, params.mHorizontalGap, params.mVerticalGap);
+
             mSuggestedWordIndex = index;
         }
     }

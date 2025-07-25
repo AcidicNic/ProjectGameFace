@@ -23,6 +23,7 @@ import java.util.List;
  * and event injection.
  */
 public class KeyboardManager {
+
     private static final String TAG = "KeyboardManager";
     private final Context context;
     private final CursorController cursorController;
@@ -34,13 +35,15 @@ public class KeyboardManager {
     private Point screenSize;
 
     private Rect keyboardBounds = new Rect();
-    private Rect _keyboardBounds = new Rect();
     private Rect navBarBounds = new Rect();
     private boolean isKeyboardOpen = false;
     private String currentKeyboard = "Unknown";
 
-    public KeyboardManager(Context context, CursorController cursorController, 
-                         ServiceUiManager serviceUiManager) {
+    public KeyboardManager(
+        Context context,
+        CursorController cursorController,
+        ServiceUiManager serviceUiManager) {
+
         this.context = context;
         this.cursorController = cursorController;
         this.serviceUiManager = serviceUiManager;
@@ -55,43 +58,120 @@ public class KeyboardManager {
     /**
      * Check for keyboard bounds and update the cursor controller's temporary bounds if necessary.
      * This method is called when an accessibility event occurs.
-     *
      * @param event The accessibility event to check.
      */
     public void checkForKeyboardBounds(AccessibilityEvent event) {
+
         if (cursorController.isEventActive()) return;
 
         boolean keyboardFound = false;
+        boolean navBarFound = false;
         Rect tempBounds = new Rect();
 
         List<AccessibilityWindowInfo> windows = ((CursorAccessibilityService) context).getWindows();
-        for (AccessibilityWindowInfo window : windows) {
+        for (AccessibilityWindowInfo window: windows) {
             window.getBoundsInScreen(tempBounds);
             if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-                keyboardFound = true;
-                window.getBoundsInScreen(_keyboardBounds);
-                window.getBoundsInScreen(keyboardBounds);
-                if (keyboardBounds.equals(cursorController.getTemporaryBounds())) {
-                    return;
+//                AccessibilityNodeInfo root = window.getRoot();
+//                if (root != null) {
+////                    Log.d(TAG, "[checkForKeyboardBounds()] IME: " + window);
+//                    // Find main keyboard view by searching through IME nodes
+//                    AccessibilityNodeInfo keyboardView = findChildNodeWithViewId(
+//                        root,
+//                        Config.OPENBOARD_KDB_VIEW_ID);
+//
+////                    LogKeyboardViews(root); // Log all keyboard views for debugging
+//                    if (keyboardView != null) {
+//                        keyboardFound = true;
+////                        Log.d(TAG, "[checkForKeyboardBounds()] KBD VIEW: " + keyboardView);
+//                        keyboardView.getBoundsInScreen(keyboardBounds);
+//                        keyboardView.recycle();
+//                        break;
+//                    }
+//                }
+
+                if (tempBounds.top > screenSize.y / 2) {
+                    keyboardFound = true;
+                    window.getBoundsInScreen(keyboardBounds);
                 }
-                Log.d(TAG, "keyboard Found @ : " + window);
-            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM
-                    && window.getTitle() != null && window.getTitle().equals("Navigation bar")) {
+
+//                root.recycle();
+            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null &&
+                       window.getTitle().equals("Navigation bar")) {
+                navBarFound = true;
                 window.getBoundsInScreen(navBarBounds);
             }
         }
 
-        if (keyboardFound == isKeyboardOpen && keyboardBounds.equals(cursorController.getTemporaryBounds())) {
+        if (isKeyboardOpen == keyboardFound && keyboardBounds.equals(cursorController.getKeyboardBounds())) {
             return;
         }
         isKeyboardOpen = keyboardFound;
 
-        if (isKeyboardOpen) {
-            cursorController.setTemporaryBounds(keyboardBounds);
-            checkForKeyboardType();
-        } else {
-            cursorController.clearTemporaryBounds();
+        if (navBarFound) {
+            Log.d(TAG, "[checkForKeyboardBounds()] set nav bar: " + navBarBounds);
+            cursorController.setNavBarBounds(navBarBounds);
+        } else if (cursorController.getNavBarBounds().isEmpty()) {
+            // clear the nav bar bounds if it was not found
+//            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
+            cursorController.clearNavBarBounds();
         }
+
+        if (isKeyboardOpen) {
+            Log.d(TAG, "[checkForKeyboardBounds()] set kbd: " + keyboardBounds);
+            cursorController.setKeyboardBounds(keyboardBounds);
+            checkForKeyboardType();
+        } else if (!cursorController.getNavBarBounds().isEmpty()) {
+            // clear the kbd bounds
+//            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
+            cursorController.clearKeyboardBounds();
+        }
+    }
+
+    private AccessibilityNodeInfo findChildNodeWithViewId(AccessibilityNodeInfo root, String targetViewId) {
+
+        if (root == null) return null;
+
+        // Check if this is the keyboard view by resource ID
+        String viewId = root.getViewIdResourceName();
+        if (viewId != null && viewId.equals(targetViewId)) {
+            return root;
+        }
+
+        // Recursively search children
+        for (int i = 0; i < root.getChildCount(); i++) {
+            AccessibilityNodeInfo child = root.getChild(i);
+            if (child != null) {
+                AccessibilityNodeInfo result = findChildNodeWithViewId(child, targetViewId);
+                if (result != null) {
+                    child.recycle();
+                    return result;
+                }
+                child.recycle();
+            }
+        }
+
+        return null;
+    }
+
+    private AccessibilityNodeInfo LogKeyboardViews(AccessibilityNodeInfo root) {
+
+        if (root == null) return null;
+
+        String viewId = root.getViewIdResourceName();
+        if (root.getChildCount() > 0) {
+            Log.d("LogKeyboardViews", "* Node with " + root.getChildCount() + " children: " + root);
+        } else {
+            Log.d("LogKeyboardViews", "** Childless Node: " + root + " with no children");
+        }
+
+        // Recursively search children
+        for (int i = 0; i < root.getChildCount(); i++) {
+            AccessibilityNodeInfo child = root.getChild(i);
+            AccessibilityNodeInfo result = LogKeyboardViews(child);
+        }
+
+        return null;  // Always return null for this debugging version
     }
 
     /**
@@ -99,10 +179,10 @@ public class KeyboardManager {
      * This method is called when an accessibility event occurs.
      */
     public String checkForKeyboardType() {
+
         String currentKeyboardStr = Settings.Secure.getString(
-                context.getContentResolver(),
-                Settings.Secure.DEFAULT_INPUT_METHOD
-        );
+            context.getContentResolver(),
+            Settings.Secure.DEFAULT_INPUT_METHOD);
         if (currentKeyboardStr.toLowerCase().contains("openboard")) {
             currentKeyboard = "OpenBoard";
             currentDebuggingStats = openboardDebuggingStats;
@@ -117,13 +197,13 @@ public class KeyboardManager {
 
     /**
      * Check if events can be injected into the window at (x, y)
-     *
      * @param x The x coordinate of the touch event
      * @param y The y coordinate of the touch event
      * @return true if the event can be injected, false otherwise
      */
     public boolean canInjectEvent(float x, float y) {
-        for (AccessibilityWindowInfo window : ((CursorAccessibilityService) context).getWindows()) {
+
+        for (AccessibilityWindowInfo window: ((CursorAccessibilityService) context).getWindows()) {
             Rect bounds = new Rect();
             window.getBoundsInScreen(bounds);
 
@@ -153,11 +233,11 @@ public class KeyboardManager {
 
     /**
      * Check if the given window is injectable.
-     *
      * @param window The AccessibilityWindowInfo to check.
      * @return true if the window is injectable, false otherwise.
      */
     private boolean isInjectableWindow(AccessibilityWindowInfo window) {
+
         if (window == null) {
             return false;
         }
@@ -177,16 +257,14 @@ public class KeyboardManager {
 
     /**
      * Check if the package name belongs to the app.
-     *
      * @param packageName The package name to check.
      * @return true if the package name belongs to the app, false otherwise.
      */
     private boolean isMyAppPackage(String packageName) {
-        String[] myApps = {
-                "org.dslul.openboard.inputmethod.latin"
-        };
 
-        for (String myApp : myApps) {
+        String[] myApps = {"org.dslul.openboard.inputmethod.latin"};
+
+        for (String myApp: myApps) {
             if (packageName.equals(myApp)) {
                 return true;
             }
@@ -196,13 +274,12 @@ public class KeyboardManager {
 
     /**
      * Inject a motion event into OpenBoard.
-     *
-     * @param x The x coordinate of the touch event
-     * @param y The y coordinate of the touch event
+     * @param x      The x coordinate of the touch event
+     * @param y      The y coordinate of the touch event
      * @param action The action of the touch event (e.g., MotionEvent.ACTION_DOWN)
      */
     public void sendMotionEventToIME(int x, int y, int action) {
-        Log.d(TAG, "[openboard] Sending MotionEvent to IME - (" + x + ", " + y + ") action: " + action);
+//        Log.d(TAG, "[openboard] Sending MotionEvent to IME - (" + x + ", " + y + ") action: " + action);
         Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("x", (float) x);
@@ -215,15 +292,16 @@ public class KeyboardManager {
 
     /**
      * Send key event to OpenBoard IME to simulate virtual keyboard key presses
-     *
-     * @param keyCode The key code to send.
-     * @param isDown Whether the key is pressed down or released.
+     * @param keyCode     The key code to send.
+     * @param isDown      Whether the key is pressed down or released.
      * @param isLongPress Whether the key is a long press.
      */
     public void sendKeyEventToIME(int keyCode, boolean isDown, boolean isLongPress) {
-        Log.d(TAG, "[openboard] Sending keyEvent to IME - keyCode: " + keyCode
-                + ", isDown: " + isDown
-                + ", isLongPress: " + isLongPress);
+
+        Log.d(
+            TAG,
+            "[openboard] Sending keyEvent to IME - keyCode: " + keyCode + ", isDown: " + isDown +
+            ", isLongPress: " + isLongPress);
         Intent intent = new Intent("com.headswype.ACTION_SEND_KEY_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("keyCode", keyCode);
@@ -234,10 +312,10 @@ public class KeyboardManager {
 
     /**
      * Send gesture trail color to OpenBoard IME.
-     *
      * @param color The color to send. ("green", "red", "orange")
      */
     public void sendGestureTrailColorToIME(String color) {
+
         Log.d(TAG, "[openboard] Sending gesture trail color to IME - " + color);
         Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
@@ -247,10 +325,10 @@ public class KeyboardManager {
 
     /**
      * Send long press delay to OpenBoard IME.
-     *
      * @param delay The long press delay in milliseconds.
      */
     public void sendLongPressDelayToIME(int delay) {
+
         Log.d(TAG, "[openboard] Sending long press delay to IME - " + delay + "ms");
         Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
@@ -267,7 +345,13 @@ public class KeyboardManager {
         sendBroadcastToIME(intent);
     }
 
-    private void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
+    private void showOrHideKeyPopupIME(
+        int x,
+        int y,
+        boolean showKeyPreview,
+        boolean withAnimation,
+        boolean isLongPress) {
+
         int adjustedX = x - keyboardBounds.left;
         int adjustedY = y - keyboardBounds.top;
 
@@ -282,6 +366,7 @@ public class KeyboardManager {
     }
 
     private void sendBroadcastToIME(Intent intent) {
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
             context.sendOrderedBroadcast(intent, "com.headswype.permission.SEND_EVENT");
         } else {
@@ -290,39 +375,47 @@ public class KeyboardManager {
     }
 
     public void showKeyPopupIME(int x, int y, boolean withAnimation) {
+
         Log.d(TAG, "showKeyPopupIME() - (" + x + ", " + y + ") withAnimation: " + withAnimation);
         showOrHideKeyPopupIME(x, y, true, withAnimation, false);
     }
 
     public void showAltKeyPopupIME(int x, int y) {
+
         Log.d(TAG, "showAltKeyPopupIME() - (" + x + ", " + y + ")");
         showOrHideKeyPopupIME(x, y, true, false, true);
     }
 
     public void hideKeyPopupIME(int x, int y, boolean withAnimation) {
+
         Log.d(TAG, "hideKeyPopupIME() - (" + x + ", " + y + ") withAnimation: " + withAnimation);
         showOrHideKeyPopupIME(x, y, false, withAnimation, false);
     }
 
     public void hideAltKeyPopupIME(int x, int y) {
+
         Log.d(TAG, "hideAltKeyPopupIME() - (" + x + ", " + y + ")");
         showOrHideKeyPopupIME(x, y, false, false, true);
     }
 
     // Getters and setters
     public Rect getKeyboardBounds() {
+
         return keyboardBounds;
     }
 
     public boolean isKeyboardOpen() {
+
         return isKeyboardOpen;
     }
 
     public String getCurrentKeyboard() {
+
         return currentKeyboard;
     }
 
     public DebuggingStats getCurrentDebuggingStats() {
+
         return currentDebuggingStats;
     }
 }

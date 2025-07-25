@@ -3,7 +3,6 @@ package com.google.projectgameface.utils
 import android.view.KeyEvent
 
 object Config {
-    const val FILES_DIR: String = "/data/data/com.google.projectgameface/files"
     const val STATS_DIR: String = "stats/"
     const val LOGS_DIR: String = "logs/"
     const val ARCHIVED_DIR: String = ".archived/"
@@ -25,13 +24,13 @@ object Config {
         KeyEvent.KEYCODE_4
     )
 
-    // TODO: Move all constants here (default settings values and any other hard coded values)
+    const val OPENBOARD_KDB_VIEW_ID = "org.dslul.openboard.inputmethod.latin:id/keyboard_view"
 
     const val DEFAULT_ANIMATION_DURATION = 1000
 
     /* Default HeadBoard Settings */
-    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 4f
-    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 4f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_X = 3f
+    const val DEFAULT_HEAD_COORD_SCALE_FACTOR_Y = 3f
     const val DEFAULT_EDGE_HOLD_DURATION = 1000
     const val DEFAULT_DRAG_TOGGLE_DURATION = 300
     const val DEFAULT_PITCH_YAW = true
@@ -45,7 +44,7 @@ object Config {
     const val DEFAULT_RAW_SMOOTHING = 7
     const val DEFAULT_EXPONENTIAL_SMOOTHING = false
     const val MIN_SMOOTHING_FACTOR = 0.01f // 0 freezes the cursor
-    const val MAX_SMOOTHING_FACTOR = 0.3f // 0.25 is a reasonable upper limit for responsiveness
+    const val MAX_SMOOTHING_FACTOR = 0.4f // 0.25 is a reasonable upper limit for responsiveness
 
     /* Cursor Settings */
     const val DEFAULT_UI_FEEDBACK_DELAY = 3 // (D1A)
