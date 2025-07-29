@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 package com.google.projectgameface;
+
 import static androidx.core.math.MathUtils.clamp;
 
 import android.animation.ValueAnimator;
@@ -35,6 +36,7 @@ import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.ImageButton;
+
 import androidx.camera.view.PreviewView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
@@ -45,100 +47,112 @@ import androidx.core.content.ContextCompat;
  * circle.
  */
 public class ServiceUiManager {
+    private static final String TAG = "ServiceUiManager";
+    int avoidNavBarX = 0;
+    int avoidNavBarY = 0;
 
-  private static final String TAG = "ServiceUiManager";
+    private static final boolean SHOW_DEBUG_TEXT = true;
 
-  int avoidNavBarX = 0;
-  int avoidNavBarY = 0;
+    /**
+     * For applying small offset to cursor image.
+     */
+    private static final int CURSOR_DP_SIZE = 46;
 
+    Context parentContext;
 
-  private static final boolean SHOW_DEBUG_TEXT = true;
+    private final Point screenSize;
 
-  /** For applying small offset to cursor image.*/
-  private static final int CURSOR_DP_SIZE = 46;
+    /**
+     * Draw cursor image.
+     */
+    public CursorView cursorView;
+    /**
+     * Draw path cursor image.
+     */
+    public CursorView pathCursorView;
 
-  Context parentContext;
+    /**
+     * Draw floating window that show video feed along with buttons and other information.
+     */
+    public View cameraBoxView;
 
-  private final Point screenSize;
+    /**
+     * Button for maximize/minimize camera box. And also show status icon when in minimize state.
+     */
+    public ImageButton cameraBoxPopBtn;
 
-  /** Draw cursor image. */
-  public CursorView cursorView;
+    /**
+     * Open setting page.
+     */
+    public Button settingBtn;
 
-  /** Draw floating window that show video feed along with buttons and other information. */
-  public View cameraBoxView;
+    /**
+     * Realtime video feed from camera.
+     */
+    public PreviewView innerCameraImageView;
 
-  /** Button for maximize/minimize camera box. And also show status icon when in minimize state. */
-  public ImageButton cameraBoxPopBtn;
+    /**
+     * Draw drag line hold radius circle on any place in the screen.
+     */
+    public View fullScreenCanvasView;
 
-  /** Open setting page. */
-  public Button settingBtn;
+    public FullScreenCanvas fullScreenCanvas;
 
-  /** Realtime video feed from camera. */
-  public PreviewView innerCameraImageView;
+    /**
+     * Debug view that show preprocess frame time and MediaPipe frame time.
+     */
+    public CameraBoxOverlay cameraBoxOverlay;
 
-  /** Draw drag line hold radius circle on any place in the screen. */
-  public View fullScreenCanvasView;
+    public FloatIconState nextIconState;
+    public FloatIconState currentIconState = FloatIconState.MINIMIZE_ICON;
 
+    // Float cam drag params
+    private int floatCamMoveInitialX;
+    private int floatCamMoveInitialY;
+    private float initialTouchX;
+    private float initialTouchY;
 
+    public static final int DEFAULT_FLOATING_CAMERA_WIDTH = 330;
+    public static final int DEFAULT_FLOATING_CAMERA_HEIGHT = 330;
 
-  public FullScreenCanvas fullScreenCanvas;
+    Intent mainActivityIntent;
 
-  /** Debug view that show preprocess frame time and MediaPipe frame time. */
-  public CameraBoxOverlay cameraBoxOverlay;
+    private ValueAnimator flyAnim;
+    public LayoutParams cursorLayoutParams;
+    public LayoutParams pathCursorLayoutParams;
+    public LayoutParams cameraBoxLayoutParams;
 
-  public FloatIconState nextIconState;
-  public FloatIconState currentIconState = FloatIconState.MINIMIZE_ICON;
+    public LayoutParams fullScreenCanvasParams;
 
-  // Float cam drag params
-  private int floatCamMoveInitialX;
-  private int floatCamMoveInitialY;
-  private float initialTouchX;
-  private float initialTouchY;
+    private final int floatWindowFlags;
+    private boolean cameraBoxDraggable = true;
+    private CursorController cursorController;
 
+    /**
+     * Icon that notify the state of the app.
+     */
+    public enum FloatIconState {
+        FOUND_FACE_ICON,
+        NO_FACE_ICON,
+        MINIMIZE_ICON,
+        PAUSE_ICON
+    }
 
-  public static final int DEFAULT_FLOATING_CAMERA_WIDTH = 330;
-  public static final int DEFAULT_FLOATING_CAMERA_HEIGHT = 330;
+    WindowManager windowManager;
 
+    /**
+     * Create UI manager with given Accessibility service.
+     *
+     * @param context parent context.
+     */
+    public ServiceUiManager(Context context, WindowManager windowManager, CursorController cursorController) {
+        this.parentContext = context;
+        this.windowManager = windowManager;
+        this.cursorController = cursorController;
 
+        screenSize = new Point();
 
-  Intent mainActivityIntent;
-
-  private ValueAnimator flyAnim;
-  public LayoutParams cursorLayoutParams;
-  public LayoutParams cameraBoxLayoutParams;
-
-  public LayoutParams fullScreenCanvasParams;
-
-  private final int floatWindowFlags;
-  private boolean cameraBoxDraggable = true;
-  private CursorController cursorController;
-
-
-  /** Icon that notify the state of the app. */
-  public enum FloatIconState {
-    FOUND_FACE_ICON,
-    NO_FACE_ICON,
-    MINIMIZE_ICON,
-    PAUSE_ICON
-  }
-
-  WindowManager windowManager;
-
-  /**
-   * Create UI manager with given Accessibility service.
-   *
-   * @param context parent context.
-   */
-  public ServiceUiManager(Context context, WindowManager windowManager, CursorController cursorController) {
-    this.parentContext = context;
-    this.windowManager = windowManager;
-    this.cursorController = cursorController;
-
-    screenSize = new Point();
-    float density = parentContext.getResources().getDisplayMetrics().density;
-
-    floatWindowFlags =
-        LayoutParams.FLAG_DISMISS_KEYGUARD
+        floatWindowFlags = LayoutParams.FLAG_DISMISS_KEYGUARD
             | LayoutParams.FLAG_HARDWARE_ACCELERATED
             | LayoutParams.FLAG_FULLSCREEN
             | LayoutParams.FLAG_NOT_TOUCHABLE
@@ -149,630 +163,714 @@ public class ServiceUiManager {
             | LayoutParams.FLAG_LAYOUT_IN_SCREEN
             | LayoutParams.FLAG_LAYOUT_NO_LIMITS;
 
-    createFloatingCursor();
-    createCameraBox();
-    createFullScreenCanvas();
-    fitCameraBoxToScreen();
-  }
+        createFloatingCursor();
+        createCameraBox();
+        createFullScreenCanvas();
+        fitCameraBoxToScreen();
+    }
 
-  /** Update status icon image by checking status of the service and face detector. */
-  public void updateStatusIcon(boolean isPausing, boolean isFaceVisible) {
-    switch (cameraBoxState) {
-      case MINIMIZE:
-        // If pause always show ⏸
-        if (isPausing) {
-          nextIconState = FloatIconState.PAUSE_ICON;
-        } else {
-          // Show face detector status.
-          if (isFaceVisible) {
-            nextIconState = FloatIconState.FOUND_FACE_ICON;
-          } else {
-            nextIconState = FloatIconState.NO_FACE_ICON;
-          }
+    /**
+     * Update status icon image by checking status of the service and face detector.
+     */
+    public void updateStatusIcon(boolean isPausing, boolean isFaceVisible) {
+        switch (cameraBoxState) {
+            case MINIMIZE:
+                // If pause always show ⏸
+                if (isPausing) {
+                    nextIconState = FloatIconState.PAUSE_ICON;
+                } else {
+                    // Show face detector status.
+                    if (isFaceVisible) {
+                        nextIconState = FloatIconState.FOUND_FACE_ICON;
+                    } else {
+                        nextIconState = FloatIconState.NO_FACE_ICON;
+                    }
+                }
+                break;
+
+            case MAXIMIZE:
+                // In maximize mode only show the button to go minimize.
+                nextIconState = FloatIconState.MINIMIZE_ICON;
+                break;
         }
-        break;
 
-      case MAXIMIZE:
-        // In maximize mode only show the button to go minimize.
-        nextIconState = FloatIconState.MINIMIZE_ICON;
-        break;
+        // If nothing changed, no need to update.
+        if (nextIconState == currentIconState) {
+            return;
+        }
+
+        // Actually change the icon.
+        switch (nextIconState) {
+            case MINIMIZE_ICON:
+                cameraBoxPopBtn.setImageResource(R.drawable.set_3_arrow);
+                break;
+            case FOUND_FACE_ICON:
+                cameraBoxPopBtn.setImageResource(R.drawable.set_3_okay);
+                break;
+            case NO_FACE_ICON:
+                cameraBoxPopBtn.setImageResource(R.drawable.set_3_warning);
+                break;
+            case PAUSE_ICON:
+                cameraBoxPopBtn.setImageResource(R.drawable.set_3_paused);
+                break;
+        }
+        currentIconState = nextIconState;
     }
 
-    // If nothing changed, no need to update.
-    if (nextIconState == currentIconState) {
-      return;
-    }
+    /**
+     * Create floating cursor image on the screen.
+     */
+    private void createFloatingCursor() {
 
-    // Actually change the icon.
-    switch (nextIconState) {
-      case MINIMIZE_ICON:
-        cameraBoxPopBtn.setImageResource(R.drawable.set_3_arrow);
-        break;
-      case FOUND_FACE_ICON:
-        cameraBoxPopBtn.setImageResource(R.drawable.set_3_okay);
-        break;
-      case NO_FACE_ICON:
-        cameraBoxPopBtn.setImageResource(R.drawable.set_3_warning);
-        break;
-      case PAUSE_ICON:
-        cameraBoxPopBtn.setImageResource(R.drawable.set_3_paused);
-        break;
-    }
-    currentIconState = nextIconState;
-  }
+        cursorView = new CursorView(parentContext);
 
-  /** Create floating cursor image on the screen. */
-  private void createFloatingCursor() {
+        pathCursorView = new CursorView(parentContext);
 
-    cursorView = new CursorView(parentContext);
+        // Calculate cursor size in pixels
+        float density = parentContext.getResources().getDisplayMetrics().density;
+        int cursorSizePx = (int) (CURSOR_DP_SIZE * density);
 
-    // Calculate cursor size in pixels
-    float density = parentContext.getResources().getDisplayMetrics().density;
-    int cursorSizePx = (int) (CURSOR_DP_SIZE * density);
+        cursorLayoutParams =
+            new WindowManager.LayoutParams(
+                cursorSizePx,
+                cursorSizePx,
+                LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                floatWindowFlags,
+                PixelFormat.TRANSLUCENT
+            );
+        cursorLayoutParams.gravity = Gravity.TOP | Gravity.START;
+        cursorLayoutParams.x = screenSize.x / 2 - cursorSizePx / 2;
+        cursorLayoutParams.y = screenSize.y / 2 - cursorSizePx / 2;
 
-
-    cursorLayoutParams =
-        new WindowManager.LayoutParams(
+        pathCursorLayoutParams = new WindowManager.LayoutParams(
             cursorSizePx,
             cursorSizePx,
             LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             floatWindowFlags,
-            PixelFormat.TRANSLUCENT);
-    cursorLayoutParams.gravity = Gravity.TOP | Gravity.START;
-    cursorLayoutParams.x = screenSize.x / 2 - cursorSizePx / 2;
-    cursorLayoutParams.y = screenSize.y / 2 - cursorSizePx / 2;
-  }
-
-  /** Hide cursor view. */
-  public void hideCursor() {
-    try {
-      windowManager.removeView(cursorView);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to remove cursorView, might not been attached.");
+            PixelFormat.TRANSLUCENT
+        );
+        pathCursorLayoutParams.gravity = Gravity.TOP | Gravity.START;
+        pathCursorLayoutParams.x = screenSize.x / 2 - cursorSizePx / 2;
+        pathCursorLayoutParams.y = screenSize.y / 2 - cursorSizePx / 2;
     }
-    nextIconState = FloatIconState.PAUSE_ICON;
-  }
 
-  /** Show cursor view. */
-  public void showCursor() {
-    try {
-      windowManager.addView(cursorView, cursorLayoutParams);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to addView: " + e.getMessage());
+    /**
+     * Hide cursor view.
+     */
+    public void hideCursor() {
+        try {
+            windowManager.removeView(cursorView);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to remove cursorView, might not been attached.");
+        }
+        hidePathCursor();
+        nextIconState = FloatIconState.PAUSE_ICON;
     }
-    nextIconState = FloatIconState.FOUND_FACE_ICON;
-  }
 
-  /** Create floating box that show camera feed along with buttons and other information. */
-  @SuppressLint("ClickableViewAccessibility")
-  private void createCameraBox() {
-    cameraBoxView = View.inflate(parentContext, R.layout.floating_camera_layout, null);
-    innerCameraImageView = cameraBoxView.findViewById(R.id.previewVideo);
-    cameraBoxOverlay = cameraBoxView.findViewById(R.id.cameraBoxOverlay);
+    /**
+     * Show cursor view.
+     */
+    public void showCursor() {
+        try {
+            windowManager.addView(cursorView, cursorLayoutParams);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to addView cursorView: " + e.getMessage());
+        }
+        nextIconState = FloatIconState.FOUND_FACE_ICON;
+    }
 
-    cameraBoxLayoutParams =
-        new LayoutParams(
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            LayoutParams.FLAG_DISMISS_KEYGUARD
-                | LayoutParams.FLAG_HARDWARE_ACCELERATED
-                | LayoutParams.FLAG_FULLSCREEN
-                | LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
-                | LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-                | LayoutParams.FLAG_NOT_FOCUSABLE
-                | LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                | LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT);
+    /**
+     * Hide path cursor view.
+     */
+    public void hidePathCursor() {
+        try {
+            windowManager.removeView(pathCursorView);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to remove pathCursorView, might not been attached.");
+        }
+    }
 
-    cameraBoxLayoutParams.gravity = Gravity.TOP | Gravity.START;
+    /**
+     * Show path cursor view.
+     */
+    public void showPathCursor() {
+        try {
+            windowManager.addView(pathCursorView, pathCursorLayoutParams);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to addView pathCursorView: " + e.getMessage());
+        }
+    }
 
+    /**
+     * Create floating box that show camera feed along with buttons and other information.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private void createCameraBox() {
+        cameraBoxView = View.inflate(parentContext, R.layout.floating_camera_layout, null);
+        innerCameraImageView = cameraBoxView.findViewById(R.id.previewVideo);
+        cameraBoxOverlay = cameraBoxView.findViewById(R.id.cameraBoxOverlay);
 
-    // Set touch listeners for dragging the window.
-    cameraBoxView.setOnTouchListener(
-        (v, event) -> {
-          if (!cameraBoxDraggable) {
-            return true;
-          }
-          switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-              // Record the initial position and touch coordinates
-              floatCamMoveInitialX = cameraBoxLayoutParams.x;
-              floatCamMoveInitialY = cameraBoxLayoutParams.y;
-              initialTouchX = event.getRawX();
-              initialTouchY = event.getRawY();
-              return true;
-            case MotionEvent.ACTION_MOVE:
-              // Calculate the new position based on touch movement
-              cameraBoxLayoutParams.x =
-                  clamp(
-                      floatCamMoveInitialX + (int) (event.getRawX() - initialTouchX),
-                      0,
-                      screenSize.x - innerCameraImageView.getWidth());
-              cameraBoxLayoutParams.y =
-                  clamp(
-                      floatCamMoveInitialY + (int) (event.getRawY() - initialTouchY),
-                      0,
-                      screenSize.y);
+        cameraBoxLayoutParams =
+            new LayoutParams(
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                LayoutParams.FLAG_DISMISS_KEYGUARD
+                    | LayoutParams.FLAG_HARDWARE_ACCELERATED
+                    | LayoutParams.FLAG_FULLSCREEN
+                    | LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
+                    | LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    | LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                    | LayoutParams.FLAG_NOT_FOCUSABLE
+                    | LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    | LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            );
 
-              // Update the window position
-              windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
-              return true;
+        cameraBoxLayoutParams.gravity = Gravity.TOP | Gravity.START;
 
-            case MotionEvent.ACTION_UP:
-              saveCameraBoxPosition(
-                  "savedFloatCamXNorm",
-                  (float) cameraBoxLayoutParams.x / (float) screenSize.x);
-              saveCameraBoxPosition(
-                  "savedFloatCamYNorm",
-                  (float) cameraBoxLayoutParams.y / (float) screenSize.y);
-              return true;
-
-            default:
-              return false;
-          }
-        });
-
-    saveCameraBoxPosition(
-        "savedFloatCamXNorm", (float) cameraBoxLayoutParams.x / screenSize.x);
-    saveCameraBoxPosition(
-        "savedFloatCamYNorm", (float) cameraBoxLayoutParams.y / screenSize.y);
-
-    saveCameraBoxPosition("defaultWidth", DEFAULT_FLOATING_CAMERA_WIDTH);
-    saveCameraBoxPosition("defaultHeight", DEFAULT_FLOATING_CAMERA_HEIGHT);
-
-    settingBtn = cameraBoxView.findViewById(R.id.settingBtn);
-
-    mainActivityIntent = new Intent(parentContext, MainActivity.class);
-    mainActivityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    settingBtn.setOnClickListener(v -> parentContext.startActivity(mainActivityIntent));
-
-
-    flyAnim = ValueAnimator.ofFloat(0f, 1f);
-
-    cameraBoxPopBtn = cameraBoxView.findViewById(R.id.popBtn);
-    cameraBoxPopBtn.setOnTouchListener(
-        (view, event) -> {
-          int action = event.getAction();
-          switch (action) {
-            case MotionEvent.ACTION_DOWN:
-              // Record the initial position and touch coordinates
-              floatCamMoveInitialX = cameraBoxLayoutParams.x;
-              floatCamMoveInitialY = cameraBoxLayoutParams.y;
-              initialTouchX = event.getRawX();
-              initialTouchY = event.getRawY();
-              break;
-
-            // Drag on this button also move the whole camera box.
-            case MotionEvent.ACTION_MOVE:
-
-              // Clamp window x position in side screen.
-              cameraBoxLayoutParams.x =
-                  clamp(
-                      floatCamMoveInitialX + (int) (event.getRawX() - initialTouchX),
-                      /* min= */ 0,
-                      /* max= */ screenSize.x - cameraBoxView.getWidth());
-
-              // Clamp window y position in side screen.
-              cameraBoxLayoutParams.y =
-                  clamp(
-                      floatCamMoveInitialY + (int) (event.getRawY() - initialTouchY),
-                      /* min= */ 0,
-                      /* max= */ screenSize.y);
-
-              // Update the window position
-              windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
-              break;
-
-            case MotionEvent.ACTION_UP:
-              Log.i(TAG, "ACTION_UP: " + event.getRawX());
-
-              // If release within 5 pixels, execute button function.
-              if (Math.abs(event.getRawX() - initialTouchX) < 5
-                  && Math.abs(event.getRawY() - initialTouchY) < 5) {
-
-                // Toggle camera box.
-                switch (cameraBoxState) {
-                  case MAXIMIZE:
-                    minimizeCameraBox();
-                    break;
-                  case MINIMIZE:
-                    maximizeCameraBox();
-                    break;
+        // Set touch listeners for dragging the window.
+        cameraBoxView.setOnTouchListener(
+            (v, event) -> {
+                if (!cameraBoxDraggable) {
+                    return true;
                 }
-                cameraBoxView.requestLayout();
-              }
-              break;
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        // Record the initial position and touch coordinates
+                        floatCamMoveInitialX = cameraBoxLayoutParams.x;
+                        floatCamMoveInitialY = cameraBoxLayoutParams.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        // Calculate the new position based on touch movement
+                        cameraBoxLayoutParams.x =
+                            clamp(
+                                floatCamMoveInitialX + (int) (event.getRawX() - initialTouchX),
+                                0,
+                                screenSize.x - innerCameraImageView.getWidth()
+                            );
+                        cameraBoxLayoutParams.y =
+                            clamp(
+                                floatCamMoveInitialY + (int) (event.getRawY() - initialTouchY),
+                                0,
+                                screenSize.y
+                            );
 
-            default:
-              break;
-          }
-          return true;
-        });
+                        // Update the window position
+                        windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
+                        return true;
 
-    cameraBoxState = CameraBoxState.MAXIMIZE;
-    minimizeCameraBox();
-  }
+                    case MotionEvent.ACTION_UP:
+                        saveCameraBoxPosition(
+                            "savedFloatCamXNorm",
+                            (float) cameraBoxLayoutParams.x / (float) screenSize.x
+                        );
+                        saveCameraBoxPosition(
+                            "savedFloatCamYNorm",
+                            (float) cameraBoxLayoutParams.y / (float) screenSize.y
+                        );
+                        return true;
 
-  /** Should camera box draggable ? */
-  public void setCameraBoxDraggable(boolean draggable) {
-    cameraBoxDraggable = draggable;
-  }
+                    default:
+                        return false;
+                }
+            });
 
-  public void hideCameraBox() {
-    try {
-      windowManager.removeView(cameraBoxView);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to remove floatCamView, might not attached.");
+        saveCameraBoxPosition(
+            "savedFloatCamXNorm", (float) cameraBoxLayoutParams.x / screenSize.x);
+        saveCameraBoxPosition(
+            "savedFloatCamYNorm", (float) cameraBoxLayoutParams.y / screenSize.y);
+
+        saveCameraBoxPosition("defaultWidth", DEFAULT_FLOATING_CAMERA_WIDTH);
+        saveCameraBoxPosition("defaultHeight", DEFAULT_FLOATING_CAMERA_HEIGHT);
+
+        settingBtn = cameraBoxView.findViewById(R.id.settingBtn);
+
+        mainActivityIntent = new Intent(parentContext, MainActivity.class);
+        mainActivityIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        settingBtn.setOnClickListener(v -> parentContext.startActivity(mainActivityIntent));
+
+        flyAnim = ValueAnimator.ofFloat(0f, 1f);
+
+        cameraBoxPopBtn = cameraBoxView.findViewById(R.id.popBtn);
+        cameraBoxPopBtn.setOnTouchListener(
+            (view, event) -> {
+                int action = event.getAction();
+                switch (action) {
+                    case MotionEvent.ACTION_DOWN:
+                        // Record the initial position and touch coordinates
+                        floatCamMoveInitialX = cameraBoxLayoutParams.x;
+                        floatCamMoveInitialY = cameraBoxLayoutParams.y;
+                        initialTouchX = event.getRawX();
+                        initialTouchY = event.getRawY();
+                        break;
+
+                    // Drag on this button also move the whole camera box.
+                    case MotionEvent.ACTION_MOVE:
+
+                        // Clamp window x position in side screen.
+                        cameraBoxLayoutParams.x =
+                            clamp(
+                                floatCamMoveInitialX + (int) (event.getRawX() - initialTouchX),
+                                /* min= */ 0,
+                                /* max= */ screenSize.x - cameraBoxView.getWidth()
+                            );
+
+                        // Clamp window y position in side screen.
+                        cameraBoxLayoutParams.y =
+                            clamp(
+                                floatCamMoveInitialY + (int) (event.getRawY() - initialTouchY),
+                                /* min= */ 0,
+                                /* max= */ screenSize.y
+                            );
+
+                        // Update the window position
+                        windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        Log.i(TAG, "ACTION_UP: " + event.getRawX());
+
+                        // If release within 5 pixels, execute button function.
+                        if (Math.abs(event.getRawX() - initialTouchX) < 5
+                            && Math.abs(event.getRawY() - initialTouchY) < 5) {
+
+                            // Toggle camera box.
+                            switch (cameraBoxState) {
+                                case MAXIMIZE:
+                                    minimizeCameraBox();
+                                    break;
+                                case MINIMIZE:
+                                    maximizeCameraBox();
+                                    break;
+                            }
+                            cameraBoxView.requestLayout();
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+                return true;
+            });
+
+        cameraBoxState = CameraBoxState.MAXIMIZE;
+        minimizeCameraBox();
     }
-  }
 
-  public void showCameraBox() {
-    updateScreenInfo();
-    try {
-      windowManager.addView(cameraBoxView, cameraBoxLayoutParams);
-      resizeCameraBox(DEFAULT_FLOATING_CAMERA_WIDTH, DEFAULT_FLOATING_CAMERA_HEIGHT);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to add floatCamView: " + e.getMessage());
+    /**
+     * Should camera box draggable ?
+     */
+    public void setCameraBoxDraggable(boolean draggable) {
+        cameraBoxDraggable = draggable;
     }
-  }
 
-  /** Force camera box to show up. */
-  public void showAllWindows() {
-    fitCameraBoxToScreen();
+    public void hideCameraBox() {
+        try {
+            windowManager.removeView(cameraBoxView);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to remove floatCamView, might not attached.");
+        }
+    }
 
-    showCameraBox();
-    showFullscreenCanvas();
-    showCursor();
-    maximizeCameraBox();
-  }
+    public void showCameraBox() {
+        updateScreenInfo();
+        try {
+            windowManager.addView(cameraBoxView, cameraBoxLayoutParams);
+            resizeCameraBox(DEFAULT_FLOATING_CAMERA_WIDTH, DEFAULT_FLOATING_CAMERA_HEIGHT);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to add floatCamView: " + e.getMessage());
+        }
+    }
 
-  public void hideAllWindows() {
-    hideCameraBox();
-    hideCursor();
-    hideFullscreenCanvas();
-  }
+    /**
+     * Force camera box to show up.
+     */
+    public void showAllWindows() {
+        fitCameraBoxToScreen();
 
-  /** This enum represents the state of camera. */
-  public enum CameraBoxState {
-    MAXIMIZE,
-    MINIMIZE
-  }
+        showCameraBox();
+        showFullscreenCanvas();
+        showCursor();
+        maximizeCameraBox();
+    }
 
-  public CameraBoxState cameraBoxState;
+    public void hideAllWindows() {
+        hideCameraBox();
+        hideCursor();
+        hideFullscreenCanvas();
+    }
 
-  public void maximizeCameraBox() {
-    Log.i(TAG, "maximizeCameraBox");
-    cameraBoxView.findViewById(R.id.previewVideo).setVisibility(View.VISIBLE);
-    settingBtn.setVisibility(View.VISIBLE);
-    resizeCameraBox(DEFAULT_FLOATING_CAMERA_WIDTH, DEFAULT_FLOATING_CAMERA_HEIGHT);
+    /**
+     * This enum represents the state of camera.
+     */
+    public enum CameraBoxState {
+        MAXIMIZE,
+        MINIMIZE
+    }
 
-    cameraBoxView.findViewById(R.id.popBtn).setBackground(null);
-    cameraBoxOverlay.setVisibility(View.VISIBLE);
-    cameraBoxState = CameraBoxState.MAXIMIZE;
-  }
+    public CameraBoxState cameraBoxState;
 
-  public void minimizeCameraBox() {
-    Log.i(TAG, "minimizeCameraBox");
-    cameraBoxView.findViewById(R.id.previewVideo).setVisibility(View.GONE);
-    settingBtn.setVisibility(View.GONE);
-    resizeCameraBox(cameraBoxPopBtn.getWidth(), cameraBoxPopBtn.getHeight());
-    cameraBoxOverlay.setBackground(null);
-    cameraBoxOverlay.setVisibility(View.INVISIBLE);
-    cameraBoxView
-        .findViewById(R.id.popBtn)
-        .setBackground(ContextCompat.getDrawable(parentContext, R.drawable.custom_imagebtn_camera));
-    cameraBoxState = CameraBoxState.MINIMIZE;
-  }
+    public void maximizeCameraBox() {
+        Log.i(TAG, "maximizeCameraBox");
+        cameraBoxView.findViewById(R.id.previewVideo).setVisibility(View.VISIBLE);
+        settingBtn.setVisibility(View.VISIBLE);
+        resizeCameraBox(DEFAULT_FLOATING_CAMERA_WIDTH, DEFAULT_FLOATING_CAMERA_HEIGHT);
 
-  /** Fly floatCamView to target location */
-  private void playFlyCameraBoxAnimation(int targetX, int targetY, int duration) {
-    Log.i(TAG, "playFlyCameraBoxAnimation: ");
+        cameraBoxView.findViewById(R.id.popBtn).setBackground(null);
+        cameraBoxOverlay.setVisibility(View.VISIBLE);
+        cameraBoxState = CameraBoxState.MAXIMIZE;
+    }
 
-    int startX = cameraBoxLayoutParams.x;
-    int startY = cameraBoxLayoutParams.y;
-    flyAnim.setDuration(duration);
-    flyAnim.addUpdateListener(
-        animation -> {
-          // In each frame.
-          float fraction = animation.getAnimatedFraction();
-          int currentX = (int) (startX + fraction * (targetX - startX));
-          int currentY = (int) (startY + fraction * (targetY - startY));
-          cameraBoxLayoutParams.x = currentX;
-          cameraBoxLayoutParams.y = currentY;
+    public void minimizeCameraBox() {
+        Log.i(TAG, "minimizeCameraBox");
+        cameraBoxView.findViewById(R.id.previewVideo).setVisibility(View.GONE);
+        settingBtn.setVisibility(View.GONE);
+        resizeCameraBox(cameraBoxPopBtn.getWidth(), cameraBoxPopBtn.getHeight());
+        cameraBoxOverlay.setBackground(null);
+        cameraBoxOverlay.setVisibility(View.INVISIBLE);
+        cameraBoxView
+            .findViewById(R.id.popBtn)
+            .setBackground(ContextCompat.getDrawable(parentContext, R.drawable.custom_imagebtn_camera));
+        cameraBoxState = CameraBoxState.MINIMIZE;
+    }
 
-          try {
+    /**
+     * Fly floatCamView to target location
+     */
+    private void playFlyCameraBoxAnimation(int targetX, int targetY, int duration) {
+        Log.i(TAG, "playFlyCameraBoxAnimation: ");
+
+        int startX = cameraBoxLayoutParams.x;
+        int startY = cameraBoxLayoutParams.y;
+        flyAnim.setDuration(duration);
+        flyAnim.addUpdateListener(
+            animation -> {
+                // In each frame.
+                float fraction = animation.getAnimatedFraction();
+                int currentX = (int) (startX + fraction * (targetX - startX));
+                int currentY = (int) (startY + fraction * (targetY - startY));
+                cameraBoxLayoutParams.x = currentX;
+                cameraBoxLayoutParams.y = currentY;
+
+                try {
+                    windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
+                } catch (RuntimeException e) {
+                    Log.w(TAG, "windowManager failed to update floatCamView: " + e.getMessage());
+                }
+            });
+
+        flyAnim.start();
+    }
+
+    public void resizeCameraBox(int width, int height) {
+        ViewGroup.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(width, height);
+        innerCameraImageView.setLayoutParams(layoutParams);
+        cameraBoxLayoutParams.width = width;
+        cameraBoxLayoutParams.height = height;
+
+        try {
             windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
-          } catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             Log.w(TAG, "windowManager failed to update floatCamView: " + e.getMessage());
-          }
-        });
-
-    flyAnim.start();
-  }
-
-  public void resizeCameraBox(int width, int height) {
-    ViewGroup.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(width, height);
-    innerCameraImageView.setLayoutParams(layoutParams);
-    cameraBoxLayoutParams.width = width;
-    cameraBoxLayoutParams.height = height;
-
-    try {
-      windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to update floatCamView: " + e.getMessage());
+        }
     }
-  }
 
-  private void createFullScreenCanvas() {
-    fullScreenCanvasView = View.inflate(parentContext, R.layout.fullscreen_canvas, null);
-    fullScreenCanvas = fullScreenCanvasView.findViewById(R.id.fullscreenCanvasInner);
-    fullScreenCanvas.initialize(cursorController);
+    private void createFullScreenCanvas() {
+        fullScreenCanvasView = View.inflate(parentContext, R.layout.fullscreen_canvas, null);
+        fullScreenCanvas = fullScreenCanvasView.findViewById(R.id.fullscreenCanvasInner);
+        fullScreenCanvas.initialize(cursorController);
 
+        fullScreenCanvasParams =
+            new LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                LayoutParams.FLAG_DISMISS_KEYGUARD
+                    | LayoutParams.FLAG_HARDWARE_ACCELERATED
+                    | LayoutParams.FLAG_FULLSCREEN
+                    | LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
+                    | LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    | LayoutParams.FLAG_NOT_TOUCHABLE
+                    | LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                    | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                    | LayoutParams.FLAG_NOT_FOCUSABLE
+                    | LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSPARENT
+            );
 
-    fullScreenCanvasParams =
-        new LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            LayoutParams.FLAG_DISMISS_KEYGUARD
-                | LayoutParams.FLAG_HARDWARE_ACCELERATED
-                | LayoutParams.FLAG_FULLSCREEN
-                | LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
-                | LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | LayoutParams.FLAG_NOT_TOUCHABLE
-                | LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-                | LayoutParams.FLAG_NOT_FOCUSABLE
-                | LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSPARENT);
+        fullScreenCanvasParams.gravity = Gravity.TOP | Gravity.START;
+        fullScreenCanvas.bringToFront();
 
-    fullScreenCanvasParams.gravity = Gravity.TOP | Gravity.START;
-    fullScreenCanvas.bringToFront();
-
-
-  }
-
-  private void showFullscreenCanvas() {
-    try {
-      windowManager.addView(fullScreenCanvasView, fullScreenCanvasParams);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to add fullScreenCanvasView: " + e.getMessage());
     }
-  }
 
-  private void hideFullscreenCanvas() {
-    try {
-      windowManager.removeView(fullScreenCanvasView);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "windowManager failed to remove fullScreenCanvasView, might not attached.");
+    private void showFullscreenCanvas() {
+        try {
+            windowManager.addView(fullScreenCanvasView, fullScreenCanvasParams);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to add fullScreenCanvasView: " + e.getMessage());
+        }
     }
-  }
 
-  /** Save default camera box position to make it persistent when open the app. */
-  private void saveCameraBoxPosition(String key, float value) {
-    Log.i(TAG, "saveDefaultPosition: " + key + " " + value);
-    String profileName = ProfileManager.getCurrentProfile(parentContext);
-    SharedPreferences preferences =
-        parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
-    SharedPreferences.Editor editor = preferences.edit();
-    editor.putFloat(key, value);
-    editor.apply();
-  }
-
-
-  /**
-   * Change cursor image on screen.
-   */
-  public void updateCursorImagePositionOnScreen(
-      int[] cursorPosition) {
-
-    // Center the view's top-left corner on the cursor position
-    cursorLayoutParams.x = cursorPosition[0] - cursorView.getWidth() / 2;
-    cursorLayoutParams.y = cursorPosition[1] - cursorView.getHeight() / 2;
-
-    try {
-      windowManager.updateViewLayout(cursorView, cursorLayoutParams);
-      // cursorView.requestLayout();
-    } catch (RuntimeException e) {
-      Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
+    private void hideFullscreenCanvas() {
+        try {
+            windowManager.removeView(fullScreenCanvasView);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "windowManager failed to remove fullScreenCanvasView, might not attached.");
+        }
     }
-  }
 
-  public void setDragLineStart(float x, float y) {
-    fullScreenCanvas.setDragLineStart(x + avoidNavBarX,y+avoidNavBarY);
-  }
+    /**
+     * Save default camera box position to make it persistent when open the app.
+     */
+    private void saveCameraBoxPosition(String key, float value) {
+        Log.i(TAG, "saveDefaultPosition: " + key + " " + value);
+        String profileName = ProfileManager.getCurrentProfile(parentContext);
+        SharedPreferences preferences =
+            parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putFloat(key, value);
+        editor.apply();
+    }
 
-  public void updateDragLine(int[] cursorPosition) {
-    fullScreenCanvas.updateDragLine(
+    /**
+     * Change cursor image on screen.
+     */
+    public void updateCursorImagePositionOnScreen(int[] cursorPosition) {
+
+        // Center the view's top-left corner on the cursor position
+        cursorLayoutParams.x = cursorPosition[0] - cursorView.getWidth() / 2;
+        cursorLayoutParams.y = cursorPosition[1] - cursorView.getHeight() / 2;
+
+        try {
+            windowManager.updateViewLayout(cursorView, cursorLayoutParams);
+            // cursorView.requestLayout();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Change cursor image on screen.
+     */
+    public void updatePathCursorImagePositionOnScreen(int[] cursorPosition) {
+
+        // Center the view's top-left corner on the cursor position
+        pathCursorLayoutParams.x = cursorPosition[0] - pathCursorView.getWidth() / 2;
+        pathCursorLayoutParams.y = cursorPosition[1] - pathCursorView.getHeight() / 2;
+
+        try {
+            windowManager.updateViewLayout(pathCursorView, pathCursorLayoutParams);
+            // cursorView.requestLayout();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
+        }
+    }
+
+    public void setDragLineStart(float x, float y) {
+        fullScreenCanvas.setDragLineStart(x + avoidNavBarX, y + avoidNavBarY);
+    }
+
+    public void updateDragLine(int[] cursorPosition) {
+        fullScreenCanvas.updateDragLine(
             cursorPosition[0] + avoidNavBarX,
-            cursorPosition[1] + avoidNavBarY);
-  }
-
-  public void updatePreviewBitmap(Bitmap previewBitmap, Rect region) {
-    fullScreenCanvas.setPreviewBitmap(
-            previewBitmap,
-            region);
-  }
-
-  public void clearPreviewBitmap() {
-    fullScreenCanvas.clearPreviewBitmap();
-  }
-
-  /**
-   * If {@value SHOW_DEBUG_TEXT}, Update the information overlay on camera box.
-   *
-   */
-  public void updateDebugTextOverlay(String topTxt, String bottomTxt, boolean isPausing) {
-    if (SHOW_DEBUG_TEXT) {
-      cameraBoxOverlay.setOverlayInfo(topTxt, bottomTxt);
-      cameraBoxOverlay.setPauseIndicator(isPausing);
+            cursorPosition[1] + avoidNavBarY
+        );
     }
-  }
 
-  /**
-   * Draw white dot on the user head.
-   *
-   * @param headCoord Head coordinate x, y.
-   * @param mpImageWidth MediaPipe's image width for normalization.
-   * @param mpImageHeight MediaPipe's image height for normalization.
-   */
-  public void drawHeadCenter(float[] headCoord, int mpImageWidth, int mpImageHeight) {
-    cameraBoxOverlay.setWhiteDot(
+    public void updatePreviewBitmap(Bitmap previewBitmap, Rect region) {
+        fullScreenCanvas.setPreviewBitmap(
+            previewBitmap,
+            region
+        );
+    }
+
+    public void clearPreviewBitmap() {
+        fullScreenCanvas.clearPreviewBitmap();
+    }
+
+    /**
+     * If {@value SHOW_DEBUG_TEXT}, Update the information overlay on camera box.
+     */
+    public void updateDebugTextOverlay(String topTxt, String bottomTxt, boolean isPausing) {
+        if (SHOW_DEBUG_TEXT) {
+            cameraBoxOverlay.setOverlayInfo(topTxt, bottomTxt);
+            cameraBoxOverlay.setPauseIndicator(isPausing);
+        }
+    }
+
+    /**
+     * Draw white dot on the user head.
+     *
+     * @param headCoord     Head coordinate x, y.
+     * @param mpImageWidth  MediaPipe's image width for normalization.
+     * @param mpImageHeight MediaPipe's image height for normalization.
+     */
+    public void drawHeadCenter(float[] headCoord, int mpImageWidth, int mpImageHeight) {
+        cameraBoxOverlay.setWhiteDot(
             headCoord[0] * innerCameraImageView.getWidth() / mpImageWidth,
-            headCoord[1] * innerCameraImageView.getHeight() / mpImageHeight);
-  }
+            headCoord[1] * innerCameraImageView.getHeight() / mpImageHeight
+        );
+    }
 
-  /**
-   * Draw 2nd dot.
-   *
-   * @param dotCoord dot coordinate x, y.
-   * @param mpImageWidth MediaPipe's image width for normalization.
-   * @param mpImageHeight MediaPipe's image height for normalization.
-   */
-  public void drawSecondDot(float[] dotCoord, int mpImageWidth, int mpImageHeight) {
-    cameraBoxOverlay.setOtherDot(
+    /**
+     * Draw 2nd dot.
+     *
+     * @param dotCoord      dot coordinate x, y.
+     * @param mpImageWidth  MediaPipe's image width for normalization.
+     * @param mpImageHeight MediaPipe's image height for normalization.
+     */
+    public void drawSecondDot(float[] dotCoord, int mpImageWidth, int mpImageHeight) {
+        cameraBoxOverlay.setOtherDot(
             dotCoord[0] * innerCameraImageView.getWidth() / mpImageWidth,
-            dotCoord[1] * innerCameraImageView.getHeight() / mpImageHeight);
-  }
+            dotCoord[1] * innerCameraImageView.getHeight() / mpImageHeight
+        );
+    }
 
-  /** Fly camera box to screen center and hide all buttons (for setting page. ). */
-  public BroadcastReceiver flyInWindowReceiver =
-      new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-          Log.i(TAG, "flyInWindowReceiver");
+    /**
+     * Fly camera box to screen center and hide all buttons (for setting page. ).
+     */
+    public BroadcastReceiver flyInWindowReceiver =
+        new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.i(TAG, "flyInWindowReceiver");
 
-          if (cameraBoxState == CameraBoxState.MINIMIZE) {
-            maximizeCameraBox();
-          }
+                if (cameraBoxState == CameraBoxState.MINIMIZE) {
+                    maximizeCameraBox();
+                }
 
-          int positionX = intent.getIntExtra("positionX", 0);
-          int positionY = intent.getIntExtra("positionY", 0);
-          int width = intent.getIntExtra("width", 0);
-          int height = intent.getIntExtra("height", 0);
-          playFlyCameraBoxAnimation(positionX, positionY, 300);
-          resizeCameraBox(width, height);
+                int positionX = intent.getIntExtra("positionX", 0);
+                int positionY = intent.getIntExtra("positionY", 0);
+                int width = intent.getIntExtra("width", 0);
+                int height = intent.getIntExtra("height", 0);
+                playFlyCameraBoxAnimation(positionX, positionY, 300);
+                resizeCameraBox(width, height);
 
-          cameraBoxView.findViewById(R.id.popBtn).setBackground(null);
-          cameraBoxView.findViewById(R.id.popBtn).setVisibility(View.INVISIBLE);
-          cameraBoxView.findViewById(R.id.settingBtn).setVisibility(View.INVISIBLE);
-          cameraBoxOverlay.setVisibility(View.INVISIBLE);
-        }
-      };
+                cameraBoxView.findViewById(R.id.popBtn).setBackground(null);
+                cameraBoxView.findViewById(R.id.popBtn).setVisibility(View.INVISIBLE);
+                cameraBoxView.findViewById(R.id.settingBtn).setVisibility(View.INVISIBLE);
+                cameraBoxOverlay.setVisibility(View.INVISIBLE);
+            }
+        };
 
-  /** Fly out to the screen edge. */
-  public BroadcastReceiver flyOutWindowReceiver =
-      new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-          String profileName = ProfileManager.getCurrentProfile(parentContext);
-          SharedPreferences preferences =
-              parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
-          float positionX =
-              preferences.getFloat(
-                  "savedFloatCamXNorm",
-                  (float) cameraBoxLayoutParams.x / (float) screenSize.x)
-                  * screenSize.x;
-          float positionY =
-              preferences.getFloat(
-                  "savedFloatCamYNorm",
-                  (float) cameraBoxLayoutParams.y / (float) screenSize.y)
-                  * screenSize.y;
+    /**
+     * Fly out to the screen edge.
+     */
+    public BroadcastReceiver flyOutWindowReceiver =
+        new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String profileName = ProfileManager.getCurrentProfile(parentContext);
+                SharedPreferences preferences =
+                    parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+                float positionX =
+                    preferences.getFloat(
+                        "savedFloatCamXNorm",
+                        (float) cameraBoxLayoutParams.x / (float) screenSize.x
+                    )
+                        * screenSize.x;
+                float positionY =
+                    preferences.getFloat(
+                        "savedFloatCamYNorm",
+                        (float) cameraBoxLayoutParams.y / (float) screenSize.y
+                    )
+                        * screenSize.y;
 
-          float width = preferences.getFloat("defaultWidth", 0);
-          float height = preferences.getFloat("defaultHeight", 0);
-          resizeCameraBox((int) width, (int) height);
+                float width = preferences.getFloat("defaultWidth", 0);
+                float height = preferences.getFloat("defaultHeight", 0);
+                resizeCameraBox((int) width, (int) height);
 
-          playFlyCameraBoxAnimation((int) positionX, (int) positionY, 300);
-          cameraBoxView.findViewById(R.id.popBtn).setVisibility(View.VISIBLE);
-          cameraBoxView.findViewById(R.id.settingBtn).setVisibility(View.VISIBLE);
-        }
-      };
+                playFlyCameraBoxAnimation((int) positionX, (int) positionY, 300);
+                cameraBoxView.findViewById(R.id.popBtn).setVisibility(View.VISIBLE);
+                cameraBoxView.findViewById(R.id.settingBtn).setVisibility(View.VISIBLE);
+            }
+        };
 
-
-
-  /** Draw small green dot where the touch event occur. */
-  public void drawTouchDot(int[] cursorPositionXY) {
-    fullScreenCanvas.drawTouchCircle(
-        cursorPositionXY[0] + avoidNavBarX,
-        cursorPositionXY[1] + avoidNavBarY
+    /**
+     * Draw small green dot where the touch event occur.
+     */
+    public void drawTouchDot(int[] cursorPositionXY) {
+        fullScreenCanvas.drawTouchCircle(
+            cursorPositionXY[0] + avoidNavBarX,
+            cursorPositionXY[1] + avoidNavBarY
         );
 
-
-  }
-
-
-  private void updateScreenInfo()
-  {
-    if (windowManager == null) {
-      return;
     }
 
-    // Check new screen size and rotation.
-    windowManager.getDefaultDisplay().getRealSize(screenSize);
-  }
+    private void updateScreenInfo() {
+        if (windowManager == null) {
+            return;
+        }
 
-  /** Move camera box inside the screen. */
-  public void fitCameraBoxToScreen() {
+        // Check new screen size and rotation.
+        windowManager.getDefaultDisplay().getRealSize(screenSize);
+    }
 
+    /**
+     * Move camera box inside the screen.
+     */
+    public void fitCameraBoxToScreen() {
 
-    updateScreenInfo();
+        updateScreenInfo();
 
-    // Update the camera box location
-    // so it not going out of screen when rotate device.
-    String profileName = ProfileManager.getCurrentProfile(parentContext);
-    SharedPreferences preferences =
-        parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
-    cameraBoxLayoutParams.x =
-        (int)
-            (preferences.getFloat(
+        // Update the camera box location
+        // so it not going out of screen when rotate device.
+        String profileName = ProfileManager.getCurrentProfile(parentContext);
+        SharedPreferences preferences =
+            parentContext.getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        cameraBoxLayoutParams.x =
+            (int) (preferences.getFloat(
                 "savedFloatCamXNorm",
-                (float) cameraBoxLayoutParams.x / (float) screenSize.x)
-                * screenSize.x);
-    cameraBoxLayoutParams.y =
-        (int)
-            (preferences.getFloat(
-                "savedFloatCamYNorm",
-                (float) cameraBoxLayoutParams.y / (float) screenSize.y)
-                * screenSize.y);
-    try {
-      windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
-    } catch (RuntimeException e) {
-      Log.w(TAG, "WindowManager failed to update view layout: " + e.getMessage());
+                (float) cameraBoxLayoutParams.x / (float) screenSize.x
+            ) * screenSize.x);
+        cameraBoxLayoutParams.y =
+            (int)
+                (preferences.getFloat(
+                    "savedFloatCamYNorm",
+                    (float) cameraBoxLayoutParams.y / (float) screenSize.y
+                )
+                    * screenSize.y);
+        try {
+            windowManager.updateViewLayout(cameraBoxView, cameraBoxLayoutParams);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "WindowManager failed to update view layout: " + e.getMessage());
+        }
+
+        if (cameraBoxState == CameraBoxState.MINIMIZE) {
+            maximizeCameraBox();
+        }
     }
 
-    if (cameraBoxState == CameraBoxState.MINIMIZE) {
-      maximizeCameraBox();
+    /**
+     * Animate cursor to the given color.
+     *
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     */
+    public void cursorAnimateToColor(String colorName, int duration) {
+        if (cursorView != null) {
+            cursorView.animateToColor(colorName, duration);
+        }
     }
-  }
-
-  /**
-   * Animate cursor to the given color.
-   * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
-   */
-  public void cursorAnimateToColor(String colorName, int duration) {
-      if (cursorView != null) {
-          cursorView.animateToColor(colorName, duration);
-      }
-  }
 
     /**
      * Set cursor color instantly.
+     *
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      */
-  public void cursorSetColor(String colorName) {
-      if (cursorView != null) {
-          cursorView.setColor(colorName);
-      }
-  }
+    public void cursorSetColor(String colorName) {
+        if (cursorView != null) {
+            cursorView.setColor(colorName);
+        }
+    }
 
-  public void cursorCancelAnimation() {
-      if (cursorView != null) {
-          cursorView.cancelAnimation();
-      }
-  }
+    public void cursorCancelAnimation() {
+        if (cursorView != null) {
+            cursorView.cancelAnimation();
+        }
+    }
 
 }
