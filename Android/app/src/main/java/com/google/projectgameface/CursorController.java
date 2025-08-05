@@ -16,7 +16,6 @@
 
 package com.google.projectgameface;
 
-import static android.content.Context.RECEIVER_EXPORTED;
 import static androidx.core.math.MathUtils.clamp;
 
 import android.content.BroadcastReceiver;
@@ -24,8 +23,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Rect;
-import android.os.Build;
 import android.util.Log;
+
+import androidx.core.content.ContextCompat;
 
 import com.google.projectgameface.utils.Config;
 
@@ -121,14 +121,12 @@ public class CursorController {
                 blendshapeEventTriggerConfig.updateProfile(context, profileName);
             }
         };
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(
-                profileChangeReceiver,
-                new IntentFilter("PROFILE_CHANGED"),
-                RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
-        }
+        ContextCompat.registerReceiver(
+            context,
+            profileChangeReceiver,
+            new IntentFilter("PROFILE_CHANGED"),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        );
 
         // Init blendshape event tracker
         for (BlendshapeEventTriggerConfig.EventType eventType: BlendshapeEventTriggerConfig.EventType.values()) {
@@ -137,7 +135,6 @@ public class CursorController {
     }
 
     public void cleanup() {
-
         cursorMovementConfig.unregisterReceiver(parentContext);
     }
 
@@ -418,8 +415,8 @@ public class CursorController {
         if (Double.isNaN(pathCursorPositionX)) pathCursorPositionX = cursorPositionX;
         if (Double.isNaN(pathCursorPositionY)) pathCursorPositionY = cursorPositionY;
 
-        // the path cursor is slowed down by a percentage to slowly catch up to the position of the cursor
-        float percentage = 0.02f; // Adjust this value to control the slowdown
+        // the path cursor is modofied down by a percentage to slowly catch up to the position of the cursor
+        float percentage = getPathCursorPercentage();
         pathCursorPositionX = cursorPositionX * percentage + pathCursorPositionX * (1 - percentage);
         pathCursorPositionY = cursorPositionY * percentage + pathCursorPositionY * (1 - percentage);
 
@@ -440,11 +437,6 @@ public class CursorController {
 //            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
 //            updateTrail((float) cursorPositionX, (float) cursorPositionY);
 //        }
-    }
-
-    private void resetPathCursorPosition() {
-        pathCursorPositionX = cursorPositionX;
-        pathCursorPositionY = cursorPositionY;
     }
 
     /**
@@ -681,6 +673,53 @@ public class CursorController {
         }
     }
 
+    public void resetPathCursorPosition() {
+//        if (Double.isNaN(cursorPositionX) || Double.isNaN(cursorPositionY)) {
+//            Log.w(TAG, "Resetting path cursor position with NaN values. Resetting to center.");
+//            resetCursorToCenter();
+//        }
+        pathCursorPositionX = cursorPositionX;
+        pathCursorPositionY = cursorPositionY;
+    }
+
+    /**
+     * Get the percentage of the path cursor based on the path cursor config.
+     * Uses default value if the path cursor config is invalid.
+     *
+     * @return The percentage of the path cursor as a float.
+     *         Returns 0.02f to 0.04f for values 1-20
+     *         Returns 0.04f to 0.20f for values 21-40
+     */
+    public float getPathCursorPercentage() {
+        int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
+        if (pathCursorValue < 1 || pathCursorValue > 40) {
+            Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
+            pathCursorValue = Config.DEFAULT_PATH_CURSOR;
+        }
+        return getPathCursorPercentageFrom(pathCursorValue);
+    }
+
+    /**
+     * Get the percentage of the path cursor based on the path cursor config.
+     * Static method that can be used without creating a CursorController instance.
+     *
+     * @return The percentage of the path cursor as a float.
+     *         Returns 0.02f to 0.04f for values 1-20
+     *         Returns 0.04f to 0.20f for values 21-40
+     *         Returns 0.04f for invalid values (less than 1 or greater than 40)
+     */
+    public static float getPathCursorPercentageFrom(int pathCursorValue) {
+        if (pathCursorValue < 1 || pathCursorValue > 40) {
+            Log.w(TAG, "Invalid path cursor value: " + pathCursorValue + ". Defaulting to 0.04f.");
+            return 0.04f; // Default value for invalid path cursor config
+        }
+        if (pathCursorValue <= 20) {
+            return pathCursorValue / 500f; // 0.02 to 0.04
+        } else {
+            return (pathCursorValue - 20) / 100f + 0.04f; // 0.04 to 0.20
+        }
+    }
+
     public boolean isDurationPopOutEnabled() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT);
     }
@@ -715,6 +754,10 @@ public class CursorController {
 
     public int getSmoothing() {
         return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
+    }
+
+    public int getPathCursorConfig() {
+        return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
     }
 
     public void setKeyboardManager(KeyboardManager keyboardManager) {

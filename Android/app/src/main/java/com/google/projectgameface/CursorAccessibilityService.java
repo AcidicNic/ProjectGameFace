@@ -508,6 +508,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     if (cursorController.isEventActive()) {
                         if (!isPathCursorActive) {
                             // Display path cursor if it's still hidden.
+                            cursorController.resetPathCursorPosition();
                             serviceUiManager.showPathCursor();
                             isPathCursorActive = true;
                         }

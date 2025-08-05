@@ -24,7 +24,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager.LayoutParams;
@@ -36,6 +35,8 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
+
+import com.google.projectgameface.utils.Config;
 
 import java.util.Objects;
 
@@ -71,6 +72,10 @@ public class HeadBoardSettings extends AppCompatActivity {
     private SeekBar uiFeedbackDelaySeekBar;
     private TextView progressUiFeedbackDelay;
     private Switch exponentialSmoothingSwitch;
+
+    // Path Cursor UI elements
+    private SeekBar pathCursorSeekBar;
+    private TextView progressPathCursor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -231,6 +236,14 @@ public class HeadBoardSettings extends AppCompatActivity {
                 longTapThresholdSeekBar, progressLongTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD)
         );
 
+        // Path Cursor
+        pathCursorSeekBar = findViewById(R.id.pathCursorSeekBar);
+        progressPathCursor = findViewById(R.id.progressPathCursor);
+
+        setUpPathCursorSeekBarAndTextView(
+                pathCursorSeekBar, progressPathCursor, String.valueOf(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR)
+        );
+
         // Binding buttons with individual listeners
         findViewById(R.id.holdDurationFaster).setOnClickListener(v -> {
             int currentValue = holdDurationSeekBar.getProgress();
@@ -389,6 +402,26 @@ public class HeadBoardSettings extends AppCompatActivity {
                 uiFeedbackDelaySeekBar.setProgress(newValue);
                 int value = newValue + 1; // Convert 0-8 back to 1-9
                 sendValueToService("UI_FEEDBACK_DELAY", value);
+            }
+        });
+
+        findViewById(R.id.decreasePathCursor).setOnClickListener(v -> {
+            int currentValue = pathCursorSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= pathCursorSeekBar.getMin() && pathCursorSeekBar.getProgress() <= pathCursorSeekBar.getMax()) {
+                pathCursorSeekBar.setProgress(newValue);
+                int value = newValue + 1;
+                sendValueToService("PATH_CURSOR", value);
+            }
+        });
+
+        findViewById(R.id.increasePathCursor).setOnClickListener(v -> {
+            int currentValue = pathCursorSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= pathCursorSeekBar.getMin() && pathCursorSeekBar.getProgress() <= pathCursorSeekBar.getMax()) {
+                pathCursorSeekBar.setProgress(newValue);
+                int value = newValue + 1;
+                sendValueToService("PATH_CURSOR", value);
             }
         });
     }
@@ -594,6 +627,32 @@ public class HeadBoardSettings extends AppCompatActivity {
         });
     }
 
+    private void setUpPathCursorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(39); // 1-40 in steps of 1
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedValue = preferences.getInt(preferencesId, Config.DEFAULT_PATH_CURSOR);
+        seekBar.setProgress(savedValue - 1);
+        textView.setText(String.valueOf(CursorController.getPathCursorPercentageFrom(savedValue)));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                float value = CursorController.getPathCursorPercentageFrom(progress + 1);
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress() + 1;
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
     // Ensure to reload config on profile change
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -644,8 +703,13 @@ public class HeadBoardSettings extends AppCompatActivity {
 
             // Update UI feedback delay
             int uiFeedbackDelay = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY);
-            uiFeedbackDelaySeekBar.setProgress(uiFeedbackDelay - 1); // Convert 1-9 to 0-8 for progress
+            uiFeedbackDelaySeekBar.setProgress(uiFeedbackDelay - 1);
             progressUiFeedbackDelay.setText(String.valueOf(uiFeedbackDelay));
+
+            // Update UI feedback delay
+            int pathCursor = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
+            pathCursorSeekBar.setProgress(pathCursor - 1);
+            progressPathCursor.setText(String.valueOf(CursorController.getPathCursorPercentageFrom(pathCursor)));
         }
     };
 

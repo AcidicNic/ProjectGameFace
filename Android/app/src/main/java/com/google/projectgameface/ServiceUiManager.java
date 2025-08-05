@@ -272,11 +272,16 @@ public class ServiceUiManager {
      */
     public void showCursor() {
         try {
+            try {
+                // remove if it exists to avoid layering issues
+                windowManager.removeView(pathCursorView);
+            } catch (RuntimeException ignored) {}
+
             windowManager.addView(cursorView, cursorLayoutParams);
+            nextIconState = FloatIconState.FOUND_FACE_ICON;
         } catch (RuntimeException e) {
             Log.w(TAG, "windowManager failed to addView cursorView: " + e.getMessage());
         }
-        nextIconState = FloatIconState.FOUND_FACE_ICON;
     }
 
     /**
