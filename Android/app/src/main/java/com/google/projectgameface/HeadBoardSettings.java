@@ -633,13 +633,13 @@ public class HeadBoardSettings extends AppCompatActivity {
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedValue = preferences.getInt(preferencesId, Config.DEFAULT_PATH_CURSOR);
         seekBar.setProgress(savedValue - 1);
-        textView.setText(String.valueOf(CursorController.getPathCursorPercentageFrom(savedValue)));
+        textView.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(savedValue)));
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 float value = CursorController.getPathCursorPercentageFrom(progress + 1);
-                textView.setText(String.valueOf(value));
+                textView.setText(String.format("%.3f", value));
             }
 
             @Override
@@ -709,7 +709,7 @@ public class HeadBoardSettings extends AppCompatActivity {
             // Update UI feedback delay
             int pathCursor = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
             pathCursorSeekBar.setProgress(pathCursor - 1);
-            progressPathCursor.setText(String.valueOf(CursorController.getPathCursorPercentageFrom(pathCursor)));
+            progressPathCursor.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(pathCursor)));
         }
     };
 

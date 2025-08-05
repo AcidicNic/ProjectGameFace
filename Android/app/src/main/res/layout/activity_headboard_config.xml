@@ -784,7 +784,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:max="40"
+                android:max="39"
                 android:maxHeight="3dp"
                 android:min="0"
                 android:progressDrawable="@drawable/custom_seekbar"

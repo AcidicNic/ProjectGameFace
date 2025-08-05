@@ -364,6 +364,8 @@ public class CursorController {
         float headCoordScaleFactorY = getHeadCoordScaleFactorY();
 
         if (isPitchYawEnabled && isNoseTipEnabled) { // Combined
+//            Log.d(TAG, "handleCenterOffsetUpdate() - pitchYawXY: " + pitchYawXY[0] + ", " + pitchYawXY[1] +
+//            "; noseTipXY: " + noseTipXY[0] + ", " + noseTipXY[1] + "; headTiltXY: " + headTiltXY[0] + ", " + headTiltXY[1]);
             coordsXY = noseTipXY;
             handleCenterOffsetUpdate(pitchYawXY, noseTipXY, inputSize);
             coordsXY[0] += appliedOffsetX;
@@ -385,6 +387,11 @@ public class CursorController {
             if (maxRawCoordY != minRawCoordY) {
                 normalizedY = (coordsXY[1] - minRawCoordY) / (maxRawCoordY - minRawCoordY);
             }
+        }
+
+        if (noseTipXY[0] == 0 && noseTipXY[1] == 0 && pitchYawXY[0] == 0 && pitchYawXY[1] == 0) {
+            normalizedX = 0.5f;
+            normalizedY = 0.5f;
         }
 
         int regionMinX = 0;
@@ -462,11 +469,9 @@ public class CursorController {
     }
 
     private void handleCenterOffsetUpdate(float[] pitchYawXY, float[] noseTipXY, int[] inputSize) {
-        Log.d(TAG, "handleCenterOffsetUpdate() - pitchYawXY: " + pitchYawXY[0] + ", " + pitchYawXY[1] +
-            "; noseTipXY: " + noseTipXY[0] + ", " + noseTipXY[1]);
-        // Check if swiping is active, and pause the offset updates
-        if (isEventActive()) {
-            return; // Skip offset updates while swiping
+        // Skip offset updates if any event is active or if we don't have valid face detection data yet
+        if (isEventActive() || (noseTipXY[0] == 0 && noseTipXY[1] == 0 && pitchYawXY[0] == 0 && pitchYawXY[1] == 0)) {
+            return;
         }
 
         // Determine if pitch and yaw are close to center (0 degrees)
@@ -475,13 +480,9 @@ public class CursorController {
 
         if (isCenteredX) {
             targetOffsetX = ((float) inputSize[0] / 2) - noseTipXY[0];
-        } else if (targetOffsetX == 0 && appliedOffsetX == 0) {
-            targetOffsetX = (float) inputSize[0] / 2;
         }
         if (isCenteredY) {
             targetOffsetY = ((float) inputSize[1] / 2) - noseTipXY[1];
-        } else if (targetOffsetY == 0 && appliedOffsetY == 0) {
-            targetOffsetY = (float) inputSize[1] / 2;
         }
 
         if (targetOffsetY == 0 && targetOffsetX == 0) {
@@ -687,12 +688,12 @@ public class CursorController {
      * Uses default value if the path cursor config is invalid.
      *
      * @return The percentage of the path cursor as a float.
-     *         Returns 0.02f to 0.04f for values 1-20
+     *         Returns 0.002f to 0.04f for values 1-20
      *         Returns 0.04f to 0.20f for values 21-40
      */
     public float getPathCursorPercentage() {
         int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
-        if (pathCursorValue < 1 || pathCursorValue > 40) {
+        if (pathCursorValue <= 1 || pathCursorValue >= 40) {
             Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
             pathCursorValue = Config.DEFAULT_PATH_CURSOR;
         }
@@ -704,19 +705,21 @@ public class CursorController {
      * Static method that can be used without creating a CursorController instance.
      *
      * @return The percentage of the path cursor as a float.
-     *         Returns 0.02f to 0.04f for values 1-20
+     *         Returns 0.002f to 0.04f for values 1-20
      *         Returns 0.04f to 0.20f for values 21-40
      *         Returns 0.04f for invalid values (less than 1 or greater than 40)
      */
     public static float getPathCursorPercentageFrom(int pathCursorValue) {
-        if (pathCursorValue < 1 || pathCursorValue > 40) {
+        if (pathCursorValue <= 1 || pathCursorValue >= 40) {
             Log.w(TAG, "Invalid path cursor value: " + pathCursorValue + ". Defaulting to 0.04f.");
             return 0.04f; // Default value for invalid path cursor config
         }
         if (pathCursorValue <= 20) {
-            return pathCursorValue / 500f; // 0.02 to 0.04
+            // mapping 1-20 to 0.002f-0.04f linearly
+            return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
         } else {
-            return (pathCursorValue - 20) / 100f + 0.04f; // 0.04 to 0.20
+            // mapping 21-40 to 0.04f-0.20f linearly
+            return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
         }
     }
 
