@@ -15,15 +15,14 @@
  */
 package com.google.projectgameface;
 
-import static android.content.Context.RECEIVER_EXPORTED;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.util.Log;
+
+import androidx.core.content.ContextCompat;
 
 import com.google.projectgameface.utils.Config;
 
@@ -36,7 +35,6 @@ import java.util.Map;
 class CursorMovementConfig {
 
     public void updateProfile(Context context, String profileName) {
-
         sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
         updateAllConfigFromSharedPreference();
     }
@@ -85,7 +83,6 @@ class CursorMovementConfig {
     private final Map<CursorMovementBooleanConfigType, Boolean> rawBooleanValueMap;
 
     public static final class InitialRawValue {
-
         public static final int SPEED = 3;
         public static final int SMOOTH_POINTER = 1;
         public static final int HOLD_TIME_MS = 5;
@@ -113,15 +110,13 @@ class CursorMovementConfig {
         public static final float AVG_PHRASE_LENGTH = 0.0f;
 
         public static final boolean DEFAULT_ENABLE_FEATURE = false;
-
-        private InitialRawValue() {}
     }
+
 
     /**
      * Multiply raw int value from UI to real usable float value.
      */
     public static final class RawConfigMultiplier {
-
         public static final float UP_SPEED = 175.f;
         public static final float DOWN_SPEED = 175.f;
         public static final float RIGHT_SPEED = 175.f;
@@ -150,7 +145,6 @@ class CursorMovementConfig {
      * @param context Context for open SharedPreference in device's local storage.
      */
     public CursorMovementConfig(Context context) {
-
         Log.i(TAG, "Create CursorMovementConfig.");
 
         // Create or retrieve SharedPreference.
@@ -176,59 +170,36 @@ class CursorMovementConfig {
 
         // Initialize default float values.
         rawFloatValueMap = new HashMap<>();
-        rawFloatValueMap.put(
-            CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X,
-            InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
-        rawFloatValueMap.put(
-            CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y,
-            InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
+        rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X, InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
+        rawFloatValueMap.put(CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y, InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
 
         rawFloatValueMap.put(CursorMovementConfigType.LATEST_AVG_WPM, InitialRawValue.LATEST_AVG_WPM);
         rawFloatValueMap.put(CursorMovementConfigType.AVG_WPM, InitialRawValue.AVG_WPM);
-        rawFloatValueMap.put(
-            CursorMovementConfigType.AVG_WORDS_PER_PHRASE,
-            InitialRawValue.AVG_WORDS_PER_PHRASE);
+        rawFloatValueMap.put(CursorMovementConfigType.AVG_WORDS_PER_PHRASE, InitialRawValue.AVG_WORDS_PER_PHRASE);
         rawFloatValueMap.put(CursorMovementConfigType.AVG_SWIPE_DURATION, InitialRawValue.AVG_SWIPE_DURATION);
         rawFloatValueMap.put(CursorMovementConfigType.AVG_PHRASE_LENGTH, InitialRawValue.AVG_PHRASE_LENGTH);
 
 
         // Initialize default boolean values.
         rawBooleanValueMap = new HashMap<>();
-        rawBooleanValueMap.put(
-            CursorMovementBooleanConfigType.REALTIME_SWIPE,
-            InitialRawValue.REALTIME_SWIPE);
-        rawBooleanValueMap.put(
-            CursorMovementBooleanConfigType.DURATION_POP_OUT,
-            InitialRawValue.DURATION_POP_OUT);
-        rawBooleanValueMap.put(
-            CursorMovementBooleanConfigType.DIRECT_MAPPING,
-            InitialRawValue.DIRECT_MAPPING);
+        rawBooleanValueMap.put(CursorMovementBooleanConfigType.REALTIME_SWIPE, InitialRawValue.REALTIME_SWIPE);
+        rawBooleanValueMap.put(CursorMovementBooleanConfigType.DURATION_POP_OUT, InitialRawValue.DURATION_POP_OUT);
+        rawBooleanValueMap.put(CursorMovementBooleanConfigType.DIRECT_MAPPING, InitialRawValue.DIRECT_MAPPING);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.PITCH_YAW, InitialRawValue.PITCH_YAW);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.NOSE_TIP);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEBUG_SWIPE);
-        rawBooleanValueMap.put(
-            CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING,
-            InitialRawValue.EXPONENTIAL_SMOOTHING);
+        rawBooleanValueMap.put(CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING, InitialRawValue.EXPONENTIAL_SMOOTHING);
 
 
         // Register the receiver
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(
-                profileChangeReceiver,
-                new IntentFilter("PROFILE_CHANGED"),
-                RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
-        }
+            ContextCompat.registerReceiver(context, profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), ContextCompat.RECEIVER_NOT_EXPORTED);
     }
 
     public void unregisterReceiver(Context context) {
-
         context.unregisterReceiver(profileChangeReceiver);
     }
 
     public void reloadSharedPreferences(Context context) {
-
         String profileName = ProfileManager.getCurrentProfile(context);
         sharedPreferences = context.getSharedPreferences(profileName, Context.MODE_PRIVATE);
         updateAllConfigFromSharedPreference();
@@ -240,7 +211,6 @@ class CursorMovementConfig {
      * @param rawValueFromUi Slider value.
      */
     public void setRawValueFromUi(String configName, int rawValueFromUi) {
-
         try {
             CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
             rawValueMap.put(targetConfig, rawValueFromUi);
@@ -255,7 +225,6 @@ class CursorMovementConfig {
      * @param rawValueFromUi Slider value.
      */
     public void setRawFloatValueFromUi(String configName, float rawValueFromUi) {
-
         try {
             CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
             rawFloatValueMap.put(targetConfig, rawValueFromUi);
@@ -270,7 +239,6 @@ class CursorMovementConfig {
      * @param rawValueFromUi Boolean value.
      */
     public void setRawBooleanValueFromUi(String configName, boolean rawValueFromUi) {
-
         try {
             CursorMovementBooleanConfigType targetConfig = CursorMovementBooleanConfigType.valueOf(configName);
             rawBooleanValueMap.put(targetConfig, rawValueFromUi);
@@ -285,17 +253,12 @@ class CursorMovementConfig {
      * @return Action value of cursor.
      */
     public float get(CursorMovementConfigType targetConfig) {
-
         if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X) {
-            float rawValue = (rawFloatValueMap.get(targetConfig) != null) ?
-                             rawFloatValueMap.get(targetConfig) :
-                             1.0f;
+            float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : InitialRawValue.HEAD_COORD_SCALE_FACTOR_X;
             return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR_X;
 
         } else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
-            float rawValue = (rawFloatValueMap.get(targetConfig) != null) ?
-                             rawFloatValueMap.get(targetConfig) :
-                             1.0f;
+            float rawValue = (rawFloatValueMap.get(targetConfig) != null) ? rawFloatValueMap.get(targetConfig) : InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y;
             return rawValue * RawConfigMultiplier.HEAD_COORD_SCALE_FACTOR_Y;
 
         } else {
@@ -326,15 +289,15 @@ class CursorMovementConfig {
                 case HOLD_RADIUS:
                     multiplier = RawConfigMultiplier.HOLD_RADIUS;
                     break;
-                case EDGE_HOLD_DURATION:
-                    multiplier = RawConfigMultiplier.EDGE_HOLD_DURATION;
-                    break;
-                case AVG_SMOOTHING:
-                    multiplier = RawConfigMultiplier.AVG_SMOOTHING;
-                    break;
-                case DRAG_TOGGLE_DURATION:
-                    multiplier = RawConfigMultiplier.DRAG_TOGGLE_DURATION;
-                    break;
+//                case EDGE_HOLD_DURATION:
+//                    multiplier = RawConfigMultiplier.EDGE_HOLD_DURATION;
+//                    break;
+//                case AVG_SMOOTHING:
+//                    multiplier = RawConfigMultiplier.AVG_SMOOTHING;
+//                    break;
+//                case DRAG_TOGGLE_DURATION:
+//                    multiplier = RawConfigMultiplier.DRAG_TOGGLE_DURATION;
+//                    break;
                 default:
                     multiplier = 1.0f;
             }
@@ -348,15 +311,13 @@ class CursorMovementConfig {
      * @return Boolean value of the config.
      */
     public boolean get(CursorMovementBooleanConfigType targetConfig) {
-
-        return rawBooleanValueMap.getOrDefault(targetConfig, false);
+        return Boolean.TRUE.equals(rawBooleanValueMap.getOrDefault(targetConfig, false));
     }
 
     /**
      * Update and overwrite value from SharedPreference.
      */
     public void updateAllConfigFromSharedPreference() {
-
         Log.i(TAG, "Update all config from local SharedPreference...");
         for (CursorMovementConfigType configType: CursorMovementConfigType.values()) {
             updateOneConfigFromSharedPreference(configType.name());
@@ -371,7 +332,6 @@ class CursorMovementConfig {
      * @param configName String of {@link CursorMovementConfig}.
      */
     public void updateOneConfigFromSharedPreference(String configName) {
-
         Log.i(TAG, "updateOneConfigFromSharedPreference: " + configName);
 
         if (sharedPreferences == null) {
@@ -379,94 +339,74 @@ class CursorMovementConfig {
             return;
         }
 
+        CursorMovementConfigType targetConfig;
         try {
-            CursorMovementConfigType targetConfig = CursorMovementConfigType.valueOf(configName);
-            if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X) {
-                float configValueInUi = sharedPreferences.getFloat(
-                    configName,
-                    InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
-                float configValueInUi = sharedPreferences.getFloat(
-                    configName,
-                    InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-
-            } else if (targetConfig == CursorMovementConfigType.LATEST_AVG_WPM) {
-                float configValueInUi = sharedPreferences.getFloat(
-                    configName,
-                    InitialRawValue.LATEST_AVG_WPM);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.AVG_WPM) {
-                float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_WPM);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.AVG_WORDS_PER_PHRASE) {
-                float configValueInUi = sharedPreferences.getFloat(
-                    configName,
-                    InitialRawValue.AVG_WORDS_PER_PHRASE);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.AVG_SWIPE_DURATION) {
-                float configValueInUi = sharedPreferences.getFloat(
-                    configName,
-                    InitialRawValue.AVG_SWIPE_DURATION);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.AVG_PHRASE_LENGTH) {
-                float configValueInUi = sharedPreferences.getFloat(
-                    configName,
-                    InitialRawValue.AVG_PHRASE_LENGTH);
-                setRawFloatValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw float value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.AVG_SMOOTHING) {
-                int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.AVG_SMOOTHING);
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw int value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.EDGE_HOLD_DURATION) {
-                int configValueInUi = sharedPreferences.getInt(
-                    configName,
-                    InitialRawValue.EDGE_HOLD_DURATION);
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.DRAG_TOGGLE_DURATION) {
-                int configValueInUi = sharedPreferences.getInt(
-                    configName,
-                    InitialRawValue.DRAG_TOGGLE_DURATION);
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.QUICK_TAP_THRESHOLD) {
-                int configValueInUi = sharedPreferences.getInt(
-                    configName,
-                    InitialRawValue.QUICK_TAP_THRESHOLD);
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.LONG_TAP_THRESHOLD) {
-                int configValueInUi = sharedPreferences.getInt(
-                    configName,
-                    InitialRawValue.LONG_TAP_THRESHOLD);
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw value to: " + configValueInUi);
-            } else if (targetConfig == CursorMovementConfigType.UI_FEEDBACK_DELAY) {
-                int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.UI_FEEDBACK_DELAY);
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw value to: " + configValueInUi);
-            } else {
-                int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);
-                if (configValueInUi == PREFERENCE_INT_NOT_FOUND) {
-                    Log.i(
-                        TAG,
-                        "Key " + configName + " not found in SharedPreference, keep using default value.");
-                    return;
-                }
-                setRawValueFromUi(configName, configValueInUi);
-                Log.i(TAG, "Set raw value to: " + configValueInUi);
-            }
+            targetConfig = CursorMovementConfigType.valueOf(configName);
         } catch (IllegalArgumentException e) {
-            Log.w(TAG, configName + " does not exist in CursorMovementConfigType enum.");
+            Log.w(TAG, configName + " does not exist in CursorMovementBooleanConfigType enum.");
+            return;
+        }
+
+        if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR_X);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.HEAD_COORD_SCALE_FACTOR_Y);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.LATEST_AVG_WPM) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.LATEST_AVG_WPM);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.AVG_WPM) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_WPM);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.AVG_WORDS_PER_PHRASE) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_WORDS_PER_PHRASE);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.AVG_SWIPE_DURATION) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_SWIPE_DURATION);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.AVG_PHRASE_LENGTH) {
+            float configValueInUi = sharedPreferences.getFloat(configName, InitialRawValue.AVG_PHRASE_LENGTH);
+            setRawFloatValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw float value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.AVG_SMOOTHING) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.AVG_SMOOTHING);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw int value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.EDGE_HOLD_DURATION) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.EDGE_HOLD_DURATION);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.DRAG_TOGGLE_DURATION) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.DRAG_TOGGLE_DURATION);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.QUICK_TAP_THRESHOLD) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.QUICK_TAP_THRESHOLD);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.LONG_TAP_THRESHOLD) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.LONG_TAP_THRESHOLD);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.UI_FEEDBACK_DELAY) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.UI_FEEDBACK_DELAY);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
+        } else {
+            int configValueInUi = sharedPreferences.getInt(configName, PREFERENCE_INT_NOT_FOUND);
+            if (configValueInUi == PREFERENCE_INT_NOT_FOUND) {
+                Log.i(TAG, "Key " + configName + " not found in SharedPreference, keep using default value.");
+                return;
+            }
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
         }
     }
 
@@ -475,7 +415,6 @@ class CursorMovementConfig {
      * @param configName String of {@link CursorMovementConfig}.
      */
     public void updateOneBooleanConfigFromSharedPreference(String configName) {
-
         Log.i(TAG, "updateOneBooleanConfigFromSharedPreference: " + configName);
 
         if (sharedPreferences == null) {
@@ -525,7 +464,6 @@ class CursorMovementConfig {
     }
 
     public static boolean isBooleanConfig(String configName) {
-
         for (CursorMovementBooleanConfigType type: CursorMovementBooleanConfigType.values()) {
             if (type.name().equals(configName)) {
                 return true;

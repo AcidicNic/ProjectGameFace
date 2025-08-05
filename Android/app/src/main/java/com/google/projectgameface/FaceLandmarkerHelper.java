@@ -43,7 +43,6 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
  * The helper of camera feed.
  */
 class FaceLandmarkerHelper extends HandlerThread {
-
     public static final String TAG = "FaceLandmarkerHelper";
 
     // number of allowed multiple detection works at the sametime.
@@ -115,13 +114,11 @@ class FaceLandmarkerHelper extends HandlerThread {
     private int currentRotationState = Surface.ROTATION_0;
 
     public FaceLandmarkerHelper() {
-
         super(TAG);
     }
 
 
     public void setFrontCameraOrientation(int orientation) {
-
         frontCameraOrientation = orientation;
     }
 
@@ -133,13 +130,11 @@ class FaceLandmarkerHelper extends HandlerThread {
      *                      Surface#ROTATION_180}.
      */
     public void setRotation(int rotationValue) {
-
         currentRotationState = rotationValue;
         Log.i(TAG, "setRotation: " + rotationValue);
     }
 
     @SuppressLint("HandlerLeak") @Override protected void onLooperPrepared() {
-
         handler = new Handler() {
             @Override public void handleMessage(@NonNull Message msg) {
                 // Function for handle message from main thread.
@@ -150,7 +145,6 @@ class FaceLandmarkerHelper extends HandlerThread {
     }
 
     public Handler getHandler() {
-
         return handler;
     }
 
@@ -159,7 +153,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * @param context context for assets file loading.
      */
     public void init(Context context) {
-
         Log.i(TAG, "init : " + Thread.currentThread());
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY);
         isRunning = true;
@@ -179,22 +172,14 @@ class FaceLandmarkerHelper extends HandlerThread {
             // Create an option builder with base options and specific
             // options only use for Face Landmarker.
             FaceLandmarker.FaceLandmarkerOptions.Builder optionsBuilder = FaceLandmarker.FaceLandmarkerOptions.builder()
-                                                                                                              .setBaseOptions(
-                                                                                                                  baseOptions)
-                                                                                                              .setMinFaceDetectionConfidence(
-                                                                                                                  MIN_FACE_DETECTION_CONFIDENCE)
-                                                                                                              .setMinTrackingConfidence(
-                                                                                                                  MIN_FACE_TRACKING_CONFIDENCE)
-                                                                                                              .setMinFacePresenceConfidence(
-                                                                                                                  MIN_FACE_PRESENCE_CONFIDENCE)
-                                                                                                              .setNumFaces(
-                                                                                                                  MAX_NUM_FACES)
-                                                                                                              .setOutputFaceBlendshapes(
-                                                                                                                  true)
-                                                                                                              .setOutputFacialTransformationMatrixes(
-                                                                                                                  true)
-                                                                                                              .setRunningMode(
-                                                                                                                  RUNNING_MODE);
+                .setBaseOptions(baseOptions)
+                .setMinFaceDetectionConfidence(MIN_FACE_DETECTION_CONFIDENCE)
+                .setMinTrackingConfidence(MIN_FACE_TRACKING_CONFIDENCE)
+                .setMinFacePresenceConfidence(MIN_FACE_PRESENCE_CONFIDENCE)
+                .setNumFaces(MAX_NUM_FACES)
+                .setOutputFaceBlendshapes(true)
+                .setOutputFacialTransformationMatrixes(true)
+                .setRunningMode(RUNNING_MODE);
 
             optionsBuilder.setResultListener(this::postProcessLandmarks);
 
@@ -214,7 +199,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * @param imageProxy An image proxy from camera feed
      */
     public void detectLiveStream(ImageProxy imageProxy) {
-
         // Reject new work if exceed limit.
         if (currentInWorks >= N_WORKS_LIMIT) {
             imageProxy.close();
@@ -269,15 +253,14 @@ class FaceLandmarkerHelper extends HandlerThread {
     }
 
     @NonNull private Matrix getRotationMatrix(ImageProxy imageProxy) {
-
         Matrix matrix = new Matrix();
 
         // Front camera rotation constant is 270 degrees.
         int matrixRotDegrees = frontCameraOrientation;
         int widthCorrected = imageProxy.getWidth();
         int heightCorrected = imageProxy.getHeight();
-        float mpWidthCorrected = MP_HEIGHT;
-        float mpHeightCorrected = MP_WIDTH;
+        float mpWidthCorrected = MP_WIDTH;
+        float mpHeightCorrected = MP_HEIGHT;
         switch (currentRotationState) {
             case Surface.ROTATION_0:
                 break;
@@ -285,16 +268,18 @@ class FaceLandmarkerHelper extends HandlerThread {
                 matrixRotDegrees = frontCameraOrientation + 90;
                 widthCorrected = imageProxy.getHeight();
                 heightCorrected = imageProxy.getWidth();
+                mpWidthCorrected = MP_HEIGHT;
+                mpHeightCorrected = MP_WIDTH;
                 break;
             case Surface.ROTATION_180:
                 matrixRotDegrees = frontCameraOrientation + 180;
-                mpWidthCorrected = MP_WIDTH;
-                mpHeightCorrected = MP_HEIGHT;
                 break;
             case Surface.ROTATION_270:
                 matrixRotDegrees = frontCameraOrientation - 90;
                 widthCorrected = imageProxy.getHeight();
                 heightCorrected = imageProxy.getWidth();
+                mpWidthCorrected = MP_HEIGHT;
+                mpHeightCorrected = MP_WIDTH;
                 break;
             default:
         }
@@ -309,7 +294,6 @@ class FaceLandmarkerHelper extends HandlerThread {
     private float maxYaw = 45.0f;       // Maximum yaw (right)
 
     public void resetMinMaxValues() {
-
         minPitch = -30.0f;
         maxPitch = 30.0f;
         minYaw = -45.0f;
@@ -322,7 +306,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * @param input  The input image of face landmarker.
      */
     private void postProcessLandmarks(FaceLandmarkerResult result, MPImage input) {
-
         currentInWorks -= 1;
         mediapipeTimeMs = SystemClock.uptimeMillis() - result.timestampMs();
         input.close();
@@ -402,7 +385,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * Get user's head X, Y coordinate in image space or normalized (0-1)
      */
     public float[] getHeadCoordXY() {
-
         return new float[]{currHeadX, currHeadY};
     }
 
@@ -410,19 +392,16 @@ class FaceLandmarkerHelper extends HandlerThread {
      * Get user's head X, Y coordinate in image space or normalized (0-1)
      */
     public float[] getNormalizedHeadCoordXY() {
-
         return new float[]{currHeadX / mpInputWidth, currHeadY / mpInputHeight};
     }
 
 
     public float[] getNoseCoordXY() {
-
         return new float[]{currNoseX, currNoseY};
     }
 
 
     public float[] getNormalizedNoseCoordXY() {
-
         return new float[]{currNoseX / mpInputWidth, currNoseY / mpInputHeight};
     }
 
@@ -430,12 +409,10 @@ class FaceLandmarkerHelper extends HandlerThread {
      * Get user's pitch and yaw in degrees
      */
     public float[] getPitchYaw() {
-
         return new float[]{currPitch, currYaw};
     }
 
     public float[] getBlendshapes() {
-
         return currBlendshapes;
     }
 
@@ -443,7 +420,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * Recreates {@link FaceLandmarker} and resume the process.
      */
     public void resumeThread() {
-
         faceLandmarker = FaceLandmarker.createFromOptions(this.context, options);
         isRunning = true;
     }
@@ -452,7 +428,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * Completely pause the detection process.
      */
     public void pauseThread() {
-
         Log.i(TAG, "pauseThread");
 
         // There might be some image processing.
@@ -463,7 +438,6 @@ class FaceLandmarkerHelper extends HandlerThread {
     }
 
     private void ensurePauseThread() {
-
         if (faceLandmarker != null) {
             faceLandmarker.close();
             faceLandmarker = null;
@@ -474,7 +448,6 @@ class FaceLandmarkerHelper extends HandlerThread {
      * Destroys {@link FaceLandmarker} and stop.
      */
     public void destroy() {
-
         Log.i(TAG, "destroy");
         isRunning = false;
         ensurePauseThread();
