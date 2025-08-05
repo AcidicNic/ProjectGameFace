@@ -693,7 +693,7 @@ public class CursorController {
      */
     public float getPathCursorPercentage() {
         int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
-        if (pathCursorValue <= 1 || pathCursorValue >= 40) {
+        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
             Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
             pathCursorValue = Config.DEFAULT_PATH_CURSOR;
         }
@@ -710,7 +710,7 @@ public class CursorController {
      *         Returns 0.04f for invalid values (less than 1 or greater than 40)
      */
     public static float getPathCursorPercentageFrom(int pathCursorValue) {
-        if (pathCursorValue <= 1 || pathCursorValue >= 40) {
+        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
             Log.w(TAG, "Invalid path cursor value: " + pathCursorValue + ". Defaulting to 0.04f.");
             return 0.04f; // Default value for invalid path cursor config
         }

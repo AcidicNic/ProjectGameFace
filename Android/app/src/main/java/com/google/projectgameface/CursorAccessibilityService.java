@@ -247,7 +247,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             long startTime = System.currentTimeMillis();
 
             while (swipeEventStarted && !swipeEventEnding) {
-                int[] currentPosition = getCursorPosition();
+                int[] currentPosition = getPathCursorPosition();
                 if (currentPosition == null) {
                     try {
                         Thread.sleep(HOVER_DETECTION_SAMPLE_RATE);
@@ -498,7 +498,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     // Drag drag line if in drag mode.
                     if (cursorController.isDragging) {
                         serviceUiManager.updateDragLine(
-                            cursorController.getCursorPositionXY());
+                            cursorController.getPathCursorPositionXY());
                     }
 
                     // Use for smoothing.
@@ -1095,7 +1095,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     public void dispatchDragOrHold() {
         Log.d("dispatchDragOrHold", "dispatchDragOrHold");
-        int[] cursorPosition = cursorController.getCursorPositionXY();
+        int[] cursorPosition = cursorController.getPathCursorPositionXY();
 
         // Register new drag action.
         if (!cursorController.isDragging) {
@@ -1374,7 +1374,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     public void startTouch() {
         int[] cursorPosition = new int[2];
-        cursorPosition = getCursorPosition();
+        cursorPosition = getPathCursorPosition();
         if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
             Log.d(TAG, "START SWIPE");
             cursorController.swipeToggleActive = true;
@@ -1390,7 +1390,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     public void stopTouch() {
         int[] cursorPosition = new int[2];
-        cursorPosition = getCursorPosition();
+        cursorPosition = getPathCursorPosition();
         if (cursorController.isSwiping) {
             Log.d(TAG, "STOP SWIPE");
             stopRealtimeSwipe();
@@ -1565,7 +1565,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             long lastCheckTime = System.currentTimeMillis();
             while (cursorController.isSwiping) {
-                int[] cursorPosition = getCursorPosition();
+                int[] cursorPosition = getPathCursorPosition();
                 long now = SystemClock.uptimeMillis();
                 try {
                     if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
@@ -1600,7 +1600,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void stopRealtimeSwipe() {
         endUptime = SystemClock.uptimeMillis();
         endTime = System.currentTimeMillis();
-        int[] cursorPosition = getCursorPosition();
+        int[] cursorPosition = getPathCursorPosition();
         serviceUiManager.clearPreviewBitmap();
         int keyWidth = keyboardManager.getKeyboardBounds().width() / 10;
         if (cursorController.startedSwipeFromRightKbd && (cursorPosition[0] < screenSize.x) &&
@@ -1811,6 +1811,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /**
+     * Get the current cursor position.
+     *
+     * @return An array containing the x and y coordinates of the cursor.
+     */
+    private int[] getPathCursorPosition() {
+        return cursorController.getPathCursorPositionXY();
+    }
+
+    /**
      * Check if the app is platform signed and has INJECT_EVENTS permission.
      */
     private boolean isPlatformSignedAndCanInjectEvents() {
@@ -1980,7 +1989,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void startHoverZoneMonitoring() {
         new Thread(() -> {
             while (tapEventStarted && !tapEventEnding) {
-                int[] currentPosition = getCursorPosition();
+                int[] currentPosition = getPathCursorPosition();
                 int[] startPos = tapStartPosition;
 
                 // Skip if either position is null
@@ -2234,7 +2243,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "cancelSwipe() called, stopping swipe");
             endUptime = SystemClock.uptimeMillis();
             endTime = System.currentTimeMillis();
-            int[] cursorPosition = getCursorPosition();
+            int[] cursorPosition = getPathCursorPosition();
             serviceUiManager.clearPreviewBitmap();
             // TODO: if kbd bounds is null, use screen height. OR get actual key width from keyboardManager via searching node tree.
             int keyWidth = keyboardManager.getKeyboardBounds().width() / 10;
@@ -2324,7 +2333,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 }
 
                 while (cursorController.isSwiping) {
-                    int[] cursorPosition = getCursorPosition();
+                    int[] cursorPosition = getPathCursorPosition();
                     long now = SystemClock.uptimeMillis();
                     try {
                         if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
@@ -2366,7 +2375,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         new Thread(() -> {
             isInHoverZone = true;
             while (swipeEventStarted && !swipeEventEnding) {
-                int[] currentPosition = getCursorPosition();
+                int[] currentPosition = getPathCursorPosition();
                 int[] startPos = swipeStartPosition; // Get local copy to avoid NPE
 
                 // Skip if either position is null
