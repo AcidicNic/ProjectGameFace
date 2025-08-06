@@ -49,7 +49,7 @@ public class DispatchEventHelper {
     switch (event.eventType) {
       case CONTINUOUS_TOUCH:
         Log.d("dispatchEvent", "continuous touch");
-        parentService.continuousTouch(event.isStartingEvent);
+        parentService.handleSwipeEvent(event.isStartingEvent);
         break;
 
       case TOGGLE_TOUCH:
