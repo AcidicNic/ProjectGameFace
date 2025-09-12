@@ -98,6 +98,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     public WindowManager windowManager;
     private Handler tickFunctionHandler;
     public Point screenSize;
+    private HeadBoardService headBoardService;
     private KeyboardManager keyboardManager;
 
     private ProcessCameraProvider cameraProvider;
@@ -2553,5 +2554,154 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         Log.d(TAG, "Outputting alternate character");
         // Execute long tap
         dispatchTapGesture(coords, getSystemLongpressDelay());
+    }
+
+    /**
+     * Set the HeadBoard service reference
+     * @param service The HeadBoard service instance
+     */
+    public void setHeadBoardService(HeadBoardService service) {
+        this.headBoardService = service;
+        Log.d(TAG, "HeadBoard service reference set");
+    }
+
+    /**
+     * Handle motion event from the IME
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @param action Motion event action
+     * @param downTime Time when the event was first pressed down
+     * @param eventTime Time when this specific event occurred
+     */
+    public void handleMotionEvent(float x, float y, int action, long downTime, long eventTime) {
+        Log.d(TAG, "Handling motion event from IME: (" + x + ", " + y + ", action=" + action + ")");
+        
+        // Convert to screen coordinates if needed
+        // The IME coordinates might be relative to the IME window
+        // You may need to adjust this based on your coordinate system
+        
+        // Create and dispatch the motion event
+        MotionEvent motionEvent = MotionEvent.obtain(
+            downTime, eventTime, action, x, y, 0, 0, 0, 0, 0, 0, 0
+        );
+        
+        // Dispatch the event through the accessibility service
+        dispatchGesture(createGestureDescription(motionEvent), null, null);
+    }
+
+    /**
+     * Handle key event from the IME
+     * @param keyCode The key code
+     * @param isDown Whether the key is being pressed down
+     * @param isLongPress Whether this is a long press event
+     */
+    public void handleKeyEvent(int keyCode, boolean isDown, boolean isLongPress) {
+        Log.d(TAG, "Handling key event from IME: keyCode=" + keyCode + ", isDown=" + isDown + ", isLongPress=" + isLongPress);
+        
+        int action = isDown ? KeyEvent.ACTION_DOWN : KeyEvent.ACTION_UP;
+        long eventTime = SystemClock.uptimeMillis();
+        
+        KeyEvent keyEvent = new KeyEvent(eventTime, eventTime, action, keyCode, isLongPress ? 1 : 0);
+        
+        // Dispatch the key event
+        dispatchKeyEvent(keyEvent);
+    }
+
+    /**
+     * Set the long press delay
+     * @param delay Delay in milliseconds
+     */
+    public void setLongPressDelay(int delay) {
+        Log.d(TAG, "Setting long press delay: " + delay + "ms");
+        // Store the delay in preferences or update the system setting
+        // This would depend on your implementation
+    }
+
+    /**
+     * Set the gesture trail color
+     * @param color The color value (ARGB format)
+     */
+    public void setGestureTrailColor(int color) {
+        Log.d(TAG, "Setting gesture trail color: " + color);
+        // Update the gesture trail color in your UI
+        if (serviceUiManager != null) {
+            // Update the UI manager with the new color
+            // This would depend on your UI implementation
+        }
+    }
+
+    /**
+     * Get key information at specific coordinates
+     * @param x X coordinate
+     * @param y Y coordinate
+     */
+    public void getKeyInfo(float x, float y) {
+        Log.d(TAG, "Getting key info at: (" + x + ", " + y + ")");
+        
+        // Find the key at the specified coordinates
+        // This would depend on your keyboard implementation
+        // For now, we'll create a basic KeyInfo object
+        KeyInfo keyInfo = new KeyInfo();
+        keyInfo.x = x;
+        keyInfo.y = y;
+        keyInfo.isVisible = true;
+        
+        // Send the key info back to the IME
+        if (headBoardService != null) {
+            headBoardService.sendKeyInfo(keyInfo);
+        }
+    }
+
+    /**
+     * Get key bounds for a specific key code
+     * @param keyCode The key code to get bounds for
+     */
+    public void getKeyBounds(int keyCode) {
+        Log.d(TAG, "Getting key bounds for keyCode: " + keyCode);
+        
+        // Find the key bounds for the specified key code
+        // This would depend on your keyboard implementation
+        // For now, we'll create a basic KeyBounds object
+        KeyBounds keyBounds = new KeyBounds(0, 0, 100, 100, keyCode);
+        
+        // Send the key bounds back to the IME
+        if (headBoardService != null) {
+            headBoardService.sendKeyBounds(keyBounds);
+        }
+    }
+
+    /**
+     * Show or hide key popup
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @param showKeyPreview Whether to show the key preview
+     * @param withAnimation Whether to animate the popup
+     * @param isLongPress Whether this is a long press popup
+     */
+    public void showOrHideKeyPopup(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
+        Log.d(TAG, "Show/hide key popup: (" + x + ", " + y + "), show=" + showKeyPreview);
+        
+        // Handle the key popup display
+        // This would depend on your UI implementation
+        if (serviceUiManager != null) {
+            // Update the UI manager to show/hide the popup
+            // This would depend on your UI implementation
+        }
+    }
+
+    /**
+     * Create a gesture description from a motion event
+     * @param motionEvent The motion event
+     * @return The gesture description
+     */
+    private AccessibilityService.GestureDescription createGestureDescription(MotionEvent motionEvent) {
+        AccessibilityService.GestureDescription.Builder builder = new AccessibilityService.GestureDescription.Builder();
+        
+        // Add the motion event to the gesture
+        builder.addStroke(new AccessibilityService.GestureDescription.StrokeDescription(
+            new android.graphics.Path(), motionEvent.getDownTime(), motionEvent.getEventTime() - motionEvent.getDownTime()
+        ));
+        
+        return builder.build();
     }
 }

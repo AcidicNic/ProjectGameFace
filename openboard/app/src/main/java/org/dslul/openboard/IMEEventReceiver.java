@@ -47,7 +47,10 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
     public static void setLatinIME(LatinIME ime) {
         if (sInstance != null) {
+            Log.d(TAG, "Setting LatinIME instance in IMEEventReceiver");
             sInstance.mIme = ime;
+        } else {
+            Log.e(TAG, "IMEEventReceiver instance is null. Cannot set LatinIME.");
         }
     }
 

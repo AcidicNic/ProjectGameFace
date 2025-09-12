@@ -41,6 +41,8 @@
         android:maxSdkVersion="32" />
 
     <uses-permission android:name="com.headswype.permission.SEND_EVENT" />
+    <uses-permission android:name="android.permission.BIND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
 <!--    <instrumentation-->
 <!--        android:name=".MyInstrumentation"-->
 <!--        android:targetPackage="org.dslul.openboard.inputmethod.latin" />-->
@@ -139,6 +141,16 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/mouse_accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".HeadBoardService"
+            android:enabled="true"
+            android:exported="true"
+            android:process=":headboard_service">
+            <intent-filter>
+                <action android:name="com.google.projectgameface.HeadBoardService" />
+            </intent-filter>
         </service>
 
     </application>

@@ -52,6 +52,9 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
 
 import org.dslul.openboard.IMEEventReceiver;
+import org.dslul.openboard.HeadBoardServiceConnection;
+import com.google.projectgameface.KeyInfo;
+import com.google.projectgameface.KeyBounds;
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
 import org.dslul.openboard.inputmethod.annotations.UsedForTesting;
 import org.dslul.openboard.inputmethod.compat.EditorInfoCompatUtils;
@@ -181,6 +184,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             new DictionaryDumpBroadcastReceiver(this);
 
     private IMEEventReceiver imeEventReceiver;
+    private HeadBoardServiceConnection mHeadBoardServiceConnection;
     private long startUpTime = 0;
 
     final static class HideSoftInputReceiver extends BroadcastReceiver {
@@ -691,6 +695,39 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         eventFilter.addAction(IMEEventReceiver.ACTION_SHOW_OR_HIDE_KEY_POPUP);
         registerReceiver(imeEventReceiver, eventFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
         Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
+
+        // Initialize HeadBoard service connection
+        mHeadBoardServiceConnection = new HeadBoardServiceConnection(this, new HeadBoardServiceConnection.HeadBoardServiceListener() {
+            @Override
+            public void onServiceConnected() {
+                Log.d(TAG, "HeadBoard service connected");
+            }
+
+            @Override
+            public void onServiceDisconnected() {
+                Log.d(TAG, "HeadBoard service disconnected");
+            }
+
+            @Override
+            public void onKeyInfo(KeyInfo keyInfo) {
+                Log.d(TAG, "Received key info from HeadBoard: " + keyInfo);
+                // Handle key info if needed
+            }
+
+            @Override
+            public void onKeyBounds(KeyBounds keyBounds) {
+                Log.d(TAG, "Received key bounds from HeadBoard: " + keyBounds);
+                // Handle key bounds if needed
+            }
+
+            @Override
+            public void onError(int errorCode, String errorMessage) {
+                Log.e(TAG, "HeadBoard service error: " + errorCode + " - " + errorMessage);
+            }
+        });
+
+        // Connect to HeadBoard service
+        mHeadBoardServiceConnection.connect();
     }
 
     // Has to be package-visible for unit tests
@@ -807,6 +844,13 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             unregisterReceiver(imeEventReceiver);
             Log.d(TAG, "IMEEventReceiver unregistered.");
         }
+
+        // Disconnect from HeadBoard service
+        if (mHeadBoardServiceConnection != null) {
+            mHeadBoardServiceConnection.disconnect();
+            Log.d(TAG, "HeadBoard service disconnected.");
+        }
+
         super.onDestroy();
     }
 
@@ -817,6 +861,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         if (action == MotionEvent.ACTION_DOWN) {
             startUpTime = SystemClock.uptimeMillis();
             eventTime = startUpTime;
+        }
+
+        // Try to send via HeadBoard service first (preferred method)
+        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
+            mHeadBoardServiceConnection.sendMotionEvent(x, y, action, startUpTime, eventTime);
+            return;
         }
         startUpTime = SystemClock.uptimeMillis();
 
@@ -859,6 +909,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
      * @param isLongPress True if the key is long pressed.
      **/
     public void dispatchKeyEvent(int keyCode, boolean isDown, boolean isLongPress) {
+        // Try to send via HeadBoard service first (preferred method)
+        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
+            mHeadBoardServiceConnection.sendKeyEvent(keyCode, isDown, isLongPress);
+            return;
+        }
+
         // For key presses, we need to call both onPressKey and onCodeInput
         if (isDown) {
             int repeatCount = isLongPress ? 1 : 0; // Set repeat count to 1 for long press
@@ -885,6 +941,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     public void setGestureTrailColor(int color) {
+        // Try to send via HeadBoard service first (preferred method)
+        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
+            mHeadBoardServiceConnection.setGestureTrailColor(color);
+            return;
+        }
+
         // Get the MainKeyboardView which contains the gesture trail preview
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView != null) {
@@ -902,6 +964,12 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     private Map<String, MoreKeysPanel[]> keyCoordsToAltPopups = new HashMap<>(2);
 
     public void showOrHideKeyPopup(boolean showKeyPreview, int[] coords, boolean withAnimation, boolean isLongPressPopup) {
+        // Try to send via HeadBoard service first (preferred method)
+        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
+            mHeadBoardServiceConnection.showOrHideKeyPopup(coords[0], coords[1], showKeyPreview, withAnimation, isLongPressPopup);
+            return;
+        }
+
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView == null) {
             Log.e(TAG, "MainKeyboardView is null. Cannot show or hide key popup.");
@@ -928,16 +996,20 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
         Log.d(TAG, "ActivePointerTrackerCount: " + mainKeyboardView.getActivePointerTrackerCount());
 
-//        if (showKeyPreview && mainKeyboardView.getActivePointerTrackerCount() > 1) {
-//            Log.w(TAG, "Cannot show key preview with multiple active pointer trackers.");
-//            return;
-//        }
+        if (showKeyPreview && mainKeyboardView.getActivePointerTrackerCount() > 1) {
+            Log.w(TAG, "Cannot show key preview with multiple active pointer trackers.");
+            return;
+        }
+        PointerTracker.dismissAllMoreKeysPanels();
 
         if (isLongPressPopup && showKeyPreview) { // show longpress popup
             if (targetKey.getMoreKeys() == null) {
                 Log.w(TAG, "No long press popup available for key: " + l);
                 return;
             }
+            PointerTracker tracker = PointerTracker.getPointerTracker(0);
+
+
             mainKeyboardView.dismissKeyPreviewWithoutDelay(targetKey);
             Log.d(TAG, "Attempting to show long press popup for key: " + l);
             MoreKeysPanel moreKeysPanel = mainKeyboardView.showMoreKeysKeyboard(targetKey, actualCoords);
@@ -958,6 +1030,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return;
         }
         if (isLongPressPopup && !showKeyPreview) { // hide longpress popup
+            PointerTracker.dismissAllMoreKeysPanels();
             MoreKeysPanel[] moreKeysPanels = keyCoordsToAltPopups.get(actualCoords[0] + "," + actualCoords[1]);
             if (moreKeysPanels == null || moreKeysPanels.length == 0) {
                 Log.w(TAG, "No open long press popups found for key: " + l);
