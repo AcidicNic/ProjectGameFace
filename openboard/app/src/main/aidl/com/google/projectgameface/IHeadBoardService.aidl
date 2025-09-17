@@ -2,6 +2,7 @@ package com.google.projectgameface;
 
 import com.google.projectgameface.KeyInfo;
 import com.google.projectgameface.KeyBounds;
+import com.google.projectgameface.IHeadBoardCallback;
 
 /**
  * AIDL interface for bi-directional communication between HeadBoard accessibility service

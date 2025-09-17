@@ -2556,6 +2556,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         dispatchTapGesture(coords, getSystemLongpressDelay());
     }
 
+    /*--------------------------------- AIDL ---------------------------------*/
+
     /**
      * Set the HeadBoard service reference
      * @param service The HeadBoard service instance
@@ -2586,7 +2588,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         );
         
         // Dispatch the event through the accessibility service
-        dispatchGesture(createGestureDescription(motionEvent), null, null);
+//        dispatchGesture(createGestureDescription(motionEvent), null, null);
     }
 
     /**
@@ -2604,7 +2606,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         KeyEvent keyEvent = new KeyEvent(eventTime, eventTime, action, keyCode, isLongPress ? 1 : 0);
         
         // Dispatch the key event
-        dispatchKeyEvent(keyEvent);
+//        dispatchKeyEvent(keyEvent);
     }
 
     /**
@@ -2687,21 +2689,5 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             // Update the UI manager to show/hide the popup
             // This would depend on your UI implementation
         }
-    }
-
-    /**
-     * Create a gesture description from a motion event
-     * @param motionEvent The motion event
-     * @return The gesture description
-     */
-    private AccessibilityService.GestureDescription createGestureDescription(MotionEvent motionEvent) {
-        AccessibilityService.GestureDescription.Builder builder = new AccessibilityService.GestureDescription.Builder();
-        
-        // Add the motion event to the gesture
-        builder.addStroke(new AccessibilityService.GestureDescription.StrokeDescription(
-            new android.graphics.Path(), motionEvent.getDownTime(), motionEvent.getEventTime() - motionEvent.getDownTime()
-        ));
-        
-        return builder.build();
     }
 }

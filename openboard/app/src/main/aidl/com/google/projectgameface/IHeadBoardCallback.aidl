@@ -11,13 +11,13 @@ interface IHeadBoardCallback {
      * Called when key information is available
      * @param keyInfo The key information
      */
-    void onKeyInfo(KeyInfo keyInfo);
+    void onKeyInfo(in KeyInfo keyInfo);
     
     /**
      * Called when key bounds are available
      * @param keyBounds The key bounds information
      */
-    void onKeyBounds(KeyBounds keyBounds);
+    void onKeyBounds(in KeyBounds keyBounds);
     
     /**
      * Called when the service connection status changes

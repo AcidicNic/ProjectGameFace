@@ -72,6 +72,17 @@ android {
     kotlinOptions {
         jvmTarget = '11'
     }
+
+    buildFeatures {
+        aidl true
+    }
+
+    // Ensure AIDL sources are picked up explicitly
+    sourceSets {
+        main {
+            aidl.srcDirs = ['src/main/aidl']
+        }
+    }
 }
 
 
