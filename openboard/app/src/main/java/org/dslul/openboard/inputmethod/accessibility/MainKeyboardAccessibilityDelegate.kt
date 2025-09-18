@@ -14,8 +14,7 @@ import org.dslul.openboard.inputmethod.latin.utils.SubtypeLocaleUtils
  * This class represents a delegate that can be registered in [MainKeyboardView] to enhance
  * accessibility support via composition rather via inheritance.
  */
-class MainKeyboardAccessibilityDelegate(mainKeyboardView: MainKeyboardView,
-                                        keyDetector: KeyDetector) : KeyboardAccessibilityDelegate<MainKeyboardView?>(mainKeyboardView, keyDetector), LongPressTimerCallback {
+class MainKeyboardAccessibilityDelegate(mainKeyboardView: MainKeyboardView,keyDetector: KeyDetector) : KeyboardAccessibilityDelegate<MainKeyboardView?>(mainKeyboardView, keyDetector), LongPressTimerCallback {
     companion object {
         private val TAG = MainKeyboardAccessibilityDelegate::class.java.simpleName
         /** Map of keyboard modes to resource IDs.  */

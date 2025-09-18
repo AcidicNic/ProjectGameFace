@@ -1040,8 +1040,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         if (mIsTrackingForActionDisabled) {
             return;
         }
-        if (currentKey != null && currentKey.isRepeatable()
-                && (currentKey.getCode() == currentRepeatingKeyCode) && !isInDraggingFinger) {
+        if (currentKey != null && currentKey.isRepeatable() && (currentKey.getCode() == currentRepeatingKeyCode) && !isInDraggingFinger) {
             return;
         }
         detectAndSendKey(currentKey, mKeyX, mKeyY, eventTime);
@@ -1209,12 +1208,15 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         callListenerOnRelease(key, code, false /* withSliding */);
     }
 
+    private boolean disableKeyRepeat = true;
+
     private void startRepeatKey(final Key key) {
         if (sInGesture) return;
         if (key == null) return;
         if (!key.isRepeatable()) return;
         // Don't start key repeat when we are in the dragging finger mode.
         if (mIsInDraggingFinger) return;
+        if (disableKeyRepeat) return;
         final int startRepeatCount = 1;
         startKeyRepeatTimer(startRepeatCount);
     }

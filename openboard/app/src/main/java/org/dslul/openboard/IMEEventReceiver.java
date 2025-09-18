@@ -30,6 +30,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
     public static final String ACTION_GET_KEY_INFO = "com.headswype.ACTION_GET_KEY_INFO";
     public static final String ACTION_GET_KEY_BOUNDS = "com.headswype.ACTION_GET_KEY_BOUNDS";
     public static final String ACTION_SHOW_OR_HIDE_KEY_POPUP = "com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP";
+    public static final String ACTION_HIGHLIGHT_KEY = "com.headswype.ACTION_HIGHLIGHT_KEY";
 
     private LatinIME mIme;
     private static IMEEventReceiver sInstance;
@@ -273,6 +274,26 @@ public class IMEEventReceiver extends BroadcastReceiver {
     }
 
     public void showOrHideKeyPopup(Intent intent) {
+        Log.d(TAG, "showOrHideKeyPopup()");
+        if (mIme == null) {
+            Log.e(TAG, "LatinIME instance is null. Cannot show/hide key popup.");
+            return;
+        }
+
+        int x = intent.getIntExtra("x", -1);
+        int y = intent.getIntExtra("y", -1);
+        if (x < 0 || y < 0) {
+            Log.e(TAG, "Invalid coordinates provided for key popup");
+            return;
+        }
+        boolean showKeyPreview = intent.getBooleanExtra("showKeyPreview", false);
+        boolean withAnimation = intent.getBooleanExtra("withAnimation", false);
+        boolean isLongPress = intent.getBooleanExtra("isLongPress", false);
+
+        mIme.showOrHideKeyPopup(showKeyPreview, new int[] {x, y}, withAnimation, isLongPress);
+    }
+
+    public void highlightKey(Intent intent) {
         Log.d(TAG, "showOrHideKeyPopup()");
         if (mIme == null) {
             Log.e(TAG, "LatinIME instance is null. Cannot show/hide key popup.");

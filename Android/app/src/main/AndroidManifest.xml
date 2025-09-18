@@ -42,7 +42,6 @@
 
     <uses-permission android:name="com.headswype.permission.SEND_EVENT" />
     <uses-permission android:name="android.permission.BIND_SERVICE" />
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
 <!--    <instrumentation-->
 <!--        android:name=".MyInstrumentation"-->
 <!--        android:targetPackage="org.dslul.openboard.inputmethod.latin" />-->
@@ -142,6 +141,15 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/mouse_accessibility_service_config" />
         </service>
+
+        <receiver
+            android:name=".KeyboardEventReceiver"
+            android:exported="true"
+            android:permission="com.headswype.permission.SEND_EVENT">
+            <intent-filter>
+                <action android:name="com.headswype.ACTION_SEND_EVENT" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".HeadBoardService"

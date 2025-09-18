@@ -30,6 +30,7 @@ import android.content.pm.Signature;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.hardware.input.InputManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -2129,6 +2130,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isTap = false;
     private boolean isSwipe = false;
     private boolean isLongTap = false;
+    private Rect swipeKeyBounds = null;
 
     /**
      * Handles swipe actions based on version 3.0 specs
@@ -2178,14 +2180,38 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         else canStartSwipe = true;
     };
 
+    // BroadcastReceiver that indicates a keyboard swype has started, so the cursor should be green
+    private BroadcastReceiver swypeStartedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "swipeStartReceiver received broadcast");
+            if (intent != null && intent.getAction() != null &&
+                intent.getAction().equals("com.google.projectgameface.SWIPE_START")) {
+                if (!swipeEventEnding) {
+                    Log.d(TAG, "swipeStartReceiver starting swipe due to broadcast");
+                    serviceUiManager.cursorView.setColor("GREEN");
+                }
+            }
+        }
+    };
+
     private Runnable animateCursorTouchRunnable = () -> {
         Log.d(TAG, "animateCursorTouchRunnable called");
         if (swipeEventEnding) return;
-        mainHandler.postDelayed(touchGreenToBlueRunnable, getQuickTapThreshold() - uiFeedbackDelay);
 
-        // After D1A delay, start color animation from YELLOW to GREEN
+        // if this is a keyboard swype,
+        if (startedInsideKbd) {
+            if (Config.SHOW_KEY_POPUP) { // and key popup is enabled,
+                // show long press popup after user feedback delay
+//                keyboardManager.showKeyPopupIME(swipeStartPosition[0], swipeStartPosition[1], true);
+            }
+            startSwipe(); // start sending touch events immediately for keyboard swype
+        }
+//        mainHandler.postDelayed(touchGreenToBlueRunnable, getQuickTapThreshold() - uiFeedbackDelay);
+
+        // After D1A delay, start color animation from YELLOW to BLUE
         serviceUiManager.cursorView.setColor("YELLOW");
-        serviceUiManager.cursorView.animateToColor("GREEN", getQuickTapThreshold(), uiFeedbackDelay);
+        serviceUiManager.cursorView.animateToColor("BLUE", getLongTapThreshold());
 //        if (!isInHoverZone) serviceUiManager.cursorView.hideAnimation("RED");
     };
 
@@ -2200,7 +2226,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
 
         // Store initial position and start time
-        swipeStartPosition = new int[]{initialPosition[0], initialPosition[1]}; // Create a new array to store the position
+//        swipeStartPosition = new int[]{initialPosition[0], initialPosition[1]}; // actual start position
+        swipeStartPosition = cursorController.getRollingAverage(); // use rolling avg from last D1A milliseconds as start position
         swipeStartTime = System.currentTimeMillis();
         isInHoverZone = true;
         swipeEventStarted = true;
@@ -2214,12 +2241,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             ", " + swipeStartPosition[1] + "), startedInsideKbd: " + startedInsideKbd);
 
         if (startedInsideKbd && !swipeEventEnding) {
-            Log.d(TAG, "startSwipeSequence() - Show key popup & send long press delay to IME");
-            keyboardManager.showKeyPopupIME(swipeStartPosition[0], swipeStartPosition[1], true);
+            if (Config.HIGHLIGHT_KEY_ON_TOUCH) { // and key highlight is enabled,
+                // highlight the key under cursor
+                keyboardManager.highlightKeyAt(swipeStartPosition[0], swipeStartPosition[1]);
+            }
             keyboardManager.sendLongPressDelayToIME(100);
         }
 
-        startMovementMonitoring(); // Start movement monitoring
+//        startMovementMonitoring(); // Start movement monitoring
+
+        swipeKeyBounds = keyboardManager.getKeyBounds(swipeStartPosition); // TODO: get key bounds from kbd
 
         // Start initial hover period (D1A)
         mainHandler.postDelayed(animateCursorTouchRunnable, uiFeedbackDelay);
@@ -2293,6 +2324,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void startSwipe() {
         cursorController.isSwiping = true;
         mainHandler.removeCallbacks(endTouchAnimationRunnable);
+        // TODO: comment this out to keep cursor green during swipe
         serviceUiManager.cursorView.setColor("GREEN");
         if (startedInsideKbd) {
             cursorController.isRealtimeSwipe = true;

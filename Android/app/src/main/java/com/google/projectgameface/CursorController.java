@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat;
 import com.google.projectgameface.utils.Config;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,6 +43,25 @@ public class CursorController {
     private double cursorPositionY = Double.NaN;
     private double pathCursorPositionX = Double.NaN;
     private double pathCursorPositionY = Double.NaN;
+    
+    // Rolling average data structures
+    private ArrayDeque<CursorPositionEntry> cursorPositionHistory = new ArrayDeque<>();
+    private double rollingSumX = 0.0;
+    private double rollingSumY = 0.0;
+    private int rollingCount = 0;
+    
+    // Inner class to store cursor position with timestamp
+    private static class CursorPositionEntry {
+        final long timestamp;
+        final double x;
+        final double y;
+        
+        CursorPositionEntry(long timestamp, double x, double y) {
+            this.timestamp = timestamp;
+            this.x = x;
+            this.y = y;
+        }
+    }
     public boolean isDragging = false;
     private static final int MAX_BUFFER_SIZE = 100;
     /** Array for storing user face coordinate x coordinate (detected from FaceLandmarks). */
@@ -324,7 +344,6 @@ public class CursorController {
     private float targetOffsetY = 0f;
     private float appliedOffsetX = 0f;
     private float appliedOffsetY = 0f;
-    private boolean firstOffset = true;
     // Time in milliseconds over which to apply the offset smoothly
     private final long offsetTransitionDuration = 200; // 200ms
     private long lastOffsetUpdateTime = System.currentTimeMillis();
@@ -437,6 +456,21 @@ public class CursorController {
         // Clamp cursor position to screen bounds
         cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
         cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+
+        // Add current cursor position to history for rolling average calculation
+        addCursorPositionToHistory(cursorPositionX, cursorPositionY);
+        
+        // Calculate rolling average and optionally use it
+        double[] rollingAverage = calculateRollingAverage();
+        if (rollingAverage != null) {
+            // You can uncomment the following lines to use rolling average instead of current position
+            // cursorPositionX = rollingAverage[0];
+            // cursorPositionY = rollingAverage[1];
+            
+            // For now, we'll keep the current behavior but the rolling average is available
+            // Log.d(TAG, "Rolling average: (" + rollingAverage[0] + ", " + rollingAverage[1] + 
+            //       "), Current: (" + cursorPositionX + ", " + cursorPositionY + ")");
+        }
 
 //        if (isSwiping) {
 //            // Track path points for the swipe
@@ -765,5 +799,71 @@ public class CursorController {
 
     public void setKeyboardManager(KeyboardManager keyboardManager) {
         mKeyboardManager = keyboardManager;
+    }
+    
+    /**
+     * Add a cursor position entry to the history for rolling average calculation.
+     * 
+     * @param x X coordinate of cursor position
+     * @param y Y coordinate of cursor position
+     */
+    private void addCursorPositionToHistory(double x, double y) {
+        long currentTime = System.currentTimeMillis();
+        cursorPositionHistory.addLast(new CursorPositionEntry(currentTime, x, y));
+        rollingSumX += x;
+        rollingSumY += y;
+        rollingCount += 1;
+
+        // Clean up old entries outside the rolling average window
+        cleanupOldPositions(currentTime);
+    }
+    
+    /**
+     * Remove cursor position entries older than the rolling average window.
+     * 
+     * @param currentTime Current timestamp in milliseconds
+     */
+    private void cleanupOldPositions(long currentTime) {
+        long cutoffTime = currentTime - Config.D1A_DURATION;
+
+        // Evict from the head while entries are older than the cutoff
+        while (!cursorPositionHistory.isEmpty()) {
+            CursorPositionEntry head = cursorPositionHistory.peekFirst();
+            if (head.timestamp >= cutoffTime) break;
+            cursorPositionHistory.pollFirst();
+            rollingSumX -= head.x;
+            rollingSumY -= head.y;
+            rollingCount -= 1;
+        }
+    }
+    
+    /**
+     * Get the rolling average cursor position over the last 800ms.
+     * 
+     * @return Array containing [averageX, averageY], or null if no positions in window
+     */
+    public int[] getRollingAverage() {
+        double[] avg = calculateRollingAverage();
+        if (avg == null) return null;
+        return new int[]{(int) avg[0], (int) avg[1]};
+    }
+    
+    /**
+     * Clear the rolling average history. Useful for resetting the cursor state.
+     */
+    public void clearRollingAverageHistory() {
+        cursorPositionHistory.clear();
+    }
+    
+    /**
+     * Calculate the rolling average cursor position over the last 800ms.
+     * 
+     * @return Array containing [averageX, averageY], or null if no positions in window
+     */
+    private double[] calculateRollingAverage() {
+        if (rollingCount <= 0) {
+            return null;
+        }
+        return new double[]{rollingSumX / rollingCount, rollingSumY / rollingCount};
     }
 }
