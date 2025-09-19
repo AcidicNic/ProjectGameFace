@@ -49,7 +49,7 @@ public class CursorController {
     private double rollingSumX = 0.0;
     private double rollingSumY = 0.0;
     private int rollingCount = 0;
-    
+
     // Inner class to store cursor position with timestamp
     private static class CursorPositionEntry {
         final long timestamp;
@@ -865,5 +865,10 @@ public class CursorController {
             return null;
         }
         return new double[]{rollingSumX / rollingCount, rollingSumY / rollingCount};
+    }
+
+    public void setPathCursorPosition(int[] coords) {
+        pathCursorPositionX = coords[0];
+        pathCursorPositionY = coords[1];
     }
 }
