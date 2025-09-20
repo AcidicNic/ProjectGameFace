@@ -388,6 +388,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         };
 
         keyboardEventReceiver = new KeyboardEventReceiver(this);
+//        keyboardEventReceiver.setService(this);
         IntentFilter kbdFilter = new IntentFilter();
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_SWIPE_START);
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_LONGPRESS_ANIMATION);
@@ -480,8 +481,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         sendLongPressDelayToIME(getQuickTapThreshold());
     }
-
-    private boolean isPathCursorActive = false;
 
     /**
      * Tick function of the service. This function runs every {@value UI_UPDATE}
@@ -2129,6 +2128,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isLongTap = false;
     private Rect swipeKeyBounds = null;
 
+    private boolean isPathCursorActive = false;
+
     /**
      * Handles swipe actions based on version 3.0 specs
      *
@@ -2146,43 +2147,42 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
-    private Runnable endTouchAnimationRunnable = () -> {
-        // Cursor is blue, indicating long tap is ready to start
-        Log.d(TAG, "endTouchAnimationRunnable called");
-        if (swipeEventEnding || cursorController.isSwiping) return;
-        canStartSwipe = false;
-        isLongTap = true;
-        startSwipeHoverZoneMonitoring();
-        serviceUiManager.pathCursorSetColor("BLUE");
-    };
+//    private Runnable endTouchAnimationRunnable = () -> {
+//        // Cursor is blue, indicating long tap is ready to start
+//        Log.d(TAG, "endTouchAnimationRunnable called");
+//        if (swipeEventEnding || cursorController.isSwiping) return;
+//        canStartSwipe = false;
+//        isLongTap = true;
+//        startSwipeHoverZoneMonitoring();
+//        serviceUiManager.pathCursorSetColor("BLUE");
+//    };
 
-    private Runnable touchGreenToBlueRunnable = () -> {
-        // Cursor is green, indicating swipe is ready to start
-        Log.d(TAG, "touchGreenToBlueRunnable called");
-        if (swipeEventEnding) return;
+//    private Runnable touchGreenToBlueRunnable = () -> {
+//        // Cursor is green, indicating swipe is ready to start
+//        Log.d(TAG, "touchGreenToBlueRunnable called");
+//        if (swipeEventEnding) return;
+//
+//        mainHandler.postDelayed(endTouchAnimationRunnable, getLongTapThreshold());
+//        serviceUiManager.pathCursorSetColor("GREEN");
+//        serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold());
+// //        if (!isInHoverZone) serviceUiManager.pathCursorView.hideAnimation("RED");
+//
+//        if (startedInsideKbd) {
+//            sendMotionEventToIME(swipeStartPosition[0], swipeStartPosition[1], MotionEvent.ACTION_CANCEL);
+//        }
+//
+//        // start swipe if intentional movement was previously detected.
+//        if (isIntentionalMovement) {
+//            startSwipe();
+//        }
+//        else canStartSwipe = true;
+//    };
 
-        mainHandler.postDelayed(endTouchAnimationRunnable, getLongTapThreshold());
-        serviceUiManager.pathCursorSetColor("GREEN");
-        serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold());
-//        if (!isInHoverZone) serviceUiManager.pathCursorView.hideAnimation("RED");
-
-        if (startedInsideKbd) {
-            sendMotionEventToIME(swipeStartPosition[0], swipeStartPosition[1], MotionEvent.ACTION_CANCEL);
-        }
-
-        // start swipe if intentional movement was previously detected.
-        if (isIntentionalMovement) {
-            startSwipe();
-        }
-        else canStartSwipe = true;
-    };
-
-    // Receiver moved to KeyboardEventReceiver; keep handlers here
     private KeyboardEventReceiver keyboardEventReceiver;
 
     public void onKeyboardSwipeStart() {
         Log.d(TAG, "onKeyboardSwipeStart");
-        if (!swipeEventEnding) {
+        if (swipeEventStarted && !swipeEventEnding) {
             serviceUiManager.pathCursorSetColor("GREEN");
         }
     }
@@ -2204,9 +2204,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // show long press popup after user feedback delay
 //                keyboardManager.showKeyPopupIME(swipeStartPosition[0], swipeStartPosition[1], true);
             }
-            // After D1A delay, start color animation from YELLOW to BLUE
-            serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold(), uiFeedbackDelay);
         }
+        serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold(), uiFeedbackDelay);
 //        mainHandler.postDelayed(touchGreenToBlueRunnable, getQuickTapThreshold() - uiFeedbackDelay);
 
 //        if (!isInHoverZone) serviceUiManager.pathCursorView.hideAnimation("RED");
@@ -2232,6 +2231,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorController.isCursorTouch = true;
         uiFeedbackDelay = getUiFeedbackDelay();
         canStartSwipe = false;
+        serviceUiManager.pathCursorSetColor("YELLOW");
 
         startedInsideKbd = keyboardManager.canInjectEvent(swipeStartPosition[0], swipeStartPosition[1]);
         Log.d(TAG, "startSwipeSequence() swipeStartPosition: (" + swipeStartPosition[0] +
@@ -2244,17 +2244,16 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             keyboardManager.sendLongPressDelayToIME(getQuickTapThreshold());
             startSwipe(); // start sending touch events immediately for keyboard swype
         }
-        serviceUiManager.pathCursorSetColor("YELLOW");
-
-//        startMovementMonitoring(); // Start movement monitoring
 
 //        swipeKeyBounds = keyboardManager.getKeyBounds(swipeStartPosition);
 
         // Start initial hover period (D1A)
         mainHandler.postDelayed(animateCursorTouchRunnable, uiFeedbackDelay);
 
-        // Start monitoring cursor position for hover zone
-//        startSwipeHoverZoneMonitoring();
+//        if (!startedInsideKbd && !swipeEventEnding) {
+//            startSwipeHoverZoneMonitoring(); // Start monitoring cursor position for hover zone
+//            startMovementMonitoring(); // Start movement monitoring
+//        }
     }
 
     private void endSwipe() {
@@ -2322,7 +2321,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     private void startSwipe() {
         cursorController.isSwiping = true;
-        mainHandler.removeCallbacks(endTouchAnimationRunnable);
+//        mainHandler.removeCallbacks(endTouchAnimationRunnable);
 
         // disabling to set cursor green when the kbd indicates a swipe has started.
 
@@ -2457,24 +2456,25 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         swipeEventEnding = true;
         canStartSwipe = false;
         mainHandler.removeCallbacks(animateCursorTouchRunnable);
-        mainHandler.removeCallbacks(touchGreenToBlueRunnable);
-        mainHandler.removeCallbacks(endTouchAnimationRunnable);
+//        mainHandler.removeCallbacks(touchGreenToBlueRunnable);
+//        mainHandler.removeCallbacks(endTouchAnimationRunnable);
 
         // Cancel any ongoing animations
         serviceUiManager.pathCursorView.cancelAnimation();
 
         // If cursor is not in hover zone, cancel the action
-        if (!isInHoverZone && !startedInsideKbd) {
-            resetSwipeSequence();
-            return;
-        }
+//        if (!isInHoverZone && !startedInsideKbd) {
+//            resetSwipeSequence();
+//            return;
+//        }
 
         int duration = 200;
         try {
             if (cursorController.isSwiping) {
                 Log.d(TAG, "endSwipeSequence() - Ending swipe");
                 endSwipe();
-            } else if (isLongTap) { // long tap
+            }
+            else if (isLongTap) { // long tap
                 serviceUiManager.pathCursorSetColor("BLUE");
                 if (startedInsideKbd) {
                     Log.d(TAG, "endSwipeSequence() isLongTap, sending long press to IME");

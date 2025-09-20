@@ -16,6 +16,8 @@
 
 package org.dslul.openboard.inputmethod.keyboard;
 
+import android.content.Intent;
+
 import org.dslul.openboard.inputmethod.latin.common.Constants;
 import org.dslul.openboard.inputmethod.latin.common.InputPointers;
 
@@ -103,6 +105,13 @@ public interface KeyboardActionListener {
     void onMovePointer(int steps);
     void onMoveDeletePointer(int steps);
     void onUpWithDeletePointerActive();
+    
+    /**
+     * Send a broadcast intent.
+     * @param intent the intent to broadcast
+     * @param permission the permission required for the broadcast
+     */
+    void sendBroadcast(Intent intent, String permission);
 
     KeyboardActionListener EMPTY_LISTENER = new Adapter();
 
@@ -137,5 +146,7 @@ public interface KeyboardActionListener {
         public void onMoveDeletePointer(int steps) {}
         @Override
         public void onUpWithDeletePointerActive() {}
+        @Override
+        public void sendBroadcast(Intent intent, String permission) {}
     }
 }

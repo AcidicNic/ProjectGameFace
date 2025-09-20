@@ -12,36 +12,53 @@ import java.lang.ref.WeakReference;
  */
 public class KeyboardEventReceiver extends BroadcastReceiver {
     public static final String KEYBOARD_PACKAGE_NAME = "org.dslul.openboard.inputmethod.latin";
-    public static final String ACTION_SEND_MOTION_EVENT = "com.headswype.ACTION_SEND_EVENT";
 
-    public static final String ACTION_SWIPE_START = "com.google.projectgameface.ACTION_SWIPE_START";
-    public static final String ACTION_LONGPRESS_ANIMATION = "com.google.projectgameface.ACTION_LONGPRESS_ANIMATION";
+    public static final String ACTION_SWIPE_START = "com.headswype.ACTION_SWIPE_START";
+    public static final String ACTION_LONGPRESS_ANIMATION = "com.headswype.ACTION_LONGPRESS_ANIMATION";
 
     private static final String TAG = "KeyboardEventReceiver";
 
     private final WeakReference<CursorAccessibilityService> serviceRef;
 
+    // Default constructor required for Android system instantiation
+    public KeyboardEventReceiver() {
+        this.serviceRef = null;
+    }
+
     public KeyboardEventReceiver(CursorAccessibilityService service) {
         this.serviceRef = new WeakReference<>(service);
+    }
+
+    private CursorAccessibilityService getService(Context context) {
+        if (context instanceof CursorAccessibilityService) {
+            return (CursorAccessibilityService) context;
+        } else if (serviceRef != null) {
+            return serviceRef.get();
+        }
+        return null;
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent == null || intent.getAction() == null) return;
 
-        CursorAccessibilityService service = serviceRef.get();
+        CursorAccessibilityService service = getService(context);
         if (service == null) {
-            Log.w(TAG, "Service reference lost; cannot handle keyboard event");
+            Log.w(TAG, "Cannot get service reference; cannot handle keyboard event");
             return;
         }
 
-        String action = intent.getAction();
-        if (ACTION_SWIPE_START.equals(action)) {
-            Log.d(TAG, "Received ACTION_SWIPE_START");
-            service.onKeyboardSwipeStart();
-        } else if (ACTION_LONGPRESS_ANIMATION.equals(action)) {
-            Log.d(TAG, "Received ACTION_LONGPRESS_ANIMATION");
-            service.onKeyboardLongpressAnimation();
+        switch (intent.getAction()) {
+            case ACTION_SWIPE_START:
+                Log.d(TAG, "Received ACTION_SWIPE_START");
+                service.onKeyboardSwipeStart();
+                break;
+            case ACTION_LONGPRESS_ANIMATION:
+                Log.d(TAG, "Received ACTION_LONGPRESS_ANIMATION");
+                service.onKeyboardLongpressAnimation();
+                break;
+            default:
+                Log.w(TAG, "Received unknown action: " + intent.getAction());
         }
     }
 }

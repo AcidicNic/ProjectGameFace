@@ -147,7 +147,8 @@
             android:exported="true"
             android:permission="com.headswype.permission.SEND_EVENT">
             <intent-filter>
-                <action android:name="com.headswype.ACTION_SEND_EVENT" />
+                <action android:name="com.headswype.ACTION_SWIPE_START" />
+                <action android:name="com.headswype.ACTION_LONGPRESS_ANIMATION" />
             </intent-filter>
         </receiver>
 

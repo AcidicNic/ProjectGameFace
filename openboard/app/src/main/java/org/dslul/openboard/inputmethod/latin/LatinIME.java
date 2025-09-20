@@ -1905,6 +1905,15 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         mGestureConsumer.onGestureCanceled();
     }
 
+    @Override
+    public void sendBroadcast(android.content.Intent intent, String permission) {
+        if (Build.VERSION.SDK_INT >= 34 /* Android 14, API 34 */) {
+            sendOrderedBroadcast(intent, permission);
+        } else {
+            sendBroadcast(intent, permission);
+        }
+    }
+
     /**
      * To be called after the InputLogic has gotten a chance to act on the suggested words by the
      * IME for the full gesture, possibly updating the TextView to reflect the first suggestion.
