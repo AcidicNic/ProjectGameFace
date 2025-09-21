@@ -71,12 +71,12 @@ public final class AdvancedSettingsFragment extends SubScreenFragment {
         pref.setInterface(new SeekBarDialogPreference.ValueProxy() {
             @Override
             public void writeValue(final int value, final String key) {
-                prefs.edit().putInt(key, value).apply();
+//                prefs.edit().putInt(key, value).apply();
             }
 
             @Override
             public void writeDefaultValue(final String key) {
-                prefs.edit().remove(key).apply();
+//                prefs.edit().remove(key).apply();
             }
 
             @Override

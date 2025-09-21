@@ -24,7 +24,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager.LayoutParams;
@@ -37,10 +36,12 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
+import com.google.projectgameface.utils.Config;
+
 import java.util.Objects;
 
-/** The cursor speed activity of Gameface app. */
-public class FaceSwypeSettings extends AppCompatActivity {
+/** Settings activity. */
+public class HeadBoardSettings extends AppCompatActivity {
 
     private CursorMovementConfig cursorMovementConfig;
     private Switch realtimeSwipeSwitch;
@@ -52,38 +53,34 @@ public class FaceSwypeSettings extends AppCompatActivity {
     private SeekBar holdDurationSeekBar;
     private SeekBar dragToggleDurSeekBar;
     private SeekBar smoothingSeekBar;
-    private TextView smoothingTxt;
     private TextView smoothingProgress;
     private SeekBar headCoordScaleFactorXSeekBar;
     private SeekBar headCoordScaleFactorYSeekBar;
     private TextView holdDurationTxt;
     private TextView dragToggleDurTxt;
-    private TextView headCoordScaleFactorXTxt;
-    private TextView headCoordScaleFactorYTxt;
     private TextView headCoordScaleFactorXProgress;
     private TextView headCoordScaleFactorYProgress;
     private ConstraintLayout holdDurationLayout;
     private ConstraintLayout headCoordScaleFactorLayout;
     private Button switchKeyboardBtn;
     private Button debuggingStatsBtn;
+    private SeekBar quickTapThresholdSeekBar;
+    private TextView progressQuickTapThreshold;
+    private SeekBar longTapThresholdSeekBar;
+    private TextView progressLongTapThreshold;
 
-    private final int[] viewIds = {
-            R.id.holdDurationFaster,
-            R.id.holdDurationSlower,
-            R.id.headCoordScaleFactorXSlower,
-            R.id.headCoordScaleFactorXFaster,
-            R.id.headCoordScaleFactorYSlower,
-            R.id.headCoordScaleFactorYFaster,
-            R.id.decreaseDragToggleDelay,
-            R.id.increaseDragToggleDelay,
-            R.id.decreaseSmoothing,
-            R.id.increaseSmoothing
-    };
+    private SeekBar uiFeedbackDelaySeekBar;
+    private TextView progressUiFeedbackDelay;
+    private Switch exponentialSmoothingSwitch;
+
+    // Path Cursor UI elements
+    private SeekBar pathCursorSeekBar;
+    private TextView progressPathCursor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_faceswype_config);
+        setContentView(R.layout.activity_headboard_config);
         getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // setting actionbar
@@ -98,17 +95,15 @@ public class FaceSwypeSettings extends AppCompatActivity {
         realtimeSwipeSwitch = findViewById(R.id.realtimeSwipeSwitch);
         realtimeSwipeSwitch.setChecked(
                 cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.REALTIME_SWIPE));
-        realtimeSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sendValueToService("REALTIME_SWIPE", isChecked);
-        });
+        realtimeSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                sendValueToService("REALTIME_SWIPE", isChecked));
 
         // Debug Swipe
         debugSwipeSwitch = findViewById(R.id.debugSwipeSwitch);
         debugSwipeSwitch.setChecked(
                 cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DEBUG_SWIPE));
-        debugSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            sendValueToService("DEBUG_SWIPE", isChecked);
-        });
+        debugSwipeSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                sendValueToService("DEBUG_SWIPE", isChecked));
 
         // Pop Out Method
         holdDurationLayout = findViewById(R.id.edgeHoldDurationLayout);
@@ -149,10 +144,8 @@ public class FaceSwypeSettings extends AppCompatActivity {
         headCoordScaleFactorLayout = findViewById(R.id.headCoordScaleFactorLayout);
         headCoordScaleFactorXSeekBar = findViewById(R.id.headCoordScaleFactorXSeekBar);
         headCoordScaleFactorXProgress = findViewById(R.id.headCoordScaleFactorXProgress);
-        headCoordScaleFactorXTxt = findViewById(R.id.headCoordScaleFactorXTxt);
         headCoordScaleFactorYSeekBar = findViewById(R.id.headCoordScaleFactorYSeekBar);
         headCoordScaleFactorYProgress = findViewById(R.id.headCoordScaleFactorYProgress);
-        headCoordScaleFactorYTxt = findViewById(R.id.headCoordScaleFactorYTxt);
 
         setUpScaleFactorSeekBarAndTextView(
                 headCoordScaleFactorXSeekBar, headCoordScaleFactorXProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X)
@@ -188,6 +181,13 @@ public class FaceSwypeSettings extends AppCompatActivity {
                 smoothingSeekBar, smoothingProgress, String.valueOf(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING)
         );
 
+        // Exponential Smoothing
+        exponentialSmoothingSwitch = findViewById(R.id.exponentialSmoothingSwitch);
+        exponentialSmoothingSwitch.setChecked(
+                cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING));
+        exponentialSmoothingSwitch.setOnCheckedChangeListener((buttonView, isChecked) ->
+                sendValueToService("EXPONENTIAL_SMOOTHING", isChecked));
+
         // Switch Keyboard
         switchKeyboardBtn = findViewById(R.id.switchKeyboardBtn);
         switchKeyboardBtn.setOnClickListener(new OnClickListener() {
@@ -206,94 +206,225 @@ public class FaceSwypeSettings extends AppCompatActivity {
         debuggingStatsBtn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-//                Intent intent = new Intent(FaceSwypeSettings.this, CalibrationActivity.class);
-//                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-//                startActivity(intent);
-                Intent intent = new Intent(FaceSwypeSettings.this, DebuggingStatsActivity.class);
+                Intent intent = new Intent(HeadBoardSettings.this, DebuggingStatsActivity.class);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
             }
         });
 
-        // Binding buttons
-        for (int id : viewIds) {
-            findViewById(id).setOnClickListener(buttonClickListener);
-        }
-    }
+        // Ui feedback delay
+        uiFeedbackDelaySeekBar = findViewById(R.id.uiFeedbackDelaySeekBar);
+        progressUiFeedbackDelay = findViewById(R.id.progressUiFeedbackDelay);
 
-    private final View.OnClickListener buttonClickListener =
-        new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                int currentValue;
-                int newValue = 0;
+        setUpUiFeedbackDelaySeekBarAndTextView(
+                uiFeedbackDelaySeekBar, progressUiFeedbackDelay, String.valueOf(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY)
+        );
 
-                if (v.getId() == R.id.holdDurationFaster) {
-                    currentValue = holdDurationSeekBar.getProgress();
-                    newValue = currentValue + 1;
-                } else if (v.getId() == R.id.holdDurationSlower) {
-                    currentValue = holdDurationSeekBar.getProgress();
-                    newValue = currentValue - 1;
-                } else if (v.getId() == R.id.headCoordScaleFactorXFaster) {
-                    currentValue = headCoordScaleFactorXSeekBar.getProgress();
-                    newValue = currentValue + 1;
-                } else if (v.getId() == R.id.headCoordScaleFactorXSlower) {
-                    currentValue = headCoordScaleFactorXSeekBar.getProgress();
-                    newValue = currentValue - 1;
-                } else if (v.getId() == R.id.headCoordScaleFactorYFaster) {
-                    currentValue = headCoordScaleFactorYSeekBar.getProgress();
-                    newValue = currentValue + 1;
-                } else if (v.getId() == R.id.headCoordScaleFactorYSlower) {
-                    currentValue = headCoordScaleFactorYSeekBar.getProgress();
-                    newValue = currentValue - 1;
-                } else if (v.getId() == R.id.decreaseSmoothing) {
-                    currentValue = smoothingSeekBar.getProgress();
-                    newValue = currentValue - 1;
-                } else if (v.getId() == R.id.increaseSmoothing) {
-                    currentValue = smoothingSeekBar.getProgress();
-                    newValue = currentValue + 1;
-                } else if (v.getId() == R.id.decreaseDragToggleDelay) {
-                    currentValue = dragToggleDurSeekBar.getProgress();
-                    newValue = currentValue - 1;
-                } else if (v.getId() == R.id.increaseDragToggleDelay) {
-                    currentValue = dragToggleDurSeekBar.getProgress();
-                    newValue = currentValue + 1;
-                }
-                if (newValue >= 0) {
-                    if (v.getId() == R.id.holdDurationFaster || v.getId() == R.id.holdDurationSlower) {
-                        if (holdDurationSeekBar.getProgress() <= holdDurationSeekBar.getMax()) {
-                            holdDurationSeekBar.setProgress(newValue);
-                            int duration = (newValue + 1) * 200;
-                            sendValueToService("EDGE_HOLD_DURATION", duration);
-                        }
-                    } else if (v.getId() == R.id.decreaseDragToggleDelay || v.getId() == R.id.increaseDragToggleDelay) {
-                        if (dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
-                            dragToggleDurSeekBar.setProgress(newValue);
-                            int duration = (newValue + 1) * 100;
-                            sendValueToService("DRAG_TOGGLE_DURATION", duration);
-                        }
-                    } else if (v.getId() == R.id.headCoordScaleFactorXFaster || v.getId() == R.id.headCoordScaleFactorXSlower) {
-                        if (headCoordScaleFactorXSeekBar.getProgress() <= headCoordScaleFactorXSeekBar.getMax()) {
-                            headCoordScaleFactorXSeekBar.setProgress(newValue);
-                            float scaleFactor = 1.0f + (newValue * 0.2f);
-                            sendValueToService("HEAD_COORD_SCALE_FACTOR_X", scaleFactor);
-                        }
-                    } else if (v.getId() == R.id.headCoordScaleFactorYFaster || v.getId() == R.id.headCoordScaleFactorYSlower) {
-                        if (headCoordScaleFactorYSeekBar.getProgress() <= headCoordScaleFactorYSeekBar.getMax()) {
-                            headCoordScaleFactorYSeekBar.setProgress(newValue);
-                            float scaleFactor = 1.0f + (newValue * 0.2f);
-                            sendValueToService("HEAD_COORD_SCALE_FACTOR_Y", scaleFactor);
-                        }
-                    } else if (v.getId() == R.id.decreaseSmoothing || v.getId() == R.id.increaseSmoothing) {
-                        if (smoothingSeekBar.getProgress() <= smoothingSeekBar.getMax()) {
-                            smoothingSeekBar.setProgress(newValue);
-                            int smoothingVal = newValue + 1;
-                            sendValueToService("AVG_SMOOTHING", smoothingVal);
-                        }
-                    }
-                }
+        // Quick Tap Threshold
+        quickTapThresholdSeekBar = findViewById(R.id.quickTapThresholdSeekBar);
+        progressQuickTapThreshold = findViewById(R.id.progressQuickTapThreshold);
+
+        setUpQuickTapThresholdSeekBarAndTextView(
+                quickTapThresholdSeekBar, progressQuickTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD)
+        );
+
+        // Long Tap Threshold
+        longTapThresholdSeekBar = findViewById(R.id.longTapThresholdSeekBar);
+        progressLongTapThreshold = findViewById(R.id.progressLongTapThreshold);
+
+        setUpLongTapThresholdSeekBarAndTextView(
+                longTapThresholdSeekBar, progressLongTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD)
+        );
+
+        // Path Cursor
+        pathCursorSeekBar = findViewById(R.id.pathCursorSeekBar);
+        progressPathCursor = findViewById(R.id.progressPathCursor);
+
+        setUpPathCursorSeekBarAndTextView(
+                pathCursorSeekBar, progressPathCursor, String.valueOf(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR)
+        );
+
+        // Binding buttons with individual listeners
+        findViewById(R.id.holdDurationFaster).setOnClickListener(v -> {
+            int currentValue = holdDurationSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= 0 && holdDurationSeekBar.getProgress() <= holdDurationSeekBar.getMax()) {
+                holdDurationSeekBar.setProgress(newValue);
+                int duration = (newValue + 1) * 200;
+                sendValueToService("EDGE_HOLD_DURATION", duration);
             }
-        };
+        });
+
+        findViewById(R.id.holdDurationSlower).setOnClickListener(v -> {
+            int currentValue = holdDurationSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= 0 && holdDurationSeekBar.getProgress() <= holdDurationSeekBar.getMax()) {
+                holdDurationSeekBar.setProgress(newValue);
+                int duration = (newValue + 1) * 200;
+                sendValueToService("EDGE_HOLD_DURATION", duration);
+            }
+        });
+
+        findViewById(R.id.headCoordScaleFactorXFaster).setOnClickListener(v -> {
+            int currentValue = headCoordScaleFactorXSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= 0 && headCoordScaleFactorXSeekBar.getProgress() <= headCoordScaleFactorXSeekBar.getMax()) {
+                headCoordScaleFactorXSeekBar.setProgress(newValue);
+                float scaleFactor = 1.0f + (newValue * 0.2f);
+                sendValueToService("HEAD_COORD_SCALE_FACTOR_X", scaleFactor);
+            }
+        });
+
+        findViewById(R.id.headCoordScaleFactorXSlower).setOnClickListener(v -> {
+            int currentValue = headCoordScaleFactorXSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= 0 && headCoordScaleFactorXSeekBar.getProgress() <= headCoordScaleFactorXSeekBar.getMax()) {
+                headCoordScaleFactorXSeekBar.setProgress(newValue);
+                float scaleFactor = 1.0f + (newValue * 0.2f);
+                sendValueToService("HEAD_COORD_SCALE_FACTOR_X", scaleFactor);
+            }
+        });
+
+        findViewById(R.id.headCoordScaleFactorYFaster).setOnClickListener(v -> {
+            int currentValue = headCoordScaleFactorYSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= 0 && headCoordScaleFactorYSeekBar.getProgress() <= headCoordScaleFactorYSeekBar.getMax()) {
+                headCoordScaleFactorYSeekBar.setProgress(newValue);
+                float scaleFactor = 1.0f + (newValue * 0.2f);
+                sendValueToService("HEAD_COORD_SCALE_FACTOR_Y", scaleFactor);
+            }
+        });
+
+        findViewById(R.id.headCoordScaleFactorYSlower).setOnClickListener(v -> {
+            int currentValue = headCoordScaleFactorYSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= 0 && headCoordScaleFactorYSeekBar.getProgress() <= headCoordScaleFactorYSeekBar.getMax()) {
+                headCoordScaleFactorYSeekBar.setProgress(newValue);
+                float scaleFactor = 1.0f + (newValue * 0.2f);
+                sendValueToService("HEAD_COORD_SCALE_FACTOR_Y", scaleFactor);
+            }
+        });
+
+        findViewById(R.id.decreaseSmoothing).setOnClickListener(v -> {
+            int currentValue = smoothingSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= 0 && smoothingSeekBar.getProgress() <= smoothingSeekBar.getMax()) {
+                smoothingSeekBar.setProgress(newValue);
+                int smoothingVal = newValue + 1;
+                sendValueToService("AVG_SMOOTHING", smoothingVal);
+            }
+        });
+
+        findViewById(R.id.increaseSmoothing).setOnClickListener(v -> {
+            int currentValue = smoothingSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= 0 && smoothingSeekBar.getProgress() <= smoothingSeekBar.getMax()) {
+                smoothingSeekBar.setProgress(newValue);
+                int smoothingVal = newValue + 1;
+                sendValueToService("AVG_SMOOTHING", smoothingVal);
+            }
+        });
+
+        findViewById(R.id.decreaseDragToggleDelay).setOnClickListener(v -> {
+            int currentValue = dragToggleDurSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= dragToggleDurSeekBar.getMin() && dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
+                dragToggleDurSeekBar.setProgress(newValue);
+                int duration = (newValue + 1) * 100;
+                sendValueToService("DRAG_TOGGLE_DURATION", duration);
+            }
+        });
+
+        findViewById(R.id.increaseDragToggleDelay).setOnClickListener(v -> {
+            int currentValue = dragToggleDurSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= dragToggleDurSeekBar.getMin() && dragToggleDurSeekBar.getProgress() <= dragToggleDurSeekBar.getMax()) {
+                dragToggleDurSeekBar.setProgress(newValue);
+                int duration = (newValue + 1) * 100;
+                sendValueToService("DRAG_TOGGLE_DURATION", duration);
+            }
+        });
+
+        findViewById(R.id.decreaseQuickTapThreshold).setOnClickListener(v -> {
+            int currentValue = quickTapThresholdSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= quickTapThresholdSeekBar.getMin() && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
+                quickTapThresholdSeekBar.setProgress(newValue);
+                int value = 200 + (newValue * 100);
+                sendValueToService("QUICK_TAP_THRESHOLD", value);
+            }
+        });
+
+        findViewById(R.id.increaseQuickTapThreshold).setOnClickListener(v -> {
+            int currentValue = quickTapThresholdSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= quickTapThresholdSeekBar.getMin() && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
+                quickTapThresholdSeekBar.setProgress(newValue);
+                int value = 200 + (newValue * 100);
+                sendValueToService("QUICK_TAP_THRESHOLD", value);
+            }
+        });
+
+        findViewById(R.id.decreaseLongTapThreshold).setOnClickListener(v -> {
+            int currentValue = longTapThresholdSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= longTapThresholdSeekBar.getMin() && longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
+                longTapThresholdSeekBar.setProgress(newValue);
+                int value = 600 + (newValue * 100);
+                sendValueToService("LONG_TAP_THRESHOLD", value);
+            }
+        });
+
+        findViewById(R.id.increaseLongTapThreshold).setOnClickListener(v -> {
+            int currentValue = longTapThresholdSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= longTapThresholdSeekBar.getMin() && longTapThresholdSeekBar.getProgress() <= longTapThresholdSeekBar.getMax()) {
+                longTapThresholdSeekBar.setProgress(newValue);
+                int value = 600 + (newValue * 100);
+                sendValueToService("LONG_TAP_THRESHOLD", value);
+            }
+        });
+
+        findViewById(R.id.decreaseUiFeedbackDelay).setOnClickListener(v -> {
+            int currentValue = uiFeedbackDelaySeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= uiFeedbackDelaySeekBar.getMin() && uiFeedbackDelaySeekBar.getProgress() <= uiFeedbackDelaySeekBar.getMax()) {
+                uiFeedbackDelaySeekBar.setProgress(newValue);
+                int value = newValue + 1; // Convert 0-8 back to 1-9
+                sendValueToService("UI_FEEDBACK_DELAY", value);
+            }
+        });
+
+        findViewById(R.id.increaseUiFeedbackDelay).setOnClickListener(v -> {
+            int currentValue = uiFeedbackDelaySeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= uiFeedbackDelaySeekBar.getMin() && uiFeedbackDelaySeekBar.getProgress() <= uiFeedbackDelaySeekBar.getMax()) {
+                uiFeedbackDelaySeekBar.setProgress(newValue);
+                int value = newValue + 1; // Convert 0-8 back to 1-9
+                sendValueToService("UI_FEEDBACK_DELAY", value);
+            }
+        });
+
+        findViewById(R.id.decreasePathCursor).setOnClickListener(v -> {
+            int currentValue = pathCursorSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= pathCursorSeekBar.getMin() && pathCursorSeekBar.getProgress() <= pathCursorSeekBar.getMax()) {
+                pathCursorSeekBar.setProgress(newValue);
+                int value = newValue + 1;
+                sendValueToService("PATH_CURSOR", value);
+            }
+        });
+
+        findViewById(R.id.increasePathCursor).setOnClickListener(v -> {
+            int currentValue = pathCursorSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= pathCursorSeekBar.getMin() && pathCursorSeekBar.getProgress() <= pathCursorSeekBar.getMax()) {
+                pathCursorSeekBar.setProgress(newValue);
+                int value = newValue + 1;
+                sendValueToService("PATH_CURSOR", value);
+            }
+        });
+    }
 
     private void setUpScaleFactorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
         seekBar.setMax(20); // 1 to 20 (total 20 steps)
@@ -338,7 +469,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
         } else if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION.toString())) {
             savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DRAG_TOGGLE_DURATION);
         } else {
-            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
+            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.SPEED);
         }
         int progress = (savedProgress / 200) - 1;
         seekBar.setProgress(progress); // Set initial progress
@@ -366,7 +497,7 @@ public class FaceSwypeSettings extends AppCompatActivity {
         seekBar.setMax(9); // 1 to 10 in increments of 1 means 9 steps
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
-        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.SPEED);
         int progress = (savedProgress / 100) - 1;
         seekBar.setProgress(progress); // Set initial progress
         textView.setText(String.valueOf((progress + 1) * 100)); // Set initial text
@@ -416,6 +547,112 @@ public class FaceSwypeSettings extends AppCompatActivity {
         });
     }
 
+    private void setUpQuickTapThresholdSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(7); // 500-4000ms in steps of 500ms
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.QUICK_TAP_THRESHOLD);
+        int progress = (savedProgress - 500) / 500;
+        seekBar.setProgress(progress);
+        textView.setText(String.valueOf(savedProgress));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = 500 + (progress * 500);
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = 500 + (seekBar.getProgress() * 500);
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
+    private void setUpUiFeedbackDelaySeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(8); // 1-9 in steps of 1
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedValue = preferences.getInt(preferencesId, 1); // Default to 1 if not set
+        seekBar.setProgress(savedValue - 1); // Convert 1-9 to 0-8 for progress
+        textView.setText(String.valueOf(savedValue));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = progress + 1; // Convert 0-8 back to 1-9
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress() + 1; // Convert 0-8 back to 1-9
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
+    private void setUpLongTapThresholdSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(7); // 500-4000ms in steps of 500ms
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.LONG_TAP_THRESHOLD);
+        int progress = (savedProgress - 500) / 500;
+        seekBar.setProgress(progress);
+        textView.setText(String.valueOf(savedProgress));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = 500 + (progress * 500);
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = 500 + (seekBar.getProgress() * 500);
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
+    private void setUpPathCursorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(39); // 1-40 in steps of 1
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedValue = preferences.getInt(preferencesId, Config.DEFAULT_PATH_CURSOR);
+        seekBar.setProgress(savedValue - 1);
+        textView.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(savedValue)));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                float value = CursorController.getPathCursorPercentageFrom(progress + 1);
+                textView.setText(String.format("%.3f", value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress() + 1;
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
     // Ensure to reload config on profile change
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -451,6 +688,28 @@ public class FaceSwypeSettings extends AppCompatActivity {
             int avgSmoothingProgress = Math.round(avgSmoothing);
             smoothingSeekBar.setProgress(avgSmoothingProgress);
             smoothingProgress.setText(String.valueOf(avgSmoothing));
+
+            // Update quick tap threshold
+            int quickTapThreshold = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
+            int quickTapProgress = (quickTapThreshold - 200) / 100;
+            quickTapThresholdSeekBar.setProgress(quickTapProgress);
+            progressQuickTapThreshold.setText(String.valueOf(quickTapThreshold));
+
+            // Update long tap threshold
+            int longTapThreshold = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
+            int longTapProgress = (longTapThreshold - 600) / 100;
+            longTapThresholdSeekBar.setProgress(longTapProgress);
+            progressLongTapThreshold.setText(String.valueOf(longTapThreshold));
+
+            // Update UI feedback delay
+            int uiFeedbackDelay = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY);
+            uiFeedbackDelaySeekBar.setProgress(uiFeedbackDelay - 1);
+            progressUiFeedbackDelay.setText(String.valueOf(uiFeedbackDelay));
+
+            // Update UI feedback delay
+            int pathCursor = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
+            pathCursorSeekBar.setProgress(pathCursor - 1);
+            progressPathCursor.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(pathCursor)));
         }
     };
 

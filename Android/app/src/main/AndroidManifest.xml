@@ -85,19 +85,19 @@
             android:parentActivityName=".MainActivity" />
 
         <activity
-            android:name=".FaceSwypeSettings"
+            android:name=".HeadBoardSettings"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
         <activity
             android:name=".CalibrationActivity"
             android:exported="false"
-            android:parentActivityName=".FaceSwypeSettings" />
+            android:parentActivityName=".HeadBoardSettings" />
 
         <activity
             android:name=".DebuggingStatsActivity"
             android:exported="false"
-            android:parentActivityName=".FaceSwypeSettings" />
+            android:parentActivityName=".HeadBoardSettings" />
 
         <activity
             android:name=".GrantPermissionActivity"

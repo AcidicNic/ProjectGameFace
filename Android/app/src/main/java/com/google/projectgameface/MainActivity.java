@@ -17,12 +17,7 @@
 package com.google.projectgameface;
 
 
-import static androidx.core.app.ActivityCompat.startActivityForResult;
-
 import android.Manifest;
-import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -31,15 +26,12 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.media.projection.MediaProjection;
-import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Html;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager.LayoutParams;
@@ -52,10 +44,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.EditText;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -168,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.faceSwypeRow).setOnClickListener(v -> {
-            Intent intent = new Intent(this, FaceSwypeSettings.class);
+            Intent intent = new Intent(this, HeadBoardSettings.class);
             startActivity(intent);
         });
 
@@ -234,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE,
                     BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 0);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO,
-                    BlendshapeEventTriggerConfig.EventType.CURSOR_TOUCH, 0);
+                    BlendshapeEventTriggerConfig.EventType.CURSOR_TAP, 0);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE,
                     BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 0);
             String profileName = ProfileManager.getCurrentProfile(this);

@@ -16,8 +16,6 @@
 
 package com.google.projectgameface;
 
-import static androidx.core.math.MathUtils.clamp;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -29,23 +27,22 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
+
 import androidx.annotation.NonNull;
 import androidx.camera.core.ImageProxy;
+
 import com.google.mediapipe.framework.image.BitmapImageBuilder;
 import com.google.mediapipe.framework.image.MPImage;
-import com.google.mediapipe.tasks.components.containers.NormalizedLandmark;
 import com.google.mediapipe.tasks.core.BaseOptions;
 import com.google.mediapipe.tasks.core.Delegate;
 import com.google.mediapipe.tasks.vision.core.RunningMode;
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker;
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
 
-import java.util.Collections;
-import java.util.List;
-
-/** The helper of camera feed. */
+/**
+ * The helper of camera feed.
+ */
 class FaceLandmarkerHelper extends HandlerThread {
-
     public static final String TAG = "FaceLandmarkerHelper";
 
     // number of allowed multiple detection works at the sametime.
@@ -59,7 +56,6 @@ class FaceLandmarkerHelper extends HandlerThread {
     private static final float MP_HEIGHT = 160.0f;
 
     private static final int TOTAL_BLENDSHAPES = 52;
-    private static final int FOREHEAD_INDEX = 8;
     private static final int NOSE_INDEX = 1;
 
     public volatile boolean isRunning = false;
@@ -99,7 +95,9 @@ class FaceLandmarkerHelper extends HandlerThread {
     public int mpInputHeight;
     private float[] currBlendshapes;
 
-    /** How many milliseconds passed after previous image. */
+    /**
+     * How many milliseconds passed after previous image.
+     */
     public long gapTimeMs = 1;
 
     public long prevCallbackTimeMs = 0;
@@ -110,7 +108,6 @@ class FaceLandmarkerHelper extends HandlerThread {
     FaceLandmarker.FaceLandmarkerOptions options;
     public boolean isFaceVisible;
     public int frontCameraOrientation = 270;
-
 
 
     // Frame rotation state for MediaPipe graph.
@@ -126,31 +123,25 @@ class FaceLandmarkerHelper extends HandlerThread {
     }
 
 
-
     /**
      * Sets internal frame rotation state for the MediaPipe graph.
-     *
      * @param rotationValue Current rotation of the device screen, the value should be {@link
-     *     Surface#ROTATION_0}, {@link Surface#ROTATION_90}, {@link Surface#ROTATION_180} or {@link
-     *     Surface#ROTATION_180}.
+     *                      Surface#ROTATION_0}, {@link Surface#ROTATION_90}, {@link Surface#ROTATION_180} or {@link
+     *                      Surface#ROTATION_180}.
      */
     public void setRotation(int rotationValue) {
         currentRotationState = rotationValue;
         Log.i(TAG, "setRotation: " + rotationValue);
     }
 
-    @SuppressLint("HandlerLeak")
-    @Override
-    protected void onLooperPrepared() {
-        handler =
-            new Handler() {
-                @Override
-                public void handleMessage(@NonNull Message msg) {
-                    // Function for handle message from main thread.
-                    detectLiveStream((ImageProxy) msg.obj);
+    @SuppressLint("HandlerLeak") @Override protected void onLooperPrepared() {
+        handler = new Handler() {
+            @Override public void handleMessage(@NonNull Message msg) {
+                // Function for handle message from main thread.
+                detectLiveStream((ImageProxy) msg.obj);
 
-                }
-            };
+            }
+        };
     }
 
     public Handler getHandler() {
@@ -159,11 +150,9 @@ class FaceLandmarkerHelper extends HandlerThread {
 
     /**
      * Create and configure the {@link FaceLandmarker}.
-     *
      * @param context context for assets file loading.
      */
     public void init(Context context) {
-
         Log.i(TAG, "init : " + Thread.currentThread());
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY);
         isRunning = true;
@@ -182,16 +171,15 @@ class FaceLandmarkerHelper extends HandlerThread {
             BaseOptions baseOptions = baseOptionBuilder.build();
             // Create an option builder with base options and specific
             // options only use for Face Landmarker.
-            FaceLandmarker.FaceLandmarkerOptions.Builder optionsBuilder =
-                FaceLandmarker.FaceLandmarkerOptions.builder()
-                    .setBaseOptions(baseOptions)
-                    .setMinFaceDetectionConfidence(MIN_FACE_DETECTION_CONFIDENCE)
-                    .setMinTrackingConfidence(MIN_FACE_TRACKING_CONFIDENCE)
-                    .setMinFacePresenceConfidence(MIN_FACE_PRESENCE_CONFIDENCE)
-                    .setNumFaces(MAX_NUM_FACES)
-                    .setOutputFaceBlendshapes(true)
-                    .setOutputFacialTransformationMatrixes(true)
-                    .setRunningMode(RUNNING_MODE);
+            FaceLandmarker.FaceLandmarkerOptions.Builder optionsBuilder = FaceLandmarker.FaceLandmarkerOptions.builder()
+                .setBaseOptions(baseOptions)
+                .setMinFaceDetectionConfidence(MIN_FACE_DETECTION_CONFIDENCE)
+                .setMinTrackingConfidence(MIN_FACE_TRACKING_CONFIDENCE)
+                .setMinFacePresenceConfidence(MIN_FACE_PRESENCE_CONFIDENCE)
+                .setNumFaces(MAX_NUM_FACES)
+                .setOutputFaceBlendshapes(true)
+                .setOutputFacialTransformationMatrixes(true)
+                .setRunningMode(RUNNING_MODE);
 
             optionsBuilder.setResultListener(this::postProcessLandmarks);
 
@@ -207,11 +195,10 @@ class FaceLandmarkerHelper extends HandlerThread {
 
 
     /**
-     * Converts the ImageProxy to MP Image and feed it to Mediapipe Graph.
+     * Converts the ImageProxy to MP Image and feed it to Media pipe Graph.
      * @param imageProxy An image proxy from camera feed
      */
     public void detectLiveStream(ImageProxy imageProxy) {
-
         // Reject new work if exceed limit.
         if (currentInWorks >= N_WORKS_LIMIT) {
             imageProxy.close();
@@ -237,9 +224,14 @@ class FaceLandmarkerHelper extends HandlerThread {
         // Handle rotations.
         Matrix rotationMatrix = getRotationMatrix(imageProxy);
 
-        Bitmap rotatedBitmap =
-            Bitmap.createBitmap(
-                bitmap, 0, 0, imageProxy.getWidth(), imageProxy.getHeight(), rotationMatrix, true);
+        Bitmap rotatedBitmap = Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            imageProxy.getWidth(),
+            imageProxy.getHeight(),
+            rotationMatrix,
+            true);
 
         // Convert the input Bitmap object to an MPImage object to run inference.
         MPImage mpImage = new BitmapImageBuilder(rotatedBitmap).build();
@@ -260,8 +252,7 @@ class FaceLandmarkerHelper extends HandlerThread {
 
     }
 
-    @NonNull
-    private Matrix getRotationMatrix(ImageProxy imageProxy) {
+    @NonNull private Matrix getRotationMatrix(ImageProxy imageProxy) {
         Matrix matrix = new Matrix();
 
         // Front camera rotation constant is 270 degrees.
@@ -281,7 +272,7 @@ class FaceLandmarkerHelper extends HandlerThread {
                 mpHeightCorrected = MP_WIDTH;
                 break;
             case Surface.ROTATION_180:
-                matrixRotDegrees = frontCameraOrientation + 180; // Simplify scaling logic
+                matrixRotDegrees = frontCameraOrientation + 180;
                 break;
             case Surface.ROTATION_270:
                 matrixRotDegrees = frontCameraOrientation - 90;
@@ -290,7 +281,7 @@ class FaceLandmarkerHelper extends HandlerThread {
                 mpWidthCorrected = MP_HEIGHT;
                 mpHeightCorrected = MP_WIDTH;
                 break;
-            default: // fall out
+            default:
         }
         matrix.postRotate(matrixRotDegrees);
         matrix.postScale(-mpWidthCorrected / widthCorrected, mpHeightCorrected / heightCorrected);
@@ -310,10 +301,9 @@ class FaceLandmarkerHelper extends HandlerThread {
     }
 
     /**
-     * Gets result landmarks and blendshapes then apply some scaling and save the value.
-     *
+     * Gets result landmarks and blend shapes then apply some scaling and save the value.
      * @param result The result of face landmarker.
-     * @param input The input image of face landmarker.
+     * @param input  The input image of face landmarker.
      */
     private void postProcessLandmarks(FaceLandmarkerResult result, MPImage input) {
         currentInWorks -= 1;
@@ -327,23 +317,20 @@ class FaceLandmarkerHelper extends HandlerThread {
         if (!result.faceLandmarks().isEmpty()) {
             isFaceVisible = true;
 
-            float headPosX = 0.0f;
-            float headPosY = 0.0f;
-
             if (result.facialTransformationMatrixes().isPresent()) {
                 float[] transformationMatrix = result.facialTransformationMatrixes().get().get(0);
                 float r00 = transformationMatrix[0];
-                float r01 = transformationMatrix[1];
+//                float r01 = transformationMatrix[1];
                 float r02 = transformationMatrix[2];
                 float r10 = transformationMatrix[4];
-                float r11 = transformationMatrix[5];
+//                float r11 = transformationMatrix[5];
                 float r12 = transformationMatrix[6];
-                float r20 = transformationMatrix[8];
-                float r21 = transformationMatrix[9];
+//                float r20 = transformationMatrix[8];
+//                float r21 = transformationMatrix[9];
                 float r22 = transformationMatrix[10];
-                headPosX = transformationMatrix[12];
-                headPosY = transformationMatrix[13];
-                float headPosZ = transformationMatrix[14];
+//                float headPosX = transformationMatrix[12];
+//                float headPosY = transformationMatrix[13];
+//                float headPosZ = transformationMatrix[14];
 
 //                Log.d(TAG, "headPosX: " + headPosX + " headPosY: " + headPosY + " headPosZ: " + headPosZ);
 
@@ -354,7 +341,7 @@ class FaceLandmarkerHelper extends HandlerThread {
                 float pitch = (float) Math.atan2(-r12, Math.sqrt(r00 * r00 + r10 * r10));
 
                 // Calculate roll (rotation around the Z-axis), if needed
-                float roll = (float) Math.atan2(r10, r00);
+//                float roll = (float) Math.atan2(r10, r00);
 
                 // Convert radians to degrees if needed
                 currYaw = (float) -Math.toDegrees(yaw);
@@ -362,8 +349,10 @@ class FaceLandmarkerHelper extends HandlerThread {
 //                roll = (float) Math.toDegrees(roll);
 
                 // Convert pitch and yaw degrees to X, Y coordinates on the image
-                currHeadX = (currYaw + 90) / 180.0f * mpInputWidth; // Yaw normalized to [0, 180] -> [0, mpInputWidth]
-                currHeadY = (currPitch + 90) / 180.0f * mpInputHeight; // Pitch normalized to [0, 180] -> [0, mpInputHeight]
+                currHeadX =
+                    (currYaw + 90) / 180.0f * mpInputWidth; // Yaw normalized to [0, 180] -> [0, mpInputWidth]
+                currHeadY = (currPitch + 90) / 180.0f *
+                            mpInputHeight; // Pitch normalized to [0, 180] -> [0, mpInputHeight]
             }
 
             currNoseX = result.faceLandmarks().get(0).get(NOSE_INDEX).x() * mpInputWidth;
@@ -388,41 +377,48 @@ class FaceLandmarkerHelper extends HandlerThread {
         prevCallbackTimeMs = ts;
     }
 
-    private float normalizeAngle(float angle) {
-        return (angle + (float) Math.PI) / (2 * (float) Math.PI);
+//    private float normalizeAngle(float angle) {
+//        return (angle + (float) Math.PI) / (2 * (float) Math.PI);
+//    }
+
+    /**
+     * Get user's head X, Y coordinate in image space or normalized (0-1)
+     */
+    public float[] getHeadCoordXY() {
+        return new float[]{currHeadX, currHeadY};
     }
 
-    /** Get user's head X, Y coordinate in image space or normalized (0-1) */
-    public float[] getHeadCoordXY(boolean isNormalized) {
-        if (isNormalized) {
-            return new float[] {currHeadX / mpInputWidth, currHeadY / mpInputHeight};
-        }
-        return new float[] {currHeadX, currHeadY};
-    }
-    public float[] getNoseCoordXY(boolean isNormalized) {
-        if (isNormalized) {
-            return new float[] {currNoseX / mpInputWidth, currNoseY / mpInputHeight};
-        }
-        return new float[] {currNoseX, currNoseY};
-    }
-    public float[] getCombinedNoseAndHeadCoords() {
-        float combinedX = 0;
-        float combinedY = 0;
-
-        return new float[]{combinedX, combinedY};
+    /**
+     * Get user's head X, Y coordinate in image space or normalized (0-1)
+     */
+    public float[] getNormalizedHeadCoordXY() {
+        return new float[]{currHeadX / mpInputWidth, currHeadY / mpInputHeight};
     }
 
-    /** Get user's pitch and yaw in degrees */
+
+    public float[] getNoseCoordXY() {
+        return new float[]{currNoseX, currNoseY};
+    }
+
+
+    public float[] getNormalizedNoseCoordXY() {
+        return new float[]{currNoseX / mpInputWidth, currNoseY / mpInputHeight};
+    }
+
+    /**
+     * Get user's pitch and yaw in degrees
+     */
     public float[] getPitchYaw() {
-        return new float[] {currPitch, currYaw};
+        return new float[]{currPitch, currYaw};
     }
 
     public float[] getBlendshapes() {
-
         return currBlendshapes;
     }
 
-    /** Recreates {@link FaceLandmarker} and resume the process. */
+    /**
+     * Recreates {@link FaceLandmarker} and resume the process.
+     */
     public void resumeThread() {
         faceLandmarker = FaceLandmarker.createFromOptions(this.context, options);
         isRunning = true;
@@ -448,7 +444,9 @@ class FaceLandmarkerHelper extends HandlerThread {
         }
     }
 
-    /** Destroys {@link FaceLandmarker} and stop. */
+    /**
+     * Destroys {@link FaceLandmarker} and stop.
+     */
     public void destroy() {
         Log.i(TAG, "destroy");
         isRunning = false;

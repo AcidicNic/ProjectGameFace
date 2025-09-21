@@ -332,7 +332,7 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static int readKeyLongpressTimeout(final SharedPreferences prefs,
                                               final Resources res) {
         final int milliseconds = prefs.getInt(
-                PREF_KEY_LONGPRESS_TIMEOUT, UNDEFINED_PREFERENCE_VALUE_INT);
+                "pref_key_longpress_timeout", UNDEFINED_PREFERENCE_VALUE_INT);
         return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds
                 : readDefaultKeyLongpressTimeout(res);
     }
@@ -398,11 +398,11 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     }
 
     public static boolean readSpaceTrackpadEnabled(final SharedPreferences prefs) {
-        return prefs.getBoolean(PREF_SPACE_TRACKPAD, true);
+        return prefs.getBoolean(PREF_SPACE_TRACKPAD, false);
     }
 
     public static boolean readDeleteSwipeEnabled(final SharedPreferences prefs) {
-        return prefs.getBoolean(PREF_DELETE_SWIPE, true);
+        return prefs.getBoolean(PREF_DELETE_SWIPE, false);
     }
 
     public static boolean readAutospaceAfterPunctuationEnabled(final SharedPreferences prefs) {

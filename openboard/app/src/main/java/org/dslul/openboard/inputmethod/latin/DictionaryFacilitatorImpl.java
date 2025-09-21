@@ -619,7 +619,7 @@ public class DictionaryFacilitatorImpl implements DictionaryFacilitator {
         final SuggestionResults suggestionResults = new SuggestionResults(
                 SuggestedWords.MAX_SUGGESTIONS, ngramContext.isBeginningOfSentenceContext(),
                 false /* firstSuggestionExceedsConfidenceThreshold */);
-        Log.d(TAG, "*** settingsValuesForSuggestion.mWeightOfLangModelVsSpatialModel: " + settingsValuesForSuggestion.mWeightOfLangModelVsSpatialModel);
+//        Log.d(TAG, "*** settingsValuesForSuggestion.mWeightOfLangModelVsSpatialModel: " + settingsValuesForSuggestion.mWeightOfLangModelVsSpatialModel);
         final float[] weightOfLangModelVsSpatialModel =
                 new float[] { settingsValuesForSuggestion.mWeightOfLangModelVsSpatialModel };
         for (final String dictType : ALL_DICTIONARY_TYPES) {

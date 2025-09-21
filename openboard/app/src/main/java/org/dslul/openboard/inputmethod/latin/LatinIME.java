@@ -62,11 +62,15 @@ import org.dslul.openboard.inputmethod.event.Event;
 import org.dslul.openboard.inputmethod.event.HardwareEventDecoder;
 import org.dslul.openboard.inputmethod.event.HardwareKeyboardEventDecoder;
 import org.dslul.openboard.inputmethod.event.InputTransaction;
+import org.dslul.openboard.inputmethod.keyboard.Key;
 import org.dslul.openboard.inputmethod.keyboard.Keyboard;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardActionListener;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardId;
 import org.dslul.openboard.inputmethod.keyboard.KeyboardSwitcher;
 import org.dslul.openboard.inputmethod.keyboard.MainKeyboardView;
+import org.dslul.openboard.inputmethod.keyboard.MoreKeysPanel;
+import org.dslul.openboard.inputmethod.keyboard.PointerTracker;
+import org.dslul.openboard.inputmethod.keyboard.internal.GestureTrailsDrawingPreview;
 import org.dslul.openboard.inputmethod.latin.Suggest.OnGetSuggestedWordsCallback;
 import org.dslul.openboard.inputmethod.latin.SuggestedWords.SuggestedWordInfo;
 import org.dslul.openboard.inputmethod.latin.common.Constants;
@@ -97,8 +101,11 @@ import org.dslul.openboard.inputmethod.latin.utils.ViewLayoutUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
@@ -157,7 +164,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     private SuggestionStripView mSuggestionStripView;
 
     private RichInputMethodManager mRichImm;
-    @UsedForTesting final KeyboardSwitcher mKeyboardSwitcher;
+    @UsedForTesting
+    public final KeyboardSwitcher mKeyboardSwitcher;
     private final SubtypeState mSubtypeState = new SubtypeState();
     private EmojiAltPhysicalKeyDetector mEmojiAltPhysicalKeyDetector;
     private StatsUtilsManager mStatsUtilsManager;
@@ -671,11 +679,18 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         StatsUtils.onCreate(mSettings.getCurrent(), mRichImm);
 
         // Register the IMEEventReceiver
-        imeEventReceiver = new IMEEventReceiver();
-        IntentFilter headSwypeFilter = new IntentFilter("com.headswype.ACTION_SEND_EVENT");
-        registerReceiver(imeEventReceiver, headSwypeFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
-
-        Log.d(TAG, "[666] IMEEventReceiver registered.");
+        imeEventReceiver = new IMEEventReceiver(this);
+        IMEEventReceiver.setLatinIME(this);
+        IntentFilter eventFilter = new IntentFilter();
+        eventFilter.addAction(IMEEventReceiver.ACTION_SEND_MOTION_EVENT);
+        eventFilter.addAction(IMEEventReceiver.ACTION_SEND_KEY_EVENT);
+        eventFilter.addAction(IMEEventReceiver.ACTION_SET_LONG_PRESS_DELAY);
+        eventFilter.addAction(IMEEventReceiver.ACTION_CHANGE_TRAIL_COLOR);
+        eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_INFO);
+        eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_BOUNDS);
+        eventFilter.addAction(IMEEventReceiver.ACTION_SHOW_OR_HIDE_KEY_POPUP);
+        registerReceiver(imeEventReceiver, eventFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
+        Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
     }
 
     // Has to be package-visible for unit tests
@@ -834,6 +849,209 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         } else {
             startUpTime = 0;
             Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
+        }
+    }
+
+    /**
+     * Dispatch key event to the input method.
+     * @param keyCode The key code of the key event.
+     * @param isDown True if the key is pressed down, false if released.
+     * @param isLongPress True if the key is long pressed.
+     **/
+    public void dispatchKeyEvent(int keyCode, boolean isDown, boolean isLongPress) {
+        // For key presses, we need to call both onPressKey and onCodeInput
+        if (isDown) {
+            int repeatCount = isLongPress ? 1 : 0; // Set repeat count to 1 for long press
+
+            Log.d(TAG, "Dispatching key press event: keyCode=" + keyCode);
+
+            // First simulate the press event (haptic feedback, etc.)
+            onPressKey(keyCode, repeatCount, true);
+
+            // Then simulate the actual character input
+            final Event event = createSoftwareKeypressEvent(keyCode,
+                    Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            onEvent(event);
+
+            // For long press, we might want to trigger a different behavior
+            if (isLongPress) {
+                // Handle long press specific functionality if needed
+                Log.d(TAG, "Long press detected for keyCode=" + keyCode);
+            }
+        } else {
+            // Handle key release if needed
+            onReleaseKey(keyCode, false);
+        }
+    }
+
+    public void setGestureTrailColor(int color) {
+        // Get the MainKeyboardView which contains the gesture trail preview
+        MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
+        if (mainKeyboardView != null) {
+            // Get the gesture trails drawing preview
+            GestureTrailsDrawingPreview gesturePreview = mainKeyboardView.getGestureTrailsDrawingPreview();
+            if (gesturePreview != null) {
+                // Update the trail color using the proper method
+                gesturePreview.setTrailColor(color);
+                // Force a redraw
+                mainKeyboardView.invalidate();
+            }
+        }
+    }
+
+    private Map<String, MoreKeysPanel[]> keyCoordsToAltPopups = new HashMap<>(2);
+
+    public void showOrHideKeyPopup(boolean showKeyPreview, int[] coords, boolean withAnimation, boolean isLongPressPopup) {
+        MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
+        if (mainKeyboardView == null) {
+            Log.e(TAG, "MainKeyboardView is null. Cannot show or hide key popup.");
+            return;
+        }
+
+        View rootView = getWindow().getWindow().getDecorView();
+        if (rootView == null) {
+            Log.e(TAG, "Root view is null. Cannot dispatch motion event.");
+            return;
+        }
+
+        // Adjust coordinates to the IME window space
+        int[] location = new int[2];
+        rootView.getLocationOnScreen(location);
+        int[] actualCoords = {coords[0] - location[0], coords[1] - location[1]};
+
+        Key targetKey = mainKeyboardView.getKey(actualCoords[0], actualCoords[1]);
+        if (targetKey == null) {
+            Log.w(TAG, "No key found at: (" + actualCoords[0] + ", " + actualCoords[1] + ") for popup action.");
+            return;
+        }
+        String l = targetKey.getLabel().toUpperCase();
+
+        Log.d(TAG, "ActivePointerTrackerCount: " + mainKeyboardView.getActivePointerTrackerCount());
+
+//        if (showKeyPreview && mainKeyboardView.getActivePointerTrackerCount() > 1) {
+//            Log.w(TAG, "Cannot show key preview with multiple active pointer trackers.");
+//            return;
+//        }
+
+        if (isLongPressPopup && showKeyPreview) { // show longpress popup
+            if (targetKey.getMoreKeys() == null) {
+                Log.w(TAG, "No long press popup available for key: " + l);
+                return;
+            }
+            mainKeyboardView.dismissKeyPreviewWithoutDelay(targetKey);
+            Log.d(TAG, "Attempting to show long press popup for key: " + l);
+            MoreKeysPanel moreKeysPanel = mainKeyboardView.showMoreKeysKeyboard(targetKey, actualCoords);
+            if (moreKeysPanel == null) {
+                Log.w(TAG, "Failed to show long press popup for key: " + l);
+                return;
+            }
+            Log.d(TAG, "success");
+            MoreKeysPanel[] moreKeysPanels = keyCoordsToAltPopups.get(actualCoords[0] + "," + actualCoords[1]);
+            if (moreKeysPanels == null) {
+                moreKeysPanels = new MoreKeysPanel[1];
+            } else {
+                MoreKeysPanel[] newPanels = Arrays.copyOf(moreKeysPanels, moreKeysPanels.length + 1);
+                moreKeysPanels = newPanels;
+            }
+            moreKeysPanels[moreKeysPanels.length - 1] = moreKeysPanel;
+            keyCoordsToAltPopups.put(l, moreKeysPanels);
+            return;
+        }
+        if (isLongPressPopup && !showKeyPreview) { // hide longpress popup
+            MoreKeysPanel[] moreKeysPanels = keyCoordsToAltPopups.get(actualCoords[0] + "," + actualCoords[1]);
+            if (moreKeysPanels == null || moreKeysPanels.length == 0) {
+                Log.w(TAG, "No open long press popups found for key: " + l);
+                return;
+            }
+            for (MoreKeysPanel panel : moreKeysPanels) {
+                if (panel != null) {
+                    Log.d(TAG, "Dismissing a long press popup for key: " + l);
+                    panel.dismissMoreKeysPanel();
+                    keyCoordsToAltPopups.remove(actualCoords[0] + "," + actualCoords[1]);
+                }
+            }
+            return;
+        }
+        if (targetKey.noKeyPreview()) {
+            Log.w(TAG, "Key popup is disabled for key: " + l);
+            return;
+        }
+        // show key preview
+        if (showKeyPreview) {
+            Log.d(TAG, "Showing popup for key: " + l);
+            mainKeyboardView.showKeyPreview(targetKey);
+            return;
+        }
+        // hide key preview
+        Log.d(TAG, "Hiding popup for key: " + l);
+        if (withAnimation) {
+            mainKeyboardView.dismissKeyPreview(targetKey);
+        } else {
+            mainKeyboardView.dismissKeyPreviewWithoutDelay(targetKey);
+        }
+    }
+
+    public Key getKeyFromCoords(float x, float y) {
+        MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
+        if (mainKeyboardView == null) {
+            Log.e(TAG, "MainKeyboardView is null. Cannot get key info.");
+            return null;
+        }
+
+        // Get the keyboard and find the key with the specified code
+        Keyboard keyboard = mainKeyboardView.getKeyboard();
+        if (keyboard == null) {
+            Log.e(TAG, "Keyboard is null. Cannot get key bounds.");
+            return null;
+        }
+
+        View rootView = getWindow().getWindow().getDecorView();
+        if (rootView != null) {
+            // Get the IME window location on screen
+            int[] location = new int[2];
+            rootView.getLocationOnScreen(location);
+            Log.d(TAG, "Root view rect: " + rootView.getLeft() + ", " + rootView.getTop() + ", " +
+                    rootView.getRight() + ", " + rootView.getBottom());
+
+            // Transform the coordinates from screen space to IME window space
+            x -= location[0];
+            y -= location[1];
+        }
+
+        // Get the key at the specified coordinates
+        Key key = null;
+        for (Key pKey : keyboard.getSortedKeys()) {
+            if (pKey.getHitBox().contains((int) x, (int) y)) {
+                key = pKey;
+                break;
+            }
+        }
+        if (key == null) {
+            Log.d(TAG, "No key found at coordinates: (" + x + ", " + y + ")");
+            return null;
+        } else {
+            Log.d(TAG, "Key found at coordinates: (" + x + ", " + y + ")");
+
+    //        // Get the key's bounds in screen coordinates
+    //        int[] location = new int[2];
+    //        mainKeyboardView.getLocationInSurface(location);
+            Rect keyBounds = key.getHitBox();
+
+            // Log the key information
+            Log.d(TAG, String.format(
+                    "Key found at coordinates (%f, %f):\n" +
+                            "  Label: %s\n" +
+                            "  Code: %d\n" +
+                            "  Bounds: [%d, %d, %d, %d]",
+                    x, y,
+                    key.getCode(),
+                    key.getAltCode(),
+                    keyBounds.left,
+                    keyBounds.top,
+                    keyBounds.right,
+                    keyBounds.bottom
+            ));
+            return key;
         }
     }
 

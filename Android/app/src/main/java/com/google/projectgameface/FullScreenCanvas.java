@@ -26,9 +26,9 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
-import java.util.List;
-
-/** The drag cursor of cursor service. */
+/**
+ * The drag cursor of cursor service.
+ */
 public class FullScreenCanvas extends View {
 
     private int holdRadius = 75;
@@ -55,6 +55,7 @@ public class FullScreenCanvas extends View {
     private Rect previewRegion = null;
 
     public FullScreenCanvas(Context context, AttributeSet attributeSet) {
+
         super(context, attributeSet);
 
         touchCirclePaint = new Paint();
@@ -79,11 +80,12 @@ public class FullScreenCanvas extends View {
     }
 
     public void initialize(CursorController cursorController) {
+
         this.cursorController = cursorController;
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
+    @Override protected void onDraw(Canvas canvas) {
+
         super.onDraw(canvas);
 
         if (previewBitmap != null && previewRegion != null) {
@@ -101,9 +103,9 @@ public class FullScreenCanvas extends View {
             canvas.drawCircle(dragStartX, dragStartY, holdRadius, holdCirclePaint);
         }
 
-        if (cursorController != null && cursorController.isSwiping()) {
-            drawCursorTrail(canvas);
-        }
+//        if (cursorController != null && cursorController.isSwiping) {
+//            drawCursorTrail(canvas);
+//        }
 
         if (rectCoords != null) {
 //            canvas.drawRect(rectCoords.left, rectCoords.top, rectCoords.right, rectCoords.bottom, holdCirclePaint);
@@ -111,6 +113,7 @@ public class FullScreenCanvas extends View {
     }
 
     public void drawTouchCircle(float x, float y) {
+
         drawX = x;
         drawY = y;
         invalidate();
@@ -118,48 +121,54 @@ public class FullScreenCanvas extends View {
     }
 
     public void setDragLineStart(float x, float y) {
+
         dragStartX = x;
         dragStartY = y;
         isShowingDrag = true;
     }
 
     public void updateDragLine(float x, float y) {
+
         dragEndX = x;
         dragEndY = y;
         invalidate();
     }
 
     public void clearDragLine() {
+
         isShowingDrag = false;
         invalidate();
     }
 
-    private void drawCursorTrail(Canvas canvas) {
-        List<float[]> cursorTrail = cursorController.getCursorTrail();
-        if (cursorTrail.size() < 2) return;
-
-        for (int i = 0; i < cursorTrail.size() - 1; i++) {
-            float[] point1 = cursorTrail.get(i);
-            float[] point2 = cursorTrail.get(i + 1);
-            canvas.drawLine(point1[0], point1[1], point2[0], point2[1], trailPaint);
-        }
-        canvas.drawCircle(cursorTrail.get(cursorTrail.size() - 1)[0], cursorTrail.get(cursorTrail.size() - 1)[1], holdRadius, holdCirclePaint);
-        invalidate();
-    }
+//    private void drawCursorTrail(Canvas canvas) {
+//        List<float[]> cursorTrail = cursorController.getCursorTrail();
+//        if (cursorTrail.size() < 2) return;
+//
+//        for (int i = 0; i < cursorTrail.size() - 1; i++) {
+//            float[] point1 = cursorTrail.get(i);
+//            float[] point2 = cursorTrail.get(i + 1);
+//            canvas.drawLine(point1[0], point1[1], point2[0], point2[1], trailPaint);
+//        }
+//        canvas.drawCircle(cursorTrail.get(cursorTrail.size() - 1)[0], cursorTrail.get(cursorTrail.size() - 1)[1], holdRadius, holdCirclePaint);
+//        invalidate();
+//    }
 
     /**
      * Set draw radius size for hold action.
      * @param holdRadius
      */
     public void setHoldRadius(float holdRadius) {
+
         this.holdRadius = (int) holdRadius;
     }
 
     public void setRect(Rect rect) {
+
         rectCoords = rect;
     }
 
     public void setPreviewBitmap(Bitmap bitmap, Rect region) {
+
         Log.d("FullScreenCanvas", "Setting preview bitmap");
         previewBitmap = bitmap;
         previewRegion = region;
@@ -167,6 +176,7 @@ public class FullScreenCanvas extends View {
     }
 
     public void clearPreviewBitmap() {
+
         Log.d("FullScreenCanvas", "Clearing preview bitmap");
         previewBitmap = null;
         previewRegion = null;

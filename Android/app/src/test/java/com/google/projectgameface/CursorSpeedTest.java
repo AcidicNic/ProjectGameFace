@@ -19,7 +19,6 @@ import android.app.Activity;
 import android.view.View;
 import android.widget.SeekBar;
 
-import com.google.projectgameface.R;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,7 +45,7 @@ public class CursorSpeedTest {
         SeekBar seekBar = activityCursorSpeed.findViewById(R.id.seekBarMU);
         int barValue = seekBar.getProgress();
 
-        Assert.assertEquals(barValue, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED + 1);
+        Assert.assertEquals(barValue, CursorMovementConfig.InitialRawValue.SPEED + 1);
     }
 
     @Test
@@ -64,7 +63,7 @@ public class CursorSpeedTest {
         SeekBar seekBar = activityCursorSpeed.findViewById(R.id.seekBarMU);
         int barValue = seekBar.getProgress();
 
-        Assert.assertEquals(barValue, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED - 1);
+        Assert.assertEquals(barValue, CursorMovementConfig.InitialRawValue.SPEED - 1);
     }
 
     @Test

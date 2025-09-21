@@ -16,8 +16,6 @@
 
 package com.google.projectgameface;
 
-
-import static android.content.Context.RECEIVER_EXPORTED;
 import static androidx.core.math.MathUtils.clamp;
 
 import android.content.BroadcastReceiver;
@@ -25,25 +23,25 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Rect;
-import android.os.Build;
 import android.util.Log;
 
-import android.graphics.Path;
+import androidx.core.content.ContextCompat;
+
+import com.google.projectgameface.utils.Config;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 public class CursorController {
     private static final String TAG = "CursorController";
+
     private float velX = 0.f;
     private float velY = 0.f;
-    private double cursorPositionX = 0;
-    private double cursorPositionY = 0;
-    private double teleportShadowX;
-    private double teleportShadowY;
-    private boolean isTeleportMode = false;
+    private double cursorPositionX = Double.NaN;
+    private double cursorPositionY = Double.NaN;
+    private double pathCursorPositionX = Double.NaN;
+    private double pathCursorPositionY = Double.NaN;
     public boolean isDragging = false;
     private static final int MAX_BUFFER_SIZE = 100;
     /** Array for storing user face coordinate x coordinate (detected from FaceLandmarks). */
@@ -60,30 +58,30 @@ public class CursorController {
     public float dragEndY = 0.f;
     private int screenWidth;
     private int screenHeight;
-    private int tempMinX = 0;
-    private int tempMaxX = 0;
-    private int tempMinY = 0;
-    private int tempMaxY = 0;
-    private float smoothedCursorPositionX = 0;
-    private float smoothedCursorPositionY = 0;
-    private boolean tempBoundsSet = false;
-    private boolean isCursorOutsideBounds = false;
+    private Rect keyboardBounds;
+    private Rect navBarBounds;
+    private Rect activeCursorRegion;
+    private String activeCursorRegionStr;
     public CursorMovementConfig cursorMovementConfig;
     /** A Config define which face shape should trigger which event */
     BlendshapeEventTriggerConfig blendshapeEventTriggerConfig;
     /** Keep tracking if any event is triggered. */
     private final HashMap<BlendshapeEventTriggerConfig.EventType, Boolean> blendshapeEventTriggeredTracker = new HashMap<>();
-    private boolean isSwiping = false;
-    private Path swipePath;
-    private static final int TRAIL_MAX_POINTS = 100;
-    private List<float[]> cursorTrail = new LinkedList<>();
     private long edgeHoldStartTime = 0;
     public boolean isRealtimeSwipe = false;
-    public List<float[]> swipePathPoints = new ArrayList<float[]>();
+    public boolean isCursorTap = false;
+    public boolean isCursorTouch = false;
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
+    private KeyboardManager mKeyboardManager;
 
-    public boolean continousTouchActive = false;
+    public boolean isSwiping = false;
+    public boolean continuousTouchActive = false;
+    public boolean smartTouchActive = false;
+    public boolean swipeToggleActive = false;
+    public boolean dragToggleActive = false;
+    public boolean checkForSwipingFromRightKbd = false;
+    public boolean startedSwipeFromRightKbd = false;
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -93,8 +91,13 @@ public class CursorController {
     public CursorController(Context context, int width, int height) {
         screenWidth = width;
         screenHeight = height;
-        Log.d(TAG, "OnCreate: Screen size: " + screenWidth + "x" + screenHeight);
-        Log.d(TAG, "OnCreate: Head Coord: " + maxRawCoordX + "x" + minRawCoordY + "x" + maxRawCoordY + "x" + minRawCoordX);
+        resetCursorToCenter();
+        Log.d(TAG, "OnCreate() -  Cursor Position = (" + cursorPositionX + "x, " + cursorPositionY + "y)");
+        Log.d(TAG, "OnCreate() - Screen Size = " + screenWidth + "x" + screenHeight);
+        Log.d(
+            TAG,
+            "OnCreate() - Min/Max Head Coord = x: " + minRawCoordX + " - " + maxRawCoordX + "; y: " +
+            minRawCoordY + " - " + maxRawCoordY);
 
         parentContext = context;
         rawCoordXBuffer = new ArrayList<>();
@@ -118,14 +121,15 @@ public class CursorController {
                 blendshapeEventTriggerConfig.updateProfile(context, profileName);
             }
         };
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"), RECEIVER_EXPORTED);
-        } else {
-            context.registerReceiver(profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"));
-        }
+        ContextCompat.registerReceiver(
+            context,
+            profileChangeReceiver,
+            new IntentFilter("PROFILE_CHANGED"),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        );
 
         // Init blendshape event tracker
-        for (BlendshapeEventTriggerConfig.EventType eventType : BlendshapeEventTriggerConfig.EventType.values()) {
+        for (BlendshapeEventTriggerConfig.EventType eventType: BlendshapeEventTriggerConfig.EventType.values()) {
             blendshapeEventTriggeredTracker.put(eventType, false);
         }
     }
@@ -134,27 +138,31 @@ public class CursorController {
         cursorMovementConfig.unregisterReceiver(parentContext);
     }
 
-    /** Scale cursor velocity X, Y with different multiplier in each axis. */
+    /**
+     * Scale cursor velocity X, Y with different multiplier in each axis.
+     */
     private float[] asymmetryScaleXy(float velX, float velY) {
         // Speed multiplier in X axis.
         double speedScale = 0.2;
-        float rightSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED) * speedScale) + speedScale);
-        float leftSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED) * speedScale) + speedScale);
-        float downSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) * speedScale) + speedScale);
-        float upSpeed = (float) ((cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) + speedScale);
+        float rightSpeed = (float) (
+            (cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.RIGHT_SPEED) *
+             speedScale) + speedScale);
+        float leftSpeed = (float) (
+            (cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LEFT_SPEED) *
+             speedScale) + speedScale);
+        float downSpeed = (float) (
+            (cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DOWN_SPEED) *
+             speedScale) + speedScale);
+        float upSpeed = (float) (
+            (cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UP_SPEED) * speedScale) +
+            speedScale);
 
-        float multiplierX =
-                (velX > 0)
-                        ? rightSpeed
-                        : leftSpeed;
+        float multiplierX = (velX > 0) ? rightSpeed : leftSpeed;
 
         // Speed multiplier in Y axis.
-        float multiplierY =
-                (velY > 0)
-                        ? downSpeed
-                        : upSpeed;
+        float multiplierY = (velY > 0) ? downSpeed : upSpeed;
 
-        return new float[] {velX * multiplierX, velY * multiplierY};
+        return new float[]{velX * multiplierX, velY * multiplierY};
     }
 
     /**
@@ -193,80 +201,63 @@ public class CursorController {
      * @param blendshapes The blendshapes array from MediaPipe FaceLandmarks model.
      * @return EventType that should be trigger. Will be {@link BlendshapeEventTriggerConfig.EventType#NONE} if no valid event.
      */
-    public BlendshapeEventTriggerConfig.EventType createCursorEvent(float[] blendshapes) {
+    public BlendshapeEventTriggerConfig.EventDetails createCursorEvent(float[] blendshapes) {
         // Loop over registered event-blendshape-threshold pairs.
-        for (Map.Entry<BlendshapeEventTriggerConfig.EventType, BlendshapeEventTriggerConfig.BlendshapeAndThreshold> entry :
-                blendshapeEventTriggerConfig.getAllConfig().entrySet()) {
+        for (Map.Entry<BlendshapeEventTriggerConfig.EventType, BlendshapeEventTriggerConfig.BlendshapeAndThreshold> entry: blendshapeEventTriggerConfig.getAllConfig().entrySet()) {
             BlendshapeEventTriggerConfig.EventType eventType = entry.getKey();
             BlendshapeEventTriggerConfig.BlendshapeAndThreshold blendshapeAndThreshold = entry.getValue();
+            BlendshapeEventTriggerConfig.Blendshape blendshape = blendshapeAndThreshold.shape();
 
-            if (blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE ||
-                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO ||
-                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE ||
-                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.SWIPE_FROM_RIGHT_KBD ||
-                    blendshapeAndThreshold.shape() == BlendshapeEventTriggerConfig.Blendshape.NONE) {
+            if (blendshape.value < 0) {
                 continue;
             }
             if (blendshapeEventTriggeredTracker.get(eventType) == null) {
                 continue;
             }
-            float score = blendshapes[blendshapeAndThreshold.shape().value];
+            float score = blendshapes[blendshape.value];
 
             boolean eventTriggered = Boolean.TRUE.equals(blendshapeEventTriggeredTracker.get(eventType));
 
             // new event triggered
             if (!eventTriggered && (score > blendshapeAndThreshold.threshold())) {
                 blendshapeEventTriggeredTracker.put(eventType, true);
-                if (eventType == BlendshapeEventTriggerConfig.EventType.SHOW_APPS) {
-                    Log.i(TAG, eventType + " " + blendshapeAndThreshold.shape() + " " + score + " " + blendshapeAndThreshold.threshold());
-                }
 
-                // Return the correspond event (te be trigger in Accessibility service).
+                return new BlendshapeEventTriggerConfig.EventDetails(
+                    eventType,
+                    blendshape,
+                    true);
 
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
-                    isTeleportMode = true;
-                    if (tempBoundsSet && !isCursorOutsideBounds) {
-                        teleportShadowX = (double) (tempMinX + tempMaxX) / 2;
-                        teleportShadowY = (double) (tempMinY + tempMaxY) / 2;
-                    } else {
-                        teleportShadowX = (double) this.screenWidth / 2;
-                        teleportShadowY = (double) this.screenHeight / 2;
-                    }
-                }
-
-                return eventType;
-
+            //
             } else if (eventTriggered && (score <= blendshapeAndThreshold.threshold())) {
                 // Reset the trigger.
                 blendshapeEventTriggeredTracker.put(eventType, false);
-                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH && continousTouchActive) {
-                    // returning eventType when gesture score for continuous touch is below threshold
-                    Log.d(TAG, "Continuous touch gesture score below threshold, returning eventType");
-                    return eventType;
-                } else if (eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_RESET) {
-                    isTeleportMode=false;
+
+                if (eventType == BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH ||
+                    eventType == BlendshapeEventTriggerConfig.EventType.SMART_TOUCH ||
+                    eventType == BlendshapeEventTriggerConfig.EventType.CURSOR_TAP) {
+                    return new BlendshapeEventTriggerConfig.EventDetails(
+                        eventType,
+                        blendshape,
+                        false);
                 }
 
-            } else {
-                // check next gesture.
-                continue;
             }
         }
 
         // No action.
-        return BlendshapeEventTriggerConfig.EventType.NONE;
+        return new BlendshapeEventTriggerConfig.EventDetails();
     }
 
     /**
      * Calculate cursor's translation XY and smoothing.
      *
      * @param faceCoordXy User head coordinate x,y from FaceLandmarks tracker.
-     * @param gapFrames How many screen frame with no update from FaceLandmarks. Used when calculate
-     *     smoothing.
+     * @param gapFrames   How many screen frame with no update from FaceLandmarks. Used when calculate
+     *                    smoothing.
      */
     public float[] getCursorTranslateXY(float[] faceCoordXy, int gapFrames) {
         this.updateVelocity(faceCoordXy);
-        int smooth = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.SMOOTH_POINTER);
+        int smooth = 9 - getSmoothing();
 
         float smallStepX = (float) ((smooth * prevSmallStepX + velX / (float) gapFrames) / (smooth + 1));
         float smallStepY = (float) ((smooth * prevSmallStepY + velY / (float) gapFrames) / (smooth + 1));
@@ -274,7 +265,7 @@ public class CursorController {
         prevSmallStepX = smallStepX;
         prevSmallStepY = smallStepY;
 
-        return new float[] {smallStepX, smallStepY};
+        return new float[]{smallStepX, smallStepY};
     }
 
     /**
@@ -314,9 +305,7 @@ public class CursorController {
     }
 
     public void updateRawCoordMinMax(float[] rawCoordXY) {
-        if (rawCoordXY[0] == 0 && rawCoordXY[1] == 0) {
-            return;
-        }
+        if (rawCoordXY[0] == 0 && rawCoordXY[1] == 0) return;
         if (maxRawCoordX == -1 || rawCoordXY[0] > maxRawCoordX) {
             maxRawCoordX = rawCoordXY[0];
         }
@@ -342,23 +331,27 @@ public class CursorController {
 
     /**
      * Update internal cursor position.
+     *
      * @param headTiltXY User head coordinate.
-     *                    headTiltXY[0] = x coordinate.
-     *                    headTiltXY[1] = y coordinate.
-     * @param noseTipXY User nose tip coordinate.
-     *                    noseTipXY[0] = x coordinate.
-     *                    noseTipXY[1] = y coordinate.
-     * @param inputSize Input size of FaceLandmarks model.
-     *                  inputSize[0] = width.
-     *                  inputSize[1] = height.
+     *                   headTiltXY[0] = x coordinate.
+     *                   headTiltXY[1] = y coordinate.
+     * @param noseTipXY  User nose tip coordinate.
+     *                   noseTipXY[0] = x coordinate.
+     *                   noseTipXY[1] = y coordinate.
+     * @param inputSize  Input size of FaceLandmarks model.
+     *                   inputSize[0] = width.
+     *                   inputSize[1] = height.
      * @param screenSize Screen size.
      *                   screenSize[0] = width.
      *                   screenSize[1] = height.
-//     * @param gapFrames How many frames we use to wait for the FaceLandmarks model.
-//     * @param screenWidth Screen size for prevent cursor move out of of the screen.
-//     * @param screenHeight Screen size for prevent cursor move out of of the screen.
      */
-    public void updateInternalCursorPosition(float[] headTiltXY, float[] noseTipXY, float[] pitchYawXY, int[] inputSize, int[] screenSize) {
+    public void updateInternalCursorPosition(
+        float[] headTiltXY,
+        float[] noseTipXY,
+        float[] pitchYawXY,
+        int[] inputSize,
+        int[] screenSize) {
+
         this.screenWidth = screenSize[0];
         this.screenHeight = screenSize[1];
 
@@ -371,6 +364,8 @@ public class CursorController {
         float headCoordScaleFactorY = getHeadCoordScaleFactorY();
 
         if (isPitchYawEnabled && isNoseTipEnabled) { // Combined
+//            Log.d(TAG, "handleCenterOffsetUpdate() - pitchYawXY: " + pitchYawXY[0] + ", " + pitchYawXY[1] +
+//            "; noseTipXY: " + noseTipXY[0] + ", " + noseTipXY[1] + "; headTiltXY: " + headTiltXY[0] + ", " + headTiltXY[1]);
             coordsXY = noseTipXY;
             handleCenterOffsetUpdate(pitchYawXY, noseTipXY, inputSize);
             coordsXY[0] += appliedOffsetX;
@@ -394,51 +389,72 @@ public class CursorController {
             }
         }
 
+        if (noseTipXY[0] == 0 && noseTipXY[1] == 0 && pitchYawXY[0] == 0 && pitchYawXY[1] == 0) {
+            normalizedX = 0.5f;
+            normalizedY = 0.5f;
+        }
+
         int regionMinX = 0;
         int regionMaxX = screenWidth;
         int regionMinY = 0;
         int regionMaxY = screenHeight;
-        if (tempBoundsSet) {
-            int WIGGLE_ROOM = screenHeight / 20;
-            if (isCursorOutsideBounds) {
-                regionMaxY = tempMinY + WIGGLE_ROOM;
-            } else {
-                regionMinY = tempMinY - WIGGLE_ROOM;
-            }
+        if (activeCursorRegion != null && !activeCursorRegion.isEmpty()) {
+//            int WIGGLE_ROOM = screenHeight / 20;
+            regionMaxY = clamp(activeCursorRegion.bottom, 0, screenHeight);
+            regionMinY = clamp(activeCursorRegion.top, 0, screenHeight);
         }
 
         // Center the normalized coordinates within the region
-        float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX + (float) (regionMaxX + regionMinX) / 2;
-        float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY + (float) (regionMaxY + regionMinY) / 2;
+        float centeredX = (normalizedX - 0.5f) * (regionMaxX - regionMinX) * headCoordScaleFactorX +
+            (float) (regionMaxX + regionMinX) / 2;
+        float centeredY = (normalizedY - 0.5f) * (regionMaxY - regionMinY) * headCoordScaleFactorY +
+            (float) (regionMaxY + regionMinY) / 2;
 
         // Smoothing
-        float smoothingFactor = getSmoothFactor(0.01f, 0.3f);
-        if (smoothedCursorPositionX != smoothedCursorPositionX || smoothedCursorPositionY != smoothedCursorPositionY) {
-            smoothedCursorPositionX = centeredX;
-            smoothedCursorPositionY = centeredY;
-        }
-        smoothedCursorPositionX += (smoothingFactor * (centeredX - smoothedCursorPositionX));
-        smoothedCursorPositionY += (smoothingFactor * (centeredY - smoothedCursorPositionY));
+        float smoothingFactor = getSmoothFactor(Config.MIN_SMOOTHING_FACTOR, Config.MAX_SMOOTHING_FACTOR);
 
-        cursorPositionX = smoothedCursorPositionX;
-        cursorPositionY = smoothedCursorPositionY;
+        if (Double.isNaN(cursorPositionX)) cursorPositionX = centeredX;
+        if (Double.isNaN(cursorPositionY)) cursorPositionY = centeredY;
 
-        if (tempBoundsSet) {
+        cursorPositionX += smoothingFactor * (centeredX - cursorPositionX);
+        cursorPositionY += smoothingFactor * (centeredY - cursorPositionY);
+
+        if (Double.isNaN(pathCursorPositionX)) pathCursorPositionX = cursorPositionX;
+        if (Double.isNaN(pathCursorPositionY)) pathCursorPositionY = cursorPositionY;
+
+        // the path cursor is modofied down by a percentage to slowly catch up to the position of the cursor
+        float percentage = getPathCursorPercentage();
+        pathCursorPositionX = cursorPositionX * percentage + pathCursorPositionX * (1 - percentage);
+        pathCursorPositionY = cursorPositionY * percentage + pathCursorPositionY * (1 - percentage);
+
+        // Curor Regon Bounding
+        if (activeCursorRegion != null) {
             handleBoundingLogic();
+            // Ensure cursor stays within the bounds of the active region
+            cursorPositionY = clamp(cursorPositionY, activeCursorRegion.top, activeCursorRegion.bottom);
         }
 
         // Clamp cursor position to screen bounds
         cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
         cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
 
-        if (isSwiping) {
-            // Track path points for the swipe
-            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
-            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
-            updateTrail((float) cursorPositionX, (float) cursorPositionY);
-        }
+//        if (isSwiping) {
+//            // Track path points for the swipe
+//            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
+//            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
+//            updateTrail((float) cursorPositionX, (float) cursorPositionY);
+//        }
     }
 
+    /**
+     * Normalize the nose tip coordinates to a range of 0 to 1 based on the input size.
+     * This is used to ensure that the nose tip coordinates are within a consistent range for cursor
+     * movement calculations.
+     *
+     * @param coordsXY  The x and y coordinates of the nose tip.
+     * @param inputSize The size of the input image (width and height).
+     * @return Normalized coordinates as an array of floats.z
+     */
     private float[] normalizeOffsetNose(float[] coordsXY, int[] inputSize) {
         float AREA = 0.25f;
         float minX = (inputSize[0] / 2) - AREA * inputSize[0];
@@ -449,25 +465,24 @@ public class CursorController {
         float normalizedX = (coordsXY[0] - minX) / (maxX - minX);
         float normalizedY = (coordsXY[1] - minY) / (maxY - minY);
 
-        return new float[] {normalizedX, normalizedY};
+        return new float[]{normalizedX, normalizedY};
     }
 
     private void handleCenterOffsetUpdate(float[] pitchYawXY, float[] noseTipXY, int[] inputSize) {
-        // Check if swiping is active, and pause the offset updates
-        if (isRealtimeSwipe) {
-            return; // Skip offset updates while swiping
+        // Skip offset updates if any event is active or if we don't have valid face detection data yet
+        if (isEventActive() || (noseTipXY[0] == 0 && noseTipXY[1] == 0 && pitchYawXY[0] == 0 && pitchYawXY[1] == 0)) {
+            return;
         }
 
         // Determine if pitch and yaw are close to center (0 degrees)
         boolean isCenteredX = Math.abs(pitchYawXY[1]) < 2.0f; // Yaw close to 0 degrees
         boolean isCenteredY = Math.abs(pitchYawXY[0]) < 2.0f; // Pitch close to 0 degrees
-//        Log.d(TAG, "Pitch: " + pitchYawXY[0] + " Yaw: " + pitchYawXY[1] + " isCenteredX: " + isCenteredX + " isCenteredY: " + isCenteredY);
 
         if (isCenteredX) {
-            targetOffsetX = ((float) inputSize[0] / 2) - noseTipXY[0]; // Calculate offset from head center to nose tip
+            targetOffsetX = ((float) inputSize[0] / 2) - noseTipXY[0];
         }
         if (isCenteredY) {
-            targetOffsetY = ((float) inputSize[1] / 2) - noseTipXY[1]; // Calculate offset from head center to nose tip
+            targetOffsetY = ((float) inputSize[1] / 2) - noseTipXY[1];
         }
 
         if (targetOffsetY == 0 && targetOffsetX == 0) {
@@ -475,13 +490,18 @@ public class CursorController {
             appliedOffsetY = 0;
             return;
         }
+
         // Smoothly apply the offset over time
         long currentTime = System.currentTimeMillis();
         float timeElapsed = (currentTime - lastOffsetUpdateTime) / (float) offsetTransitionDuration;
 
         if (timeElapsed < 1) {
-            appliedOffsetX += (targetOffsetX - appliedOffsetX) * timeElapsed;
-            appliedOffsetY += (targetOffsetY - appliedOffsetY) * timeElapsed;
+            if (targetOffsetX != 0) {
+                appliedOffsetX += (targetOffsetX - appliedOffsetX) * timeElapsed;
+            }
+            if (targetOffsetY != 0) {
+                appliedOffsetY += (targetOffsetY - appliedOffsetY) * timeElapsed;
+            }
         } else {
             appliedOffsetX = targetOffsetX;
             appliedOffsetY = targetOffsetY;
@@ -491,8 +511,9 @@ public class CursorController {
 
     /**
      * Calculate smoothing factor using FaceSwype smoothing config var.
+     *
      * @param minSmoothingFactor Minimum smoothing factor (Typically 0.01f)
-     * @param maxSmoothingFactor Maximum smoothing factor (Typically 0.5f)
+     * @param maxSmoothingFactor Maximum smoothing factor (Typically 0.3f)
      * @return Smoothing factor (Between minSmoothingFactor and maxSmoothingFactor)
      */
     public float getSmoothFactor(float minSmoothingFactor, float maxSmoothingFactor) {
@@ -502,145 +523,205 @@ public class CursorController {
         // Ensure the intValue is within the expected range [0, 9]
         smoothInt = clamp(smoothInt, 0, 9);
 
-        // Calculate the smoothing factor using linear interpolation
-        float smoothingFactor = minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
+        boolean useExponential = cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING);
 
-//        Log.d(TAG, "Smoothing factor: " + smoothingFactor + " (int: " + getSmoothing() + ")");
-        return smoothingFactor;
-    }
-
-    private void handleBoundingLogic() {
-        long currentTime = System.currentTimeMillis();
-        boolean touchingTopEdge = cursorPositionY <= tempMinY;
-
-        if (!isCursorOutsideBounds) {
-            // Cursor is inside the bounds
-            if (touchingTopEdge && (cursorPositionY > 0 && cursorPositionY < screenHeight)) {
-                if (edgeHoldStartTime == 0) {
-                    edgeHoldStartTime = currentTime;
-                }
-
-                if (currentTime - edgeHoldStartTime > getHoldDuration()) {
-                    Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
-                    isCursorOutsideBounds = true;
-//                    isCursorBoosted = true;
-//                    cursorBoostStartTime = currentTime;
-                    edgeHoldStartTime = 0;
-                } else {
-                    // Clamp cursor to the top bound while holding against the edge
-                    cursorPositionY = clamp(cursorPositionY, tempMinY, screenHeight);
-                }
-            } else {
-                edgeHoldStartTime = 0;
-                // Ensure cursor stays within the bounds
-                cursorPositionY = clamp(cursorPositionY, tempMinY, screenHeight);
-            }
+        if (useExponential) {
+            // Use exponential mapping for a more balanced feel
+            // The base of 1.6 was chosen to provide a good distribution of values
+            float normalizedValue = (float) (Math.pow(1.6, smoothInt) - 1) / (float) (Math.pow(1.6, 9) - 1);
+            return minSmoothingFactor + (maxSmoothingFactor - minSmoothingFactor) * normalizedValue;
         } else {
-            // Cursor is outside the bounds
-            if (cursorPositionY >= tempMinY) {
-                if (edgeHoldStartTime == 0) {
-                    edgeHoldStartTime = currentTime;
-                }
-
-                if (currentTime - edgeHoldStartTime > getHoldDuration()) {
-                    Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop in cursor.");
-                    isCursorOutsideBounds = false;
-//                    isCursorBoosted = true;
-//                    cursorBoostStartTime = currentTime;
-                    edgeHoldStartTime = 0;
-                } else {
-                    // Clamp cursor to the area just above the bound while holding against the edge
-                    cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
-                }
-            } else {
-                edgeHoldStartTime = 0;
-                // Ensure cursor stays within the bounds
-                cursorPositionY = clamp(cursorPositionY, 0, tempMinY);
-            }
+            // Use linear mapping
+            return minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
         }
     }
 
-    public Rect getTemporaryBounds() {
-        return new Rect(this.tempMinX, this.tempMinY, this.tempMaxX, this.tempMaxY);
+    private void handleBoundingLogic() {
+
+        if (activeCursorRegion == null || activeCursorRegionStr == null) {
+//            Log.d(TAG, "Active cursor region is not set. Cannot handle bounding logic.");
+            edgeHoldStartTime = 0;
+            return;
+        }
+        if (isEventActive()) {
+//            Log.d(TAG, "Event is active. Skipping bounding logic.");
+            edgeHoldStartTime = 0;
+            return;
+        }
+
+        cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        boolean isTouchingTopEdge = cursorPositionY <= activeCursorRegion.top && activeCursorRegion.top > 0;
+        boolean isTouchingBottomEdge =
+            cursorPositionY >= activeCursorRegion.bottom && activeCursorRegion.bottom < screenHeight;
+
+        // Check if the cursor is touching an edge of the active region that borders another region
+        if (isTouchingTopEdge || isTouchingBottomEdge) {
+            long currentTime = System.currentTimeMillis();
+
+            // Cursor is at the edge of the active region
+            if (edgeHoldStartTime == 0) {
+                edgeHoldStartTime = currentTime;
+            }
+
+            if (currentTime - edgeHoldStartTime > getHoldDuration()) {
+                Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
+                edgeHoldStartTime = 0;
+                String previousRegion = activeCursorRegionStr;
+
+                // Pop out to the next region based on the edge touched
+                if (isTouchingTopEdge && previousRegion.equals("KBD")) {
+                    // Pop out to the top region
+                    activeCursorRegionStr = "TOP";
+                    activeCursorRegion = new Rect(0, 0, screenWidth, activeCursorRegion.top - 1);
+                } else if (isTouchingBottomEdge && previousRegion.equals("KBD")) {
+                    // Pop out to the bottom region
+                    activeCursorRegionStr = "NAV";
+                    activeCursorRegion = new Rect(
+                        0,
+                        activeCursorRegion.bottom + 1,
+                        screenWidth,
+                        screenHeight);
+                } else if ((isTouchingTopEdge && previousRegion.equals("NAV")) // touching the top edge of NAV
+                        || (isTouchingBottomEdge && previousRegion.equals("TOP"))) { // touching the bottom edge of TOP
+                    activeCursorRegionStr = "KBD";
+                    activeCursorRegion = new Rect(
+                        keyboardBounds.left,
+                        keyboardBounds.top,
+                        keyboardBounds.right,
+                        (navBarBounds == null ? screenHeight : navBarBounds.top - 1));
+                }
+                Log.d(
+                    TAG,
+                    "ActiveCursorRegion: " + previousRegion + " --> " + activeCursorRegionStr +
+                    ", New Bounds: " + activeCursorRegion);
+            }
+        } else {
+            // Reset edge hold time if cursor is not at the edge
+            edgeHoldStartTime = 0;
+        }
     }
 
-    public void setTemporaryBounds(Rect bounds) {
-        this.tempMinX = bounds.left;
-        this.tempMinY = bounds.top;
-        this.tempMaxX = bounds.right;
-        this.tempMaxY = bounds.bottom;
-        this.tempBoundsSet = true;
-//        resetCursorToCenter(true);
-        this.isCursorOutsideBounds = this.cursorPositionY < tempMinY;
-        Log.d(TAG, "Set temporary bounds: " + bounds);
+    public boolean isEventActive() {
+        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTap || isCursorTouch;
     }
 
-    public void clearTemporaryBounds() {
-        this.tempBoundsSet = false;
-        this.tempMinX = 0;
-        this.tempMinY = 0;
-        this.tempMaxX = screenWidth;
-        this.tempMaxY = screenHeight;
+    public String getActiveCursorRegionStr() {
+        return activeCursorRegionStr;
+    }
+
+    public Rect getNavBarBounds() {
+        return new Rect(navBarBounds);
+    }
+
+    public void setNavBarBounds(Rect navRect) {
+        navBarBounds = new Rect(navRect);
+    }
+
+    public void clearNavBarBounds() {
+        navBarBounds = null;
+    }
+
+    public Rect getKeyboardBounds() {
+        return new Rect(keyboardBounds);
+    }
+
+    public void setKeyboardBounds(Rect kbdRect) {
+        keyboardBounds = new Rect(kbdRect);
+        int kbdBottom = screenHeight;
+        if (navBarBounds != null) {
+            kbdBottom = navBarBounds.top - 1;
+        }
+        if (cursorPositionY < keyboardBounds.top) {
+            activeCursorRegionStr = "TOP";
+            activeCursorRegion = new Rect(0, 0, screenWidth, keyboardBounds.top - 1);
+        } else if (cursorPositionY > kbdBottom) {
+            activeCursorRegionStr = "NAV";
+            activeCursorRegion = new Rect(0, kbdBottom + 1, screenWidth, screenHeight);
+        } else {
+            activeCursorRegionStr = "KBD";
+            activeCursorRegion = new Rect(
+                keyboardBounds.left,
+                keyboardBounds.top,
+                keyboardBounds.right,
+                kbdBottom);
+        }
+
+//        Log.d(TAG, "ActiveCursorRegion: (" + activeCursorRegionStr + ") " + activeCursorRegion);
+    }
+
+    public void clearKeyboardBounds() {
+        keyboardBounds = null;
+        activeCursorRegionStr = null;
+        activeCursorRegion = null;
+        edgeHoldStartTime = 0;
     }
 
     public int[] getCursorPositionXY() {
         return new int[]{(int) cursorPositionX, (int) cursorPositionY};
     }
 
-    public void resetCursorToCenter(boolean bound) {
-        if (bound || tempBoundsSet && !isCursorOutsideBounds) {
-            cursorPositionX = (double) (tempMinX + tempMaxX) / 2;
-            cursorPositionY = (double) (tempMinY + tempMaxY) / 2;
+    public int[] getPathCursorPositionXY() {
+        return new int[]{(int) pathCursorPositionX, (int) pathCursorPositionY};
+    }
+
+    public void resetCursorToCenter() {
+        if (activeCursorRegion != null) {
+            cursorPositionX = (double) (activeCursorRegion.left + activeCursorRegion.right) / 2;
+            cursorPositionY = (double) (activeCursorRegion.top + activeCursorRegion.bottom) / 2;
         } else {
-            cursorPositionX = (double) this.screenWidth / 2;
-            cursorPositionY = (double) this.screenHeight / 2;
+            cursorPositionX = (double) screenWidth / 2;
+            cursorPositionY = (double) screenHeight / 2;
         }
     }
 
-    public void startSwipe(float x, float y) {
-        cursorTrail.clear();
-        isSwiping = true;
-        swipePath = new Path();
-        swipePath.moveTo(x, y);
+    public void resetPathCursorPosition() {
+//        if (Double.isNaN(cursorPositionX) || Double.isNaN(cursorPositionY)) {
+//            Log.w(TAG, "Resetting path cursor position with NaN values. Resetting to center.");
+//            resetCursorToCenter();
+//        }
+        pathCursorPositionX = cursorPositionX;
+        pathCursorPositionY = cursorPositionY;
     }
 
-    public void updateSwipe(float x, float y) {
-        if (isSwiping) {
-            swipePath.lineTo(x, y);
+    /**
+     * Get the percentage of the path cursor based on the path cursor config.
+     * Uses default value if the path cursor config is invalid.
+     *
+     * @return The percentage of the path cursor as a float.
+     *         Returns 0.002f to 0.04f for values 1-20
+     *         Returns 0.04f to 0.20f for values 21-40
+     */
+    public float getPathCursorPercentage() {
+        int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
+        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
+            Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
+            pathCursorValue = Config.DEFAULT_PATH_CURSOR;
         }
+        return getPathCursorPercentageFrom(pathCursorValue);
     }
 
-    public void stopSwipe() {
-        cursorTrail.clear();
-        isSwiping = false;
-    }
-
-    public Path getSwipePath() {
-        return swipePath;
-    }
-
-    public boolean isSwiping() {
-        return isSwiping;
-    }
-
-    public void updateTrail(float x, float y) {
-        if (isSwiping) {
-            cursorTrail.add(new float[]{x, y});
-            if (cursorTrail.size() > TRAIL_MAX_POINTS) {
-                cursorTrail.remove(0);
-            }
+    /**
+     * Get the percentage of the path cursor based on the path cursor config.
+     * Static method that can be used without creating a CursorController instance.
+     *
+     * @return The percentage of the path cursor as a float.
+     *         Returns 0.002f to 0.04f for values 1-20
+     *         Returns 0.04f to 0.20f for values 21-40
+     *         Returns 0.04f for invalid values (less than 1 or greater than 40)
+     */
+    public static float getPathCursorPercentageFrom(int pathCursorValue) {
+        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
+            Log.w(TAG, "Invalid path cursor value: " + pathCursorValue + ". Defaulting to 0.04f.");
+            return 0.04f; // Default value for invalid path cursor config
+        }
+        if (pathCursorValue <= 20) {
+            // mapping 1-20 to 0.002f-0.04f linearly
+            return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
         } else {
-            cursorTrail.clear();
+            // mapping 21-40 to 0.04f-0.20f linearly
+            return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
         }
     }
-
-    public List<float[]> getCursorTrail() {
-        return cursorTrail;
-    }
-
-//    public void updateRealtimeSwipe(float x, float y) {
-//        swipePathPoints.add(new Point((int) x, (int) y));
-//    }
 
     public boolean isDurationPopOutEnabled() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.DURATION_POP_OUT);
@@ -665,6 +746,7 @@ public class CursorController {
     public float getHeadCoordScaleFactorX() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_X);
     }
+
     public float getHeadCoordScaleFactorY() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HEAD_COORD_SCALE_FACTOR_Y);
     }
@@ -677,4 +759,11 @@ public class CursorController {
         return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
     }
 
+    public int getPathCursorConfig() {
+        return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
+    }
+
+    public void setKeyboardManager(KeyboardManager keyboardManager) {
+        mKeyboardManager = keyboardManager;
+    }
 }

@@ -77,7 +77,7 @@ public final class InputAttributes {
             } else if (InputType.TYPE_NULL == inputType) {
                 // TODO: We should honor TYPE_NULL specification.
                 Log.i(TAG, "InputType.TYPE_NULL is specified");
-            } else if (inputClass == 0) {
+            } else {
                 // TODO: is this check still necessary?
                 Log.w(TAG, String.format("Unexpected input class: inputType=0x%08x"
                         + " imeOptions=0x%08x", inputType, editorInfo.imeOptions));
@@ -105,7 +105,8 @@ public final class InputAttributes {
 
         // TODO: Have a helper method in InputTypeUtils
         // Make sure that passwords are not displayed in {@link SuggestionStripView}.
-        mShouldShowSuggestions = !(mIsPasswordField || flagNoSuggestions);
+        mShouldShowSuggestions = !mIsPasswordField;
+//                && (!flagNoSuggestions || (flagMultiLine || flagAutoCorrect || variation == InputType.TYPE_TEXT_VARIATION_NORMAL));
 
         mShouldInsertSpacesAutomatically = InputTypeUtils.isAutoSpaceFriendlyType(inputType);
 
@@ -141,6 +142,20 @@ public final class InputAttributes {
 
 
         mNoLearning = flagNoSuggestions || (editorInfo.imeOptions & EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0;
+
+        dumpFlags(inputType);
+        Log.d(TAG, "InputAttributes: inputType=0x" + Integer.toHexString(inputType)
+                + " imeOptions=0x" + Integer.toHexString(editorInfo.imeOptions)
+                + " targetApp=" + mTargetApplicationPackageName
+                + " noAutoCorrect=" + mInputTypeNoAutoCorrect
+                + " isPasswordField=" + mIsPasswordField
+                + " shouldShowSuggestions=" + mShouldShowSuggestions
+                + " applicationSpecifiedCompletionOn=" + mApplicationSpecifiedCompletionOn
+                + " shouldInsertSpacesAutomatically=" + mShouldInsertSpacesAutomatically
+                + " shouldShowVoiceInputKey=" + mShouldShowVoiceInputKey
+                + " disableGestureFloatingPreviewText=" + mDisableGestureFloatingPreviewText
+                + " isGeneralTextInput=" + mIsGeneralTextInput
+                + " noLearning=" + mNoLearning);
     }
 
     public boolean isTypeNull() {

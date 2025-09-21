@@ -29,10 +29,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.SeekBar;
-import android.widget.Switch;
 import android.widget.TextView;
-
-import com.google.projectgameface.R;
 
 import java.util.Objects;
 
@@ -144,7 +141,7 @@ public class CursorSpeed extends AppCompatActivity {
         } else if (Objects.equals(preferencesId, CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS.toString())) {
             savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.HOLD_TIME_MS);
         } else {
-            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
+            savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.SPEED);
         }
         seekBar.setProgress(savedProgress);
         seekBar.setOnSeekBarChangeListener(seekBarChange);
@@ -363,7 +360,7 @@ public class CursorSpeed extends AppCompatActivity {
     }
 
     private void updateSeekBarAndTextView(SeekBar seekBar, TextView textView, SharedPreferences preferences, CursorMovementConfig.CursorMovementConfigType configType) {
-        int savedProgress = preferences.getInt(configType.toString(), CursorMovementConfig.InitialRawValue.DEFAULT_SPEED);
+        int savedProgress = preferences.getInt(configType.toString(), CursorMovementConfig.InitialRawValue.SPEED);
         seekBar.setProgress(savedProgress);
         if (configType == CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS) {
             int timeMsForShow = (int) (savedProgress * CursorMovementConfig.RawConfigMultiplier.HOLD_TIME_MS);

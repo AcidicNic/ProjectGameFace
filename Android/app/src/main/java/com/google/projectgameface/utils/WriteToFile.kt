@@ -23,8 +23,9 @@ class WriteToFile(private val context: Context) {
         .serializeSpecialFloatingPointValues()
         .setPrettyPrinting() // Optional: Makes JSON more human-readable
         .create()
-    val statsDir: File = File(Config.FILES_DIR, Config.STATS_DIR)
-    val logsDir: File = File(Config.FILES_DIR, Config.LOGS_DIR)
+    val filesDir = context.filesDir // = ~"/data/data/com.google.projectgameface/files"
+    val statsDir: File = File(filesDir, Config.STATS_DIR)
+    val logsDir: File = File(filesDir, Config.LOGS_DIR)
     var hiddenDir: File = File(logsDir, Config.ARCHIVED_DIR)
 
     private var logFile: File = File(logsDir, Config.LOG_FILE)
@@ -220,7 +221,7 @@ class WriteToFile(private val context: Context) {
         val jsonFile = File(statsDir, fileName)
 
         if (!jsonFile.exists()) {
-            logError(TAG,"loadObjFromJson - json file path does not exist: " + jsonFile.path)
+            logError(TAG, "loadObjFromJson - json file path does not exist: " + jsonFile.path)
             return null
         }
 
@@ -241,7 +242,7 @@ class WriteToFile(private val context: Context) {
     }
 
     fun saveBitmap(bitmap: Bitmap) {
-        val imageFile: File = File(Config.FILES_DIR, "screenshot-${getCurrentDateTimeStr()}.png")
+        val imageFile: File = File(filesDir, "screenshot-${getCurrentDateTimeStr()}.png")
         try {
             FileOutputStream(imageFile).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)

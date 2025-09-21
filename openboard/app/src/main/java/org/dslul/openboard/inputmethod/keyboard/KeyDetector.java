@@ -16,6 +16,8 @@
 
 package org.dslul.openboard.inputmethod.keyboard;
 
+import android.util.Log;
+
 /**
  * This class handles key detection.
  */
