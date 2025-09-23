@@ -1908,9 +1908,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     @Override
     public void sendBroadcast(android.content.Intent intent, String permission) {
         if (Build.VERSION.SDK_INT >= 34 /* Android 14, API 34 */) {
-            sendOrderedBroadcast(intent, permission);
+            sendOrderedBroadcast(intent, null);
         } else {
-            sendBroadcast(intent, permission);
+            sendBroadcast(intent);
         }
     }
 

@@ -3,6 +3,8 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
+//    namespace 'org.dslul.openboard'
+
     signingConfigs {
         debug {
             storeFile file("platform.keystore")

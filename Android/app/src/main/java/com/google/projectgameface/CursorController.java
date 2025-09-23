@@ -451,11 +451,15 @@ public class CursorController {
             handleBoundingLogic();
             // Ensure cursor stays within the bounds of the active region
             cursorPositionY = clamp(cursorPositionY, activeCursorRegion.top, activeCursorRegion.bottom);
+            pathCursorPositionY = clamp(pathCursorPositionY, 0, screenHeight);
+        } else {
+            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+            pathCursorPositionY = clamp(pathCursorPositionY, 0, screenHeight);
         }
 
         // Clamp cursor position to screen bounds
         cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
-        cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        pathCursorPositionX = clamp(pathCursorPositionX, 0, screenWidth);
 
         // Add current cursor position to history for rolling average calculation
         addCursorPositionToHistory(cursorPositionX, cursorPositionY);
