@@ -693,7 +693,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_INFO);
         eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_BOUNDS);
         eventFilter.addAction(IMEEventReceiver.ACTION_SHOW_OR_HIDE_KEY_POPUP);
-        registerReceiver(imeEventReceiver, eventFilter, "com.headswype.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
+        registerReceiver(imeEventReceiver, eventFilter, "com.headboard.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
         Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
 
         // Initialize HeadBoard service connection
@@ -863,11 +863,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             eventTime = startUpTime;
         }
 
-        // Try to send via HeadBoard service first (preferred method)
-        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
-            mHeadBoardServiceConnection.sendMotionEvent(x, y, action, startUpTime, eventTime);
-            return;
-        }
+//        // Try to send via HeadBoard service first (preferred method)
+//        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
+//            mHeadBoardServiceConnection.sendMotionEvent(x, y, action, startUpTime, eventTime);
+//            return;
+//        }
         startUpTime = SystemClock.uptimeMillis();
 
         View rootView = getWindow().getWindow().getDecorView();

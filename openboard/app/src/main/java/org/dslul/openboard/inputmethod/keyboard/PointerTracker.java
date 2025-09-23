@@ -528,7 +528,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         // batch input started, so send swipe start broadcast to headboard
         Intent intent = new Intent("com.headswype.ACTION_SWIPE_START");
         intent.setPackage("com.google.projectgameface");
-        sListener.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sListener.sendBroadcast(intent, "com.headboard.permission.UPDATE_CURSOR");
         Log.d(TAG, "Sent broadcast to headboard with intent: " + intent);
     }
 

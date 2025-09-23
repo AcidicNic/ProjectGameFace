@@ -413,7 +413,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             ContextCompat.RECEIVER_NOT_EXPORTED);
         ContextCompat.registerReceiver(this, resetDebuggingStatsReceiver, new IntentFilter(""),
             ContextCompat.RECEIVER_NOT_EXPORTED);
-        ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter, ContextCompat.RECEIVER_EXPORTED);
+        ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter, "com.headboard.permission.UPDATE_CURSOR", null, ContextCompat.RECEIVER_EXPORTED);
     }
 
     /**

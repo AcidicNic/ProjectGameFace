@@ -349,9 +349,9 @@ public class KeyboardManager {
 
     private void sendBroadcastToIME(Intent intent) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
-            context.sendOrderedBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+            context.sendOrderedBroadcast(intent, "com.headboard.permission.SEND_EVENT");
         } else {
-            context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+            context.sendBroadcast(intent, "com.headboard.permission.SEND_EVENT");
         }
     }
 

@@ -16,6 +16,7 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="org.dslul.openboard.inputmethod.latin"
+        android:sharedUserId="com.headswype.shared"
         android:sharedUserMaxSdkVersion="35">
 
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
@@ -39,12 +40,12 @@
          </pre> -->
     <permission android:name="org.dslul.openboard.inputmethod.latin.HIDE_SOFT_INPUT"
                 android:protectionLevel="signature" />
-    <permission
-        android:name="com.headswype.permission.SEND_EVENT"
-        android:protectionLevel="signature" />
+
+    <permission android:name="com.headboard.permission.SEND_EVENT"
+        android:protectionLevel="normal" />
+    <uses-permission android:name="com.headboard.permission.UPDATE_CURSOR" />
     
     <uses-permission android:name="android.permission.BIND_SERVICE" />
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
 
     <application android:label="@string/english_ime_name"
             android:icon="@mipmap/ic_launcher"
@@ -152,7 +153,7 @@
         <receiver
             android:name="org.dslul.openboard.IMEEventReceiver"
             android:exported="true"
-            android:permission="com.headswype.permission.SEND_EVENT">
+            android:permission="com.headboard.permission.SEND_EVENT">
             <intent-filter>
                 <action android:name="com.headswype.ACTION_SEND_EVENT" />
             </intent-filter>

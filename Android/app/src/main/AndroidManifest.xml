@@ -16,6 +16,7 @@
 <manifest xmlns:tools="http://schemas.android.com/tools"
         xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.google.projectgameface"
+        android:sharedUserId="com.headswype.shared"
         android:sharedUserMaxSdkVersion="35">
 
     <uses-sdk
@@ -39,11 +40,11 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <uses-permission android:name="com.headswype.permission.SEND_EVENT" />
     <uses-permission android:name="android.permission.BIND_SERVICE" />
-<!--    <instrumentation-->
-<!--        android:name=".MyInstrumentation"-->
-<!--        android:targetPackage="org.dslul.openboard.inputmethod.latin" />-->
+
+    <uses-permission android:name="com.headboard.permission.SEND_EVENT" />
+    <permission android:name="com.headboard.permission.UPDATE_CURSOR"
+        android:protectionLevel="normal" />
 
     <uses-feature
         android:name="android.hardware.camera2.full"
@@ -60,8 +61,6 @@
         android:supportsRtl="true"
         android:taskAffinity=""
         android:theme="@style/AppTheme"
-        android:sharedUserId="android.uid.system"
-        android:process="system"
         >
 
         <activity
@@ -144,7 +143,7 @@
         <receiver
             android:name=".KeyboardEventReceiver"
             android:exported="true"
-            android:permission="com.headswype.permission.SEND_EVENT">
+            android:permission="com.headboard.permission.UPDATE_CURSOR">
             <intent-filter>
                 <action android:name="com.headswype.ACTION_SWIPE_START" />
                 <action android:name="com.headswype.ACTION_LONGPRESS_ANIMATION" />
