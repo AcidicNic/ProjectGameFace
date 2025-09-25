@@ -50,7 +50,8 @@ object Config {
     const val DEFAULT_UI_FEEDBACK_DELAY = 3 // (D1A)
     const val DEFAULT_QUICK_TAP_THRESHOLD = 2000 // (ms) blue sweep time (long tap timeout period)
     const val DEFAULT_LONG_TAP_THRESHOLD = 2500 // (ms) yellow sweep time
-    const val DEFAULT_PATH_CURSOR: Int = 9
+    const val DEFAULT_PATH_CURSOR: Int = 21
+    const val DEFAULT_PATH_CURSOR_MIN: Int = 5
     const val HOVER_ZONE_RADIUS: Int = 150 // pixels
     const val D1A_DURATION: Int = 500 // (ms) rolling avg window
     const val SHOW_KEY_POPUP: Boolean = true

@@ -34,6 +34,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.google.projectgameface.utils.Config;
@@ -44,8 +45,8 @@ import java.util.Objects;
 public class HeadBoardSettings extends AppCompatActivity {
 
     private CursorMovementConfig cursorMovementConfig;
-    private Switch realtimeSwipeSwitch;
-    private Switch durationPopOutSwitch;
+    private SwitchCompat realtimeSwipeSwitch;
+    private SwitchCompat durationPopOutSwitch;
     private Switch directMappingSwitch;
     private Switch debugSwipeSwitch;
     private Switch noseTipSwitch;
@@ -76,6 +77,8 @@ public class HeadBoardSettings extends AppCompatActivity {
     // Path Cursor UI elements
     private SeekBar pathCursorSeekBar;
     private TextView progressPathCursor;
+    private SeekBar pathCursorMinSeekBar;
+    private TextView progressPathCursorMin;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -244,6 +247,14 @@ public class HeadBoardSettings extends AppCompatActivity {
                 pathCursorSeekBar, progressPathCursor, String.valueOf(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR)
         );
 
+        // Path Cursor Min
+        pathCursorMinSeekBar = findViewById(R.id.pathCursorMinSeekBar);
+        progressPathCursorMin = findViewById(R.id.pathCursorMinProgress);
+
+        setUpPathCursorMinSeekBarAndTextView(
+                pathCursorMinSeekBar, progressPathCursorMin, String.valueOf(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR_MIN)
+        );
+
         // Binding buttons with individual listeners
         findViewById(R.id.holdDurationFaster).setOnClickListener(v -> {
             int currentValue = holdDurationSeekBar.getProgress();
@@ -386,44 +397,48 @@ public class HeadBoardSettings extends AppCompatActivity {
         });
 
         findViewById(R.id.decreaseUiFeedbackDelay).setOnClickListener(v -> {
-            int currentValue = uiFeedbackDelaySeekBar.getProgress();
-            int newValue = currentValue - 1;
-            if (newValue >= uiFeedbackDelaySeekBar.getMin() && uiFeedbackDelaySeekBar.getProgress() <= uiFeedbackDelaySeekBar.getMax()) {
-                uiFeedbackDelaySeekBar.setProgress(newValue);
-                int value = newValue + 1; // Convert 0-8 back to 1-9
-                sendValueToService("UI_FEEDBACK_DELAY", value);
-            }
+            handleDecrease(uiFeedbackDelaySeekBar, "UI_FEEDBACK_DELAY");
         });
 
         findViewById(R.id.increaseUiFeedbackDelay).setOnClickListener(v -> {
-            int currentValue = uiFeedbackDelaySeekBar.getProgress();
-            int newValue = currentValue + 1;
-            if (newValue >= uiFeedbackDelaySeekBar.getMin() && uiFeedbackDelaySeekBar.getProgress() <= uiFeedbackDelaySeekBar.getMax()) {
-                uiFeedbackDelaySeekBar.setProgress(newValue);
-                int value = newValue + 1; // Convert 0-8 back to 1-9
-                sendValueToService("UI_FEEDBACK_DELAY", value);
-            }
+            handleIncrease(uiFeedbackDelaySeekBar, "UI_FEEDBACK_DELAY");
         });
 
         findViewById(R.id.decreasePathCursor).setOnClickListener(v -> {
-            int currentValue = pathCursorSeekBar.getProgress();
-            int newValue = currentValue - 1;
-            if (newValue >= pathCursorSeekBar.getMin() && pathCursorSeekBar.getProgress() <= pathCursorSeekBar.getMax()) {
-                pathCursorSeekBar.setProgress(newValue);
-                int value = newValue + 1;
-                sendValueToService("PATH_CURSOR", value);
-            }
+            handleDecrease(pathCursorSeekBar, "PATH_CURSOR");
         });
 
         findViewById(R.id.increasePathCursor).setOnClickListener(v -> {
-            int currentValue = pathCursorSeekBar.getProgress();
-            int newValue = currentValue + 1;
-            if (newValue >= pathCursorSeekBar.getMin() && pathCursorSeekBar.getProgress() <= pathCursorSeekBar.getMax()) {
-                pathCursorSeekBar.setProgress(newValue);
-                int value = newValue + 1;
-                sendValueToService("PATH_CURSOR", value);
-            }
+            handleIncrease(pathCursorSeekBar, "PATH_CURSOR");
         });
+
+        findViewById(R.id.pathCursorMinDecrease).setOnClickListener(v -> {
+            handleDecrease(pathCursorMinSeekBar, "PATH_CURSOR_MIN");
+        });
+
+        findViewById(R.id.pathCursorMinIncrease).setOnClickListener(v -> {
+            handleIncrease(pathCursorMinSeekBar, "PATH_CURSOR_MIN");
+        });
+    }
+
+    private void handleDecrease(SeekBar seekbar, String configName) {
+        int currentValue = seekbar.getProgress();
+        int newValue = currentValue - 1;
+        if (newValue >= seekbar.getMin() && seekbar.getProgress() <= seekbar.getMax()) {
+            seekbar.setProgress(newValue);
+            int value = newValue + 1;
+            sendValueToService(configName, value);
+        }
+    }
+
+    private void handleIncrease(SeekBar seekbar, String configName) {
+        int currentValue = seekbar.getProgress();
+        int newValue = currentValue + 1;
+        if (newValue >= seekbar.getMin() && seekbar.getProgress() <= seekbar.getMax()) {
+            seekbar.setProgress(newValue);
+            int value = newValue + 1;
+            sendValueToService(configName, value);
+        }
     }
 
     private void setUpScaleFactorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
@@ -653,6 +668,32 @@ public class HeadBoardSettings extends AppCompatActivity {
         });
     }
 
+    private void setUpPathCursorMinSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
+        seekBar.setMax(9);
+        String profileName = ProfileManager.getCurrentProfile(this);
+        SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
+        int savedValue = preferences.getInt(preferencesId, Config.DEFAULT_PATH_CURSOR_MIN);
+        seekBar.setProgress(savedValue - 1);
+        textView.setText(String.valueOf(savedValue - 1));
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int value = progress + 1;
+                textView.setText(String.valueOf(value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int value = seekBar.getProgress() + 1;
+                sendValueToService(preferencesId, value);
+            }
+        });
+    }
+
     // Ensure to reload config on profile change
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -704,12 +745,17 @@ public class HeadBoardSettings extends AppCompatActivity {
             // Update UI feedback delay
             int uiFeedbackDelay = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY);
             uiFeedbackDelaySeekBar.setProgress(uiFeedbackDelay - 1);
-            progressUiFeedbackDelay.setText(String.valueOf(uiFeedbackDelay));
+            progressUiFeedbackDelay.setText(String.valueOf(uiFeedbackDelay - 1));
 
             // Update UI feedback delay
             int pathCursor = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
             pathCursorSeekBar.setProgress(pathCursor - 1);
-            progressPathCursor.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(pathCursor)));
+            progressPathCursor.setText(String.valueOf(pathCursor - 1));
+
+            // Update UI feedback delay
+            int pathCursorMin = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR_MIN);
+            pathCursorMinSeekBar.setProgress(pathCursorMin - 1);
+            progressPathCursorMin.setText(String.valueOf(pathCursorMin - 1));
         }
     };
 

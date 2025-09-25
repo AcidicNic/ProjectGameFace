@@ -717,6 +717,7 @@ public class CursorController {
 //            Log.w(TAG, "Resetting path cursor position with NaN values. Resetting to center.");
 //            resetCursorToCenter();
 //        }
+        Log.d(TAG, "Resetting path cursor position to current cursor position: (" + cursorPositionX + ", " + cursorPositionY + ")");
         pathCursorPositionX = cursorPositionX;
         pathCursorPositionY = cursorPositionY;
     }
@@ -726,8 +727,9 @@ public class CursorController {
      * Uses default value if the path cursor config is invalid.
      *
      * @return The percentage of the path cursor as a float.
+     *         Returns 0.00f for value 0
      *         Returns 0.002f to 0.04f for values 1-20
-     *         Returns 0.04f to 0.20f for values 21-40
+     *         Returns 0.048f to 0.20f for values 21-40
      */
     public float getPathCursorPercentage() {
         int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
@@ -743,21 +745,29 @@ public class CursorController {
      * Static method that can be used without creating a CursorController instance.
      *
      * @return The percentage of the path cursor as a float.
+     *         Returns 0.00f for value 0
      *         Returns 0.002f to 0.04f for values 1-20
-     *         Returns 0.04f to 0.20f for values 21-40
-     *         Returns 0.04f for invalid values (less than 1 or greater than 40)
+     *         Returns 0.048f to 0.20f for values 21-40
+     *         Returns 0.04f for invalid values (less than 0 or greater than 40)
      */
     public static float getPathCursorPercentageFrom(int pathCursorValue) {
         if (pathCursorValue <= 0 || pathCursorValue >= 40) {
-            Log.w(TAG, "Invalid path cursor value: " + pathCursorValue + ". Defaulting to 0.04f.");
+            Log.w(TAG, "Invalid path cursor value <= 0: " + pathCursorValue + ". Defaulting to 0.00f.");
+            return 0.04f; // Default value for invalid path cursor config
+        } else if (pathCursorValue <= 0 || pathCursorValue >= 40) {
+            Log.w(TAG, "Invalid path cursor value >= 40: " + pathCursorValue + ". Defaulting to 0.25f.");
             return 0.04f; // Default value for invalid path cursor config
         }
-        if (pathCursorValue <= 20) {
+
+        if (pathCursorValue == 0) {
+            return 0.00f;
+        } else if (pathCursorValue <= 20) {
             // mapping 1-20 to 0.002f-0.04f linearly
             return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
-        } else {
+        } else if (pathCursorValue <= 20) {
             // mapping 21-40 to 0.04f-0.20f linearly
             return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
+        } else {
         }
     }
 

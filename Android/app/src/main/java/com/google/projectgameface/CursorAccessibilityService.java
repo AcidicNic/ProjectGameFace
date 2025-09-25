@@ -411,9 +411,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             ContextCompat.RECEIVER_NOT_EXPORTED);
         ContextCompat.registerReceiver(this, resetDebuggingStatsReceiver, new IntentFilter("RESET_DEBUGGING_STATS"),
             ContextCompat.RECEIVER_NOT_EXPORTED);
-        ContextCompat.registerReceiver(this, resetDebuggingStatsReceiver, new IntentFilter(""),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
-        ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter, ContextCompat.RECEIVER_EXPORTED);
+        ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter,
+            ContextCompat.RECEIVER_EXPORTED);
     }
 
     /**
@@ -521,8 +520,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             cursorController.getPathCursorPositionXY());
                     } else if (isPathCursorActive) {
                         // When the path cursor is still visible after an event has ended, hide it.
+                        Log.d(TAG, "Hiding path cursor after event ended.");
                         serviceUiManager.hidePathCursor();
                         isPathCursorActive = false;
+                        if (checkKeyboardBoundsAgain) {
+                            Log.d(TAG, "Re-checking keyboard bounds after event ended.");
+                            keyboardManager.checkForKeyboardBounds();
+                        }
                     }
 
                     cursorController.updateInternalCursorPosition(
@@ -966,9 +970,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 processTypedText(newText);
             }
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-            keyboardManager.checkForKeyboardBounds(event);
+            //
+            boolean kbdCheckSuccess = keyboardManager.checkForKeyboardBounds();
+            if (!kbdCheckSuccess) {
+                Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
+                checkKeyboardBoundsAgain = true;
+            }
         }
     }
+    private boolean checkKeyboardBoundsAgain = false;
 
     private StringBuilder typedText = new StringBuilder();
     private boolean checkForNewWord = false;

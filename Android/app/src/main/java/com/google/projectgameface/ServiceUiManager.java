@@ -304,7 +304,7 @@ public class ServiceUiManager {
                 // remove if it exists to avoid layering issues
                 windowManager.removeView(pathCursorView);
             } catch (RuntimeException ignored) {}
-
+            // showing path cursor
             windowManager.addView(pathCursorView, pathCursorLayoutParams);
         } catch (RuntimeException e) {
             Log.w(TAG, "windowManager failed to addView pathCursorView: " + e.getMessage());

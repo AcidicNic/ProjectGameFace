@@ -60,8 +60,10 @@ public class KeyboardManager {
      * This method is called when an accessibility event occurs.
      * @param event The accessibility event to check.
      */
-    public void checkForKeyboardBounds(AccessibilityEvent event) {
-        if (cursorController.isEventActive()) return;
+    public boolean checkForKeyboardBounds() {
+        if (cursorController.isEventActive()) {
+            return false;
+        }
 
         boolean keyboardFound = false;
         boolean navBarFound = false;
@@ -103,28 +105,30 @@ public class KeyboardManager {
         }
 
         if (isKeyboardOpen == keyboardFound && keyboardBounds.equals(cursorController.getKeyboardBounds())) {
-            return;
+            return true;
         }
         isKeyboardOpen = keyboardFound;
 
         if (navBarFound) {
             Log.d(TAG, "[checkForKeyboardBounds()] set nav bar: " + navBarBounds);
             cursorController.setNavBarBounds(navBarBounds);
-        } else if (cursorController.getNavBarBounds().isEmpty()) {
-            // clear the nav bar bounds if it was not found
-//            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
-            cursorController.clearNavBarBounds();
         }
+//        else if (cursorController.getNavBarBounds().isEmpty()) {
+//            // clear the nav bar bounds if it was not found
+//            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
+//            cursorController.clearNavBarBounds();
+//        }
 
         if (isKeyboardOpen) {
             Log.d(TAG, "[checkForKeyboardBounds()] set kbd: " + keyboardBounds);
             cursorController.setKeyboardBounds(keyboardBounds);
             checkForKeyboardType();
-        } else if (!cursorController.getNavBarBounds().isEmpty()) {
+        } else {
             // clear the kbd bounds
-//            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
+            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
             cursorController.clearKeyboardBounds();
         }
+        return true;
     }
 
     private AccessibilityNodeInfo findChildNodeWithViewId(AccessibilityNodeInfo root, String targetViewId) {

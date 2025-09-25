@@ -35,7 +35,8 @@ import org.dslul.openboard.inputmethod.latin.common.ResizableIntArray;
  * Drawing points in this class will be asynchronously removed when fading out animation goes.
  */
 final class GestureTrailDrawingPoints {
-    public static final boolean DEBUG_SHOW_POINTS = false;
+    public static final boolean DEBUG_SHOW_POINTS = true;
+    public static final boolean DEBUG_PERSISTENT_TRAIL = true;
     public static final int POINT_TYPE_SAMPLED = 1;
     public static final int POINT_TYPE_INTERPOLATED = 2;
 
