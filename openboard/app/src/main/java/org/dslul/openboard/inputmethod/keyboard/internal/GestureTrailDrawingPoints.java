@@ -35,8 +35,7 @@ import org.dslul.openboard.inputmethod.latin.common.ResizableIntArray;
  * Drawing points in this class will be asynchronously removed when fading out animation goes.
  */
 final class GestureTrailDrawingPoints {
-    public static final boolean DEBUG_SHOW_POINTS = true;
-    public static final boolean DEBUG_PERSISTENT_TRAIL = true;
+    public static final boolean DEBUG_SHOW_POINTS = false;
     public static final int POINT_TYPE_SAMPLED = 1;
     public static final int POINT_TYPE_INTERPOLATED = 2;
 
@@ -68,6 +67,19 @@ final class GestureTrailDrawingPoints {
     private static int getXCoordValue(final int xCoordOrMark) {
         return isDownEventXCoord(xCoordOrMark)
                 ? DOWN_EVENT_MARKER - xCoordOrMark : xCoordOrMark;
+    }
+
+    public void clearTrail() {
+        synchronized (mEventTimes) {
+            mEventTimes.setLength(0);
+            mXCoordinates.setLength(0);
+            mYCoordinates.setLength(0);
+            mPointTypes.setLength(0);
+            mTrailStartIndex = 0;
+            mLastInterpolatedDrawIndex = 0;
+            mCurrentStrokeId = -1;
+            mCurrentTimeBase = 0;
+        }
     }
 
     public void addStroke(final GestureStrokeDrawingPoints stroke, final long downTime) {

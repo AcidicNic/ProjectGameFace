@@ -263,7 +263,6 @@ public class ServiceUiManager {
         } catch (RuntimeException e) {
             Log.w(TAG, "windowManager failed to remove cursorView, might not been attached.");
         }
-        hidePathCursor();
         nextIconState = FloatIconState.PAUSE_ICON;
     }
 
@@ -274,7 +273,7 @@ public class ServiceUiManager {
         try {
             try {
                 // remove if it exists to avoid layering issues
-                windowManager.removeView(pathCursorView);
+                windowManager.removeView(cursorView);
             } catch (RuntimeException ignored) {}
 
             windowManager.addView(cursorView, cursorLayoutParams);
@@ -511,6 +510,7 @@ public class ServiceUiManager {
     public void hideAllWindows() {
         hideCameraBox();
         hideCursor();
+        hidePathCursor();
         hideFullscreenCanvas();
     }
 
@@ -900,14 +900,41 @@ public class ServiceUiManager {
     }
 
     /**
+     * Show head cursor with animation.
+     */
+    public void cursorShowAnimation() {
+        if (cursorView != null) {
+            cursorView.showAnimation();
+        }
+    }
+
+    /**
+     * Hide head cursor with animation to the given color.
+     *
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     */
+    public void cursorHideAnimation(String colorName) {
+        if (cursorView != null) {
+            cursorView.hideAnimation(colorName);
+        }
+    }
+
+    /**
      * Animate path cursor to the given color.
      *
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      * @param duration  Duration of the animation in milliseconds.
      */
     public void pathCursorAnimateToColor(String colorName, int duration) {
-        if (pathCursorView != null) {
-            pathCursorView.animateToColor(colorName, duration);
+        if (cursorController.isPathCursorEnabled()) {
+            if (pathCursorView != null) {
+                pathCursorView.animateToColor(colorName, duration);
+            }
+        } else {
+            Log.w(TAG, "pathCursorAnimateToColor: path cursor not enabled, using head cursor.");
+            if (cursorView != null) {
+                cursorView.animateToColor(colorName, duration);
+            }
         }
     }
 
@@ -919,8 +946,15 @@ public class ServiceUiManager {
      * @param offset    Delay before the animation starts in milliseconds.
      */
     public void pathCursorAnimateToColor(String colorName, int duration, int offset) {
-        if (pathCursorView != null) {
-            pathCursorView.animateToColor(colorName, duration, offset);
+        if (cursorController.isPathCursorEnabled()) {
+            if (pathCursorView != null) {
+                pathCursorView.animateToColor(colorName, duration, offset);
+            }
+        } else {
+            Log.w(TAG, "pathCursorAnimateToColor: path cursor not enabled, using head cursor.");
+            if (cursorView != null) {
+                cursorView.animateToColor(colorName, duration, offset);
+            }
         }
     }
 
@@ -930,8 +964,15 @@ public class ServiceUiManager {
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      */
     public void pathCursorSetColor(String colorName) {
-        if (pathCursorView != null) {
-            pathCursorView.setColor(colorName);
+        if (cursorController.isPathCursorEnabled()) {
+            if (pathCursorView != null) {
+                pathCursorView.setColor(colorName);
+            }
+        } else {
+            Log.w(TAG, "pathCursorSetColor: path cursor not enabled, using head cursor.");
+            if (cursorView != null) {
+                cursorView.setColor(colorName);
+            }
         }
     }
 
@@ -939,9 +980,43 @@ public class ServiceUiManager {
      * Cancel any ongoing animation on path cursor.
      */
     public void pathCursorCancelAnimation() {
-        if (pathCursorView != null) {
-            pathCursorView.cancelAnimation();
+        if (cursorController.isPathCursorEnabled()) {
+            if (pathCursorView != null) {
+                pathCursorView.cancelAnimation();
+            }
+        } else {
+            Log.w(TAG, "pathCursorCancelAnimation: path cursor not enabled, using head cursor.");
+            if (cursorView != null) {
+                cursorView.cancelAnimation();
+            }
+        }
+    }
+
+    public void pathCursorShowAnimation() {
+        if (cursorController.isPathCursorEnabled()) {
+            if (pathCursorView != null) {
+                pathCursorView.showAnimation();
+            }
+        } else {
+            Log.w(TAG, "pathCursorShowAnimation: path cursor not enabled, using head cursor.");
+            if (cursorView != null) {
+                cursorView.showAnimation();
+            }
+        }
+    }
+
+    public void pathCursorHideAnimation(String colorName) {
+        if (cursorController.isPathCursorEnabled()) {
+            if (pathCursorView != null) {
+                pathCursorView.hideAnimation(colorName);
+            }
+        } else {
+            Log.w(TAG, "pathCursorHideAnimation: path cursor not enabled, using head cursor.");
+            if (cursorView != null) {
+                cursorView.hideAnimation(colorName);
+            }
         }
     }
 
 }
+

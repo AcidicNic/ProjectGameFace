@@ -5,8 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import java.lang.ref.WeakReference;
-
 /**
  * BroadcastReceiver class for handling broadcast request events from the IME.
  */
@@ -18,37 +16,24 @@ public class KeyboardEventReceiver extends BroadcastReceiver {
 
     private static final String TAG = "KeyboardEventReceiver";
 
-    private final WeakReference<CursorAccessibilityService> serviceRef;
-
     // Default constructor required for Android system instantiation
     public KeyboardEventReceiver() {
-        this.serviceRef = null;
     }
 
-    public KeyboardEventReceiver(CursorAccessibilityService service) {
-        this.serviceRef = new WeakReference<>(service);
-    }
-
-    private CursorAccessibilityService getService(Context context) {
-        if (context instanceof CursorAccessibilityService) {
-            return (CursorAccessibilityService) context;
-        } else if (serviceRef != null) {
-            return serviceRef.get();
-        }
-        return null;
-    }
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent == null || intent.getAction() == null) return;
+        String action = intent != null ? intent.getAction() : null;
+        if (action == null) return;
 
-        CursorAccessibilityService service = getService(context);
-        if (service == null) {
-            Log.w(TAG, "Cannot get service reference; cannot handle keyboard event");
+        if (!(context instanceof CursorAccessibilityService)) {
+            Log.w(TAG, "Context is not an instance of CursorAccessibilityService");
             return;
         }
 
-        switch (intent.getAction()) {
+        CursorAccessibilityService service = (CursorAccessibilityService) context;
+
+        switch (action) {
             case ACTION_SWIPE_START:
                 Log.d(TAG, "Received ACTION_SWIPE_START");
                 service.onKeyboardSwipeStart();
@@ -58,7 +43,7 @@ public class KeyboardEventReceiver extends BroadcastReceiver {
                 service.onKeyboardLongpressAnimation();
                 break;
             default:
-                Log.w(TAG, "Received unknown action: " + intent.getAction());
+                Log.w(TAG, "Received unknown action: " + action);
         }
     }
 }

@@ -438,20 +438,23 @@ public class CursorController {
         cursorPositionX += smoothingFactor * (centeredX - cursorPositionX);
         cursorPositionY += smoothingFactor * (centeredY - cursorPositionY);
 
-        if (Double.isNaN(pathCursorPositionX)) pathCursorPositionX = cursorPositionX;
-        if (Double.isNaN(pathCursorPositionY)) pathCursorPositionY = cursorPositionY;
+        if (isPathCursorEnabled()) {
+            if (Double.isNaN(pathCursorPositionX)) pathCursorPositionX = cursorPositionX;
+            if (Double.isNaN(pathCursorPositionY)) pathCursorPositionY = cursorPositionY;
 
-        // the path cursor is modofied down by a percentage to slowly catch up to the position of the cursor
-        float percentage = getPathCursorPercentage();
-        pathCursorPositionX = cursorPositionX * percentage + pathCursorPositionX * (1 - percentage);
-        pathCursorPositionY = cursorPositionY * percentage + pathCursorPositionY * (1 - percentage);
+            // the path cursor is modofied down by a percentage to slowly catch up to the position of the cursor
+            // the higher the perecntage float is the faster it catches up
+            float percentage = getPathCursorPercentage();
+            pathCursorPositionX = cursorPositionX * percentage + pathCursorPositionX * (1 - percentage);
+            pathCursorPositionY = cursorPositionY * percentage + pathCursorPositionY * (1 - percentage);
+        }
 
-        // Curor Regon Bounding
+        // Cursor Regon Bounding
         if (activeCursorRegion != null) {
             handleBoundingLogic();
             // Ensure cursor stays within the bounds of the active region
             cursorPositionY = clamp(cursorPositionY, activeCursorRegion.top, activeCursorRegion.bottom);
-            pathCursorPositionY = clamp(pathCursorPositionY, 0, screenHeight);
+            pathCursorPositionY = clamp(pathCursorPositionY, activeCursorRegion.top, activeCursorRegion.bottom);
         } else {
             cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
             pathCursorPositionY = clamp(pathCursorPositionY, 0, screenHeight);
@@ -556,21 +559,20 @@ public class CursorController {
      */
     public float getSmoothFactor(float minSmoothingFactor, float maxSmoothingFactor) {
         // get the smoothing factor from the config and invert it
-        int smoothInt = 9 - getSmoothing();
+        int smoothInt = 19 - getSmoothing();
 
-        // Ensure the intValue is within the expected range [0, 9]
-        smoothInt = clamp(smoothInt, 0, 9);
+        // Ensure the intValue is within the expected range [0, 19]
+        smoothInt = clamp(smoothInt, 0, 19);
 
         boolean useExponential = cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING);
 
         if (useExponential) {
             // Use exponential mapping for a more balanced feel
-            // The base of 1.6 was chosen to provide a good distribution of values
-            float normalizedValue = (float) (Math.pow(1.6, smoothInt) - 1) / (float) (Math.pow(1.6, 9) - 1);
+            float normalizedValue = (float) (Math.pow(1.6, smoothInt) - 1) / (float) (Math.pow(1.6, 19) - 1);
             return minSmoothingFactor + (maxSmoothingFactor - minSmoothingFactor) * normalizedValue;
         } else {
             // Use linear mapping
-            return minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
+            return minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 19) * smoothInt;
         }
     }
 
@@ -732,11 +734,11 @@ public class CursorController {
      *         Returns 0.048f to 0.20f for values 21-40
      */
     public float getPathCursorPercentage() {
-        int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
-        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
-            Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
-            pathCursorValue = Config.DEFAULT_PATH_CURSOR;
-        }
+        int pathCursorValue = getPathCursorConfig(); // int between 0 and 24
+//        if (pathCursorValue < 0 || pathCursorValue > 24) {
+//            Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
+//            pathCursorValue = Config.DEFAULT_PATH_CURSOR;
+//        }
         return getPathCursorPercentageFrom(pathCursorValue);
     }
 
@@ -744,31 +746,31 @@ public class CursorController {
      * Get the percentage of the path cursor based on the path cursor config.
      * Static method that can be used without creating a CursorController instance.
      *
-     * @return The percentage of the path cursor as a float.
-     *         Returns 0.00f for value 0
-     *         Returns 0.002f to 0.04f for values 1-20
-     *         Returns 0.048f to 0.20f for values 21-40
-     *         Returns 0.04f for invalid values (less than 0 or greater than 40)
+     * @return The percentage of the path cursor as a float. (0.01f to 0.25f)
      */
     public static float getPathCursorPercentageFrom(int pathCursorValue) {
-        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
-            Log.w(TAG, "Invalid path cursor value <= 0: " + pathCursorValue + ". Defaulting to 0.00f.");
-            return 0.04f; // Default value for invalid path cursor config
-        } else if (pathCursorValue <= 0 || pathCursorValue >= 40) {
-            Log.w(TAG, "Invalid path cursor value >= 40: " + pathCursorValue + ". Defaulting to 0.25f.");
-            return 0.04f; // Default value for invalid path cursor config
+        if (pathCursorValue < 0) {
+            Log.w(TAG, "Invalid path cursor value < 0: " + pathCursorValue + ". Defaulting to 0.01f.");
+            return 0.01f;
+        } else if (pathCursorValue > 24) {
+            Log.w(TAG, "Invalid path cursor value > 24: " + pathCursorValue + ". Defaulting to 0.25f.");
+            return 0.25f;
         }
 
-        if (pathCursorValue == 0) {
-            return 0.00f;
-        } else if (pathCursorValue <= 20) {
-            // mapping 1-20 to 0.002f-0.04f linearly
-            return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
-        } else if (pathCursorValue <= 20) {
-            // mapping 21-40 to 0.04f-0.20f linearly
-            return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
-        } else {
-        }
+        //mapping 0-24 to 0.01f-0.25f linearly
+        return 0.01f + pathCursorValue * (0.25f / 25);
+
+//        if (pathCursorValue == 0) {
+//            return 0.01f;
+//        } else if (pathCursorValue <= 20) {
+//            // mapping 1-20 to 0.002f-0.04f linearly
+//            return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
+//        } else if (pathCursorValue <= 20) {
+//            // mapping 21-40 to 0.04f-0.20f linearly
+//            return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
+//        } else {
+//            return 0.25f;
+//        }
     }
 
     public boolean isDurationPopOutEnabled() {
@@ -805,6 +807,10 @@ public class CursorController {
 
     public int getSmoothing() {
         return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
+    }
+
+    public boolean isPathCursorEnabled() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR);
     }
 
     public int getPathCursorConfig() {

@@ -387,8 +387,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
         };
 
-        keyboardEventReceiver = new KeyboardEventReceiver(this);
-//        keyboardEventReceiver.setService(this);
+        keyboardEventReceiver = new KeyboardEventReceiver();
         IntentFilter kbdFilter = new IntentFilter();
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_SWIPE_START);
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_LONGPRESS_ANIMATION);
@@ -515,6 +514,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             cursorController.resetPathCursorPosition();
                             serviceUiManager.showPathCursor();
                             isPathCursorActive = true;
+                            if (!cursorController.isPathCursorEnabled()) {
+                                serviceUiManager.hideCursor();
+                            }
                         }
                         serviceUiManager.updatePathCursorImagePositionOnScreen(
                             cursorController.getPathCursorPositionXY());
@@ -523,6 +525,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         Log.d(TAG, "Hiding path cursor after event ended.");
                         serviceUiManager.hidePathCursor();
                         isPathCursorActive = false;
+                        if (!cursorController.isPathCursorEnabled()) {
+                            serviceUiManager.showCursor();
+                        }
                         if (checkKeyboardBoundsAgain) {
                             Log.d(TAG, "Re-checking keyboard bounds after event ended.");
                             keyboardManager.checkForKeyboardBounds();
@@ -1433,7 +1438,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         public void run() {
             if (!smartTouchCancelled && cursorController.smartTouchActive) {
                 // Start animating to red when we hit quick delay
-                serviceUiManager.cursorView.animateToColor("RED", longTapThreshold - quickTapThreshold);
+                serviceUiManager.cursorAnimateToColor("RED", longTapThreshold - quickTapThreshold);
             }
         }
     };
@@ -1449,7 +1454,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // Execute long tap
                 dispatchTapGesture(smartTouchStartPosition, 650);
                 // Reset cursor to white
-                serviceUiManager.cursorView.setColor("WHITE");
+                serviceUiManager.cursorSetColor("WHITE");
                 cursorController.smartTouchActive = false;
             }
         }
@@ -1507,7 +1512,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
 
             // Reset cursor to white after any action
-            serviceUiManager.cursorView.setColor("WHITE");
+            serviceUiManager.cursorSetColor("WHITE");
         }
 
         return true;
@@ -1959,9 +1964,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (tapInsideKbd) {
             mainHandler.postDelayed(showAltPopupRunnable, getQuickTapThreshold() - uiFeedbackDelay);
         }
-        serviceUiManager.cursorView.setColor("YELLOW");
-        serviceUiManager.cursorView.animateToColor("BLUE", getQuickTapThreshold(), uiFeedbackDelay);
-        if (!isInHoverZone) serviceUiManager.cursorView.hideAnimation("RED");
+        serviceUiManager.cursorSetColor("YELLOW");
+        serviceUiManager.cursorAnimateToColor("BLUE", getQuickTapThreshold(), uiFeedbackDelay);
+        if (!isInHoverZone) serviceUiManager.cursorHideAnimation("RED");
     };
 
     /**
@@ -2034,13 +2039,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         hoverZoneExitTime = System.currentTimeMillis();
                         mainHandler.post(() -> {
                             // Hide current animations and show red
-                            serviceUiManager.cursorView.hideAnimation("RED");
+                            serviceUiManager.cursorHideAnimation("RED");
                         });
                     } else {
                         // Cursor returned to hover zone
                         mainHandler.post(() -> {
                             // Show animations again
-                            serviceUiManager.cursorView.showAnimation();
+                            serviceUiManager.cursorShowAnimation();
                         });
                     }
                 }
@@ -2064,7 +2069,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         mainHandler.removeCallbacks(animateCursorTapRunnable);
 
         // Cancel any ongoing animations
-        serviceUiManager.cursorView.cancelAnimation();
+        serviceUiManager.cursorCancelAnimation();
 
         keyboardManager.hideAltKeyPopupIME(tapStartPosition[0], tapStartPosition[1]);
 
@@ -2111,8 +2116,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "resetTapSequence() sending long press delay to IME");
             sendLongPressDelayToIME(getQuickTapThreshold());
         }
-        serviceUiManager.cursorView.showAnimation();
-        serviceUiManager.cursorView.setColor("WHITE");
+        serviceUiManager.cursorShowAnimation();
+        serviceUiManager.cursorSetColor("WHITE");
         cursorController.isCursorTap = false;
         tapInsideKbd = false;
         tapEventStarted = false;
@@ -2175,7 +2180,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //        mainHandler.postDelayed(endTouchAnimationRunnable, getLongTapThreshold());
 //        serviceUiManager.pathCursorSetColor("GREEN");
 //        serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold());
-// //        if (!isInHoverZone) serviceUiManager.pathCursorView.hideAnimation("RED");
+// //        if (!isInHoverZone) serviceUiManager.pathCursorHideAnimation("RED");
 //
 //        if (startedInsideKbd) {
 //            sendMotionEventToIME(swipeStartPosition[0], swipeStartPosition[1], MotionEvent.ACTION_CANCEL);
@@ -2218,7 +2223,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold(), uiFeedbackDelay);
 //        mainHandler.postDelayed(touchGreenToBlueRunnable, getQuickTapThreshold() - uiFeedbackDelay);
 
-//        if (!isInHoverZone) serviceUiManager.pathCursorView.hideAnimation("RED");
+//        if (!isInHoverZone) serviceUiManager.pathCursorHideAnimation("RED");
     };
 
     /**
@@ -2438,13 +2443,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         hoverZoneExitTime = System.currentTimeMillis();
                         mainHandler.post(() -> {
                             // Hide current animations and show red
-                            serviceUiManager.pathCursorView.hideAnimation("RED");
+                            serviceUiManager.pathCursorHideAnimation("RED");
                         });
                     } else {
                         // Cursor returned to hover zone
                         mainHandler.post(() -> {
                             // Show animations again
-                            serviceUiManager.pathCursorView.showAnimation();
+                            serviceUiManager.pathCursorShowAnimation();
                         });
                     }
                 }
@@ -2470,7 +2475,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //        mainHandler.removeCallbacks(endTouchAnimationRunnable);
 
         // Cancel any ongoing animations
-        serviceUiManager.pathCursorView.cancelAnimation();
+        serviceUiManager.pathCursorCancelAnimation();
 
         // If cursor is not in hover zone, cancel the action
 //        if (!isInHoverZone && !startedInsideKbd) {
@@ -2530,7 +2535,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "resetSwipeSequence() sending long press delay to IME");
             sendLongPressDelayToIME(getQuickTapThreshold());
         }
-        serviceUiManager.pathCursorView.showAnimation();
+        serviceUiManager.pathCursorShowAnimation();
         serviceUiManager.pathCursorSetColor("WHITE");
         swipeStartPosition = null;
         isInHoverZone = true;

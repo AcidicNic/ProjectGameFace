@@ -26,11 +26,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
 import android.view.WindowManager.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.SeekBar;
-import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,10 +47,10 @@ public class HeadBoardSettings extends AppCompatActivity {
     private CursorMovementConfig cursorMovementConfig;
     private SwitchCompat realtimeSwipeSwitch;
     private SwitchCompat durationPopOutSwitch;
-    private Switch directMappingSwitch;
-    private Switch debugSwipeSwitch;
-    private Switch noseTipSwitch;
-    private Switch pitchYawSwitch;
+    private SwitchCompat directMappingSwitch;
+    private SwitchCompat debugSwipeSwitch;
+    private SwitchCompat noseTipSwitch;
+    private SwitchCompat pitchYawSwitch;
     private SeekBar holdDurationSeekBar;
     private SeekBar dragToggleDurSeekBar;
     private SeekBar smoothingSeekBar;
@@ -72,13 +72,16 @@ public class HeadBoardSettings extends AppCompatActivity {
 
     private SeekBar uiFeedbackDelaySeekBar;
     private TextView progressUiFeedbackDelay;
-    private Switch exponentialSmoothingSwitch;
+    private SwitchCompat exponentialSmoothingSwitch;
 
     // Path Cursor UI elements
     private SeekBar pathCursorSeekBar;
     private TextView progressPathCursor;
     private SeekBar pathCursorMinSeekBar;
     private TextView progressPathCursorMin;
+    private SwitchCompat pathCursorSwitch;
+    private ConstraintLayout pathCursorLayout;
+    private ConstraintLayout pathCursorMinLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -255,6 +258,38 @@ public class HeadBoardSettings extends AppCompatActivity {
                 pathCursorMinSeekBar, progressPathCursorMin, String.valueOf(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR_MIN)
         );
 
+        boolean enablePathCursor = cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR);
+        pathCursorLayout = findViewById(R.id.pathCursorLayout);
+        pathCursorLayout.setEnabled(enablePathCursor);
+        pathCursorMinLayout = findViewById(R.id.pathCursorMinLayout);
+        pathCursorMinLayout.setEnabled(enablePathCursor);
+        findViewById(R.id.pathCursorTxt).setEnabled(enablePathCursor);
+        findViewById(R.id.pathCursorMinTxt).setEnabled(enablePathCursor);
+        progressPathCursorMin.setEnabled(enablePathCursor);
+        progressPathCursor.setEnabled(enablePathCursor);
+        pathCursorSeekBar.setEnabled(enablePathCursor);
+        pathCursorMinSeekBar.setEnabled(enablePathCursor);
+        findViewById(R.id.decreasePathCursor).setEnabled(enablePathCursor);
+        findViewById(R.id.increasePathCursor).setEnabled(enablePathCursor);
+        findViewById(R.id.pathCursorMinDecrease).setEnabled(enablePathCursor);
+        findViewById(R.id.pathCursorMinIncrease).setEnabled(enablePathCursor);
+
+        pathCursorSwitch = findViewById(R.id.pathCursorSwitch);
+        pathCursorSwitch.setChecked(enablePathCursor);
+        pathCursorSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            sendValueToService("ENABLE_PATH_CURSOR", isChecked);
+            findViewById(R.id.pathCursorTxt).setEnabled(isChecked);
+            findViewById(R.id.pathCursorMinTxt).setEnabled(isChecked);
+            progressPathCursorMin.setEnabled(isChecked);
+            progressPathCursor.setEnabled(isChecked);
+            pathCursorSeekBar.setEnabled(isChecked);
+            pathCursorMinSeekBar.setEnabled(isChecked);
+            findViewById(R.id.decreasePathCursor).setEnabled(isChecked);
+            findViewById(R.id.increasePathCursor).setEnabled(isChecked);
+            findViewById(R.id.pathCursorMinDecrease).setEnabled(isChecked);
+            findViewById(R.id.pathCursorMinIncrease).setEnabled(isChecked);
+        });
+
         // Binding buttons with individual listeners
         findViewById(R.id.holdDurationFaster).setOnClickListener(v -> {
             int currentValue = holdDurationSeekBar.getProgress();
@@ -405,11 +440,21 @@ public class HeadBoardSettings extends AppCompatActivity {
         });
 
         findViewById(R.id.decreasePathCursor).setOnClickListener(v -> {
-            handleDecrease(pathCursorSeekBar, "PATH_CURSOR");
+            int currentValue = pathCursorSeekBar.getProgress();
+            int newValue = currentValue - 1;
+            if (newValue >= pathCursorSeekBar.getMin() && newValue <= pathCursorSeekBar.getMax()) {
+                pathCursorSeekBar.setProgress(newValue);
+                sendValueToService("PATH_CURSOR", newValue);
+            }
         });
 
         findViewById(R.id.increasePathCursor).setOnClickListener(v -> {
-            handleIncrease(pathCursorSeekBar, "PATH_CURSOR");
+            int currentValue = pathCursorSeekBar.getProgress();
+            int newValue = currentValue + 1;
+            if (newValue >= pathCursorSeekBar.getMin() && newValue <= pathCursorSeekBar.getMax()) {
+                pathCursorSeekBar.setProgress(newValue);
+                sendValueToService("PATH_CURSOR", newValue);
+            }
         });
 
         findViewById(R.id.pathCursorMinDecrease).setOnClickListener(v -> {
@@ -536,7 +581,7 @@ public class HeadBoardSettings extends AppCompatActivity {
     }
 
     private void setUpSmoothingSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
-        seekBar.setMax(9); // 1 to 10 in increments of 1 means 9 steps
+        seekBar.setMax(19); // 1 to 20 in increments of 1
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.AVG_SMOOTHING);
@@ -643,17 +688,18 @@ public class HeadBoardSettings extends AppCompatActivity {
     }
 
     private void setUpPathCursorSeekBarAndTextView(SeekBar seekBar, TextView textView, String preferencesId) {
-        seekBar.setMax(39); // 1-40 in steps of 1
+        seekBar.setMax(24); // 0-24 in steps of 1
+        seekBar.setMin(0); // 0-24 in steps of 1
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
         int savedValue = preferences.getInt(preferencesId, Config.DEFAULT_PATH_CURSOR);
-        seekBar.setProgress(savedValue - 1);
+        seekBar.setProgress(savedValue);
         textView.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(savedValue)));
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                float value = CursorController.getPathCursorPercentageFrom(progress + 1);
+                float value = CursorController.getPathCursorPercentageFrom(progress);
                 textView.setText(String.format("%.3f", value));
             }
 
@@ -662,7 +708,7 @@ public class HeadBoardSettings extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                int value = seekBar.getProgress() + 1;
+                int value = seekBar.getProgress();
                 sendValueToService(preferencesId, value);
             }
         });
@@ -749,8 +795,10 @@ public class HeadBoardSettings extends AppCompatActivity {
 
             // Update UI feedback delay
             int pathCursor = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR);
-            pathCursorSeekBar.setProgress(pathCursor - 1);
-            progressPathCursor.setText(String.valueOf(pathCursor - 1));
+            pathCursorSeekBar.setProgress(pathCursor);
+            progressPathCursor.setText(String.format("%.3f", CursorController.getPathCursorPercentageFrom(pathCursor)));
+
+            pathCursorSwitch.setChecked(cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR));
 
             // Update UI feedback delay
             int pathCursorMin = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.PATH_CURSOR_MIN);

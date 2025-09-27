@@ -71,36 +71,38 @@ public class KeyboardManager {
 
         List<AccessibilityWindowInfo> windows = ((CursorAccessibilityService) context).getWindows();
         for (AccessibilityWindowInfo window: windows) {
-            window.getBoundsInScreen(tempBounds);
             if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-//                AccessibilityNodeInfo root = window.getRoot();
-//                if (root != null) {
-////                    Log.d(TAG, "[checkForKeyboardBounds()] IME: " + window);
-//                    // Find main keyboard view by searching through IME nodes
-//                    AccessibilityNodeInfo keyboardView = findChildNodeWithViewId(
-//                        root,
-//                        Config.OPENBOARD_KDB_VIEW_ID);
-//
-////                    LogKeyboardViews(root); // Log all keyboard views for debugging
-//                    if (keyboardView != null) {
-//                        keyboardFound = true;
-////                        Log.d(TAG, "[checkForKeyboardBounds()] KBD VIEW: " + keyboardView);
-//                        keyboardView.getBoundsInScreen(keyboardBounds);
-//                        keyboardView.recycle();
-//                        break;
-//                    }
+//                Log.d(TAG, "[checkForKeyboardBounds()] IME: " + window);
+//                // Find main keyboard view by searching through IME nodes
+//                AccessibilityNodeInfo keyboardView = findChildNodeWithViewId(
+//                    root,
+//                    Config.OPENBOARD_KDB_VIEW_ID);
+//                LogKeyboardViews(root); // Log all keyboard views for debugging
+//                if (keyboardView != null) {
+//                    keyboardFound = true;
+//                    Log.d(TAG, "[checkForKeyboardBounds()] KBD VIEW: " + keyboardView);
+//                    keyboardView.getBoundsInScreen(keyboardBounds);
+//                    keyboardView.recycle();
+//                    break;
 //                }
 
-                if (tempBounds.top > screenSize.y / 2) {
-                    keyboardFound = true;
-                    window.getBoundsInScreen(keyboardBounds);
+                window.getBoundsInScreen(tempBounds);
+                if (tempBounds.equals(keyboardBounds)) {
+                    Log.d(TAG, "[checkForKeyboardBounds()] IME window with empty bounds: " + window);
+                    continue;
                 }
-
-//                root.recycle();
-            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null &&
-                       window.getTitle().equals("Navigation bar")) {
+                if (tempBounds.top > screenSize.y / 2) {
+                    Log.d(TAG, "[checkForKeyboardBounds()] Keyboard Found: " + window + ", bounds: " + tempBounds);
+                    keyboardFound = true;
+                    keyboardBounds = new Rect(tempBounds);
+//                    break;
+                } else {
+                    Log.d(TAG, "[checkForKeyboardBounds()] IME window but not keyboard: " + window + ", bounds: " + tempBounds);
+                }
+            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null && window.getTitle().equals("Navigation bar")) {
                 navBarFound = true;
-                window.getBoundsInScreen(navBarBounds);
+                window.getBoundsInScreen(tempBounds);
+                Log.d(TAG, "[checkForKeyboardBounds()] Nav Bar found: " + window + ", bounds: " + navBarBounds);
             }
         }
 

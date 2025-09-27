@@ -34,8 +34,10 @@ import org.dslul.openboard.inputmethod.latin.R;
  * @attr ref R.styleable#MainKeyboardView_gestureTrailWidth
  */
 final class GestureTrailDrawingParams {
-    private static final int FADEOUT_START_DELAY_FOR_DEBUG = 2000; // millisecond
-    private static final int FADEOUT_DURATION_FOR_DEBUG = 200; // millisecond
+    public static final boolean DEBUG_PERSISTENT_TRAIL = true;
+    private static final int FADEOUT_START_DELAY_FOR_DEBUG = 60000; // millisecond
+    private static final int FADEOUT_DURATION_FOR_DEBUG = 1000; // millisecond
+    private static final int LINGER_DURATION_FOR_DEBUG = 5000;
 
     public int mTrailColor;
     public final float mTrailStartWidth;
@@ -64,15 +66,17 @@ final class GestureTrailDrawingParams {
                 R.styleable.MainKeyboardView_gestureTrailShadowRatio, 0);
         mTrailShadowEnabled = (trailShadowRatioInt > 0);
         mTrailShadowRatio = (float)trailShadowRatioInt / (float)PERCENTAGE_INT;
-        mFadeoutStartDelay = GestureTrailDrawingPoints.DEBUG_SHOW_POINTS
+        mFadeoutStartDelay = DEBUG_PERSISTENT_TRAIL
                 ? FADEOUT_START_DELAY_FOR_DEBUG
                 : mainKeyboardViewAttr.getInt(
                         R.styleable.MainKeyboardView_gestureTrailFadeoutStartDelay, 0);
-        mFadeoutDuration = GestureTrailDrawingPoints.DEBUG_SHOW_POINTS
+        mFadeoutDuration = DEBUG_PERSISTENT_TRAIL
                 ? FADEOUT_DURATION_FOR_DEBUG
                 : mainKeyboardViewAttr.getInt(
                         R.styleable.MainKeyboardView_gestureTrailFadeoutDuration, 0);
-        mTrailLingerDuration = mFadeoutStartDelay + mFadeoutDuration;
+        mTrailLingerDuration = DEBUG_PERSISTENT_TRAIL
+            ? LINGER_DURATION_FOR_DEBUG
+            : mFadeoutStartDelay + mFadeoutDuration;
         mUpdateInterval = mainKeyboardViewAttr.getInt(
                 R.styleable.MainKeyboardView_gestureTrailUpdateInterval, 0);
     }

@@ -50,7 +50,7 @@ class CursorMovementConfig {
 
     public enum CursorMovementBooleanConfigType {
         REALTIME_SWIPE, DURATION_POP_OUT, DIRECT_MAPPING, NOSE_TIP, PITCH_YAW, DEBUG_SWIPE,
-        EXPONENTIAL_SMOOTHING,
+        EXPONENTIAL_SMOOTHING, ENABLE_PATH_CURSOR
     }
 
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
@@ -93,6 +93,7 @@ class CursorMovementConfig {
         public static final boolean DURATION_POP_OUT = Config.DEFAULT_DURATION_POP_OUT;
         public static final boolean DIRECT_MAPPING = Config.DEFAULT_DIRECT_MAPPING;
         public static final boolean EXPONENTIAL_SMOOTHING = Config.DEFAULT_EXPONENTIAL_SMOOTHING;
+        public static final boolean ENABLE_PATH_CURSOR = Config.DEFAULT_ENABLE_PATH_CURSOR;
         public static final int EDGE_HOLD_DURATION = Config.DEFAULT_EDGE_HOLD_DURATION;
         public static final int DRAG_TOGGLE_DURATION = Config.DEFAULT_DRAG_TOGGLE_DURATION;
         public static final float HEAD_COORD_SCALE_FACTOR_X = Config.DEFAULT_HEAD_COORD_SCALE_FACTOR_X;
@@ -195,6 +196,7 @@ class CursorMovementConfig {
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.NOSE_TIP);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEBUG_SWIPE);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING, InitialRawValue.EXPONENTIAL_SMOOTHING);
+        rawBooleanValueMap.put(CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR, InitialRawValue.ENABLE_PATH_CURSOR);
 
 
         // Register the receiver
@@ -466,6 +468,9 @@ class CursorMovementConfig {
                 break;
             case EXPONENTIAL_SMOOTHING:
                 defaultValue = InitialRawValue.EXPONENTIAL_SMOOTHING;
+                break;
+            case ENABLE_PATH_CURSOR:
+                defaultValue = InitialRawValue.ENABLE_PATH_CURSOR;
                 break;
             default:
                 defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;
