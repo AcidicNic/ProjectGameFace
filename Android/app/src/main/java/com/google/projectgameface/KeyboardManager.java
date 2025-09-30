@@ -60,10 +60,8 @@ public class KeyboardManager {
      * This method is called when an accessibility event occurs.
      * @param event The accessibility event to check.
      */
-    public boolean checkForKeyboardBounds() {
-        if (cursorController.isEventActive()) {
-            return false;
-        }
+    public void checkForKeyboardBounds(AccessibilityEvent event) {
+        if (cursorController.isEventActive()) return;
 
         boolean keyboardFound = false;
         boolean navBarFound = false;
@@ -71,66 +69,62 @@ public class KeyboardManager {
 
         List<AccessibilityWindowInfo> windows = ((CursorAccessibilityService) context).getWindows();
         for (AccessibilityWindowInfo window: windows) {
+            window.getBoundsInScreen(tempBounds);
             if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-//                Log.d(TAG, "[checkForKeyboardBounds()] IME: " + window);
-//                // Find main keyboard view by searching through IME nodes
-//                AccessibilityNodeInfo keyboardView = findChildNodeWithViewId(
-//                    root,
-//                    Config.OPENBOARD_KDB_VIEW_ID);
-//                LogKeyboardViews(root); // Log all keyboard views for debugging
-//                if (keyboardView != null) {
-//                    keyboardFound = true;
-//                    Log.d(TAG, "[checkForKeyboardBounds()] KBD VIEW: " + keyboardView);
-//                    keyboardView.getBoundsInScreen(keyboardBounds);
-//                    keyboardView.recycle();
-//                    break;
+//                AccessibilityNodeInfo root = window.getRoot();
+//                if (root != null) {
+////                    Log.d(TAG, "[checkForKeyboardBounds()] IME: " + window);
+//                    // Find main keyboard view by searching through IME nodes
+//                    AccessibilityNodeInfo keyboardView = findChildNodeWithViewId(
+//                        root,
+//                        Config.OPENBOARD_KDB_VIEW_ID);
+//
+////                    LogKeyboardViews(root); // Log all keyboard views for debugging
+//                    if (keyboardView != null) {
+//                        keyboardFound = true;
+////                        Log.d(TAG, "[checkForKeyboardBounds()] KBD VIEW: " + keyboardView);
+//                        keyboardView.getBoundsInScreen(keyboardBounds);
+//                        keyboardView.recycle();
+//                        break;
+//                    }
 //                }
 
-                window.getBoundsInScreen(tempBounds);
-                if (tempBounds.equals(keyboardBounds)) {
-                    Log.d(TAG, "[checkForKeyboardBounds()] IME window with empty bounds: " + window);
-                    continue;
-                }
                 if (tempBounds.top > screenSize.y / 2) {
-                    Log.d(TAG, "[checkForKeyboardBounds()] Keyboard Found: " + window + ", bounds: " + tempBounds);
                     keyboardFound = true;
-                    keyboardBounds = new Rect(tempBounds);
-//                    break;
-                } else {
-                    Log.d(TAG, "[checkForKeyboardBounds()] IME window but not keyboard: " + window + ", bounds: " + tempBounds);
+                    window.getBoundsInScreen(keyboardBounds);
                 }
-            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null && window.getTitle().equals("Navigation bar")) {
+
+//                root.recycle();
+            } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null &&
+                window.getTitle().equals("Navigation bar")) {
                 navBarFound = true;
-                window.getBoundsInScreen(tempBounds);
-                Log.d(TAG, "[checkForKeyboardBounds()] Nav Bar found: " + window + ", bounds: " + navBarBounds);
+                window.getBoundsInScreen(navBarBounds);
             }
         }
 
         if (isKeyboardOpen == keyboardFound && keyboardBounds.equals(cursorController.getKeyboardBounds())) {
-            return true;
+            return;
         }
         isKeyboardOpen = keyboardFound;
 
         if (navBarFound) {
             Log.d(TAG, "[checkForKeyboardBounds()] set nav bar: " + navBarBounds);
             cursorController.setNavBarBounds(navBarBounds);
-        }
-//        else if (cursorController.getNavBarBounds().isEmpty()) {
-//            // clear the nav bar bounds if it was not found
+        } else if (cursorController.getNavBarBounds().isEmpty()) {
+            // clear the nav bar bounds if it was not found
 //            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
-//            cursorController.clearNavBarBounds();
-//        }
+            cursorController.clearNavBarBounds();
+        }
 
         if (isKeyboardOpen) {
             Log.d(TAG, "[checkForKeyboardBounds()] set kbd: " + keyboardBounds);
             cursorController.setKeyboardBounds(keyboardBounds);
             checkForKeyboardType();
-        } else {
+        } else if (!cursorController.getNavBarBounds().isEmpty()) {
             // clear the kbd bounds
-            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
+//            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
             cursorController.clearKeyboardBounds();
         }
-        return true;
     }
 
     private AccessibilityNodeInfo findChildNodeWithViewId(AccessibilityNodeInfo root, String targetViewId) {

@@ -528,10 +528,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         if (!cursorController.isPathCursorEnabled()) {
                             serviceUiManager.showCursor();
                         }
-                        if (checkKeyboardBoundsAgain) {
-                            Log.d(TAG, "Re-checking keyboard bounds after event ended.");
-                            keyboardManager.checkForKeyboardBounds();
-                        }
+//                        if (checkKeyboardBoundsAgain) {
+//                            Log.d(TAG, "Re-checking keyboard bounds after event ended.");
+//                            keyboardManager.checkForKeyboardBounds();
+//                        }
                     }
 
                     cursorController.updateInternalCursorPosition(
@@ -975,12 +975,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 processTypedText(newText);
             }
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-            //
-            boolean kbdCheckSuccess = keyboardManager.checkForKeyboardBounds();
-            if (!kbdCheckSuccess) {
-                Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
-                checkKeyboardBoundsAgain = true;
-            }
+            keyboardManager.checkForKeyboardBounds(event);
+//            boolean kbdCheckSuccess = keyboardManager.checkForKeyboardBounds();
+//            if (!kbdCheckSuccess) {
+//                Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
+//                checkKeyboardBoundsAgain = true;
+//            }
         }
     }
     private boolean checkKeyboardBoundsAgain = false;

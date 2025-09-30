@@ -34,7 +34,7 @@ import org.dslul.openboard.inputmethod.latin.R;
  * @attr ref R.styleable#MainKeyboardView_gestureTrailWidth
  */
 final class GestureTrailDrawingParams {
-    public static final boolean DEBUG_PERSISTENT_TRAIL = true;
+    public static final boolean DEBUG_PERSISTENT_TRAIL = false;
     private static final int FADEOUT_START_DELAY_FOR_DEBUG = 60000; // millisecond
     private static final int FADEOUT_DURATION_FOR_DEBUG = 1000; // millisecond
     private static final int LINGER_DURATION_FOR_DEBUG = 5000;
