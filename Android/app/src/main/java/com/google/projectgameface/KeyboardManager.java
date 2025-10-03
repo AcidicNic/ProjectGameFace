@@ -60,8 +60,7 @@ public class KeyboardManager {
      * This method is called when an accessibility event occurs.
      * @param event The accessibility event to check.
      */
-    public void checkForKeyboardBounds(AccessibilityEvent event) {
-        if (cursorController.isEventActive()) return;
+    public void checkForKeyboardBounds() {
 
         boolean keyboardFound = false;
         boolean navBarFound = false;

@@ -13,6 +13,7 @@ public class KeyboardEventReceiver extends BroadcastReceiver {
 
     public static final String ACTION_SWIPE_START = "com.headswype.ACTION_SWIPE_START";
     public static final String ACTION_LONGPRESS_ANIMATION = "com.headswype.ACTION_LONGPRESS_ANIMATION";
+    public static final String ACTION_KBD_STATE_CHANGED = "com.headswype.ACTION_KBD_STATE_CHANGED";
 
     private static final String TAG = "KeyboardEventReceiver";
 
@@ -41,6 +42,10 @@ public class KeyboardEventReceiver extends BroadcastReceiver {
             case ACTION_LONGPRESS_ANIMATION:
                 Log.d(TAG, "Received ACTION_LONGPRESS_ANIMATION");
                 service.onKeyboardLongpressAnimation();
+                break;
+            case ACTION_KBD_STATE_CHANGED:
+                Log.d(TAG, "Received ACTION_KBD_STATE_CHANGED");
+                service.onKeyboardStateChanged();
                 break;
             default:
                 Log.w(TAG, "Received unknown action: " + action);

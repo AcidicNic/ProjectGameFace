@@ -102,6 +102,7 @@ public class CursorController {
     public boolean dragToggleActive = false;
     public boolean checkForSwipingFromRightKbd = false;
     public boolean startedSwipeFromRightKbd = false;
+    private boolean isPathCursorVisible = false;
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -701,7 +702,11 @@ public class CursorController {
     }
 
     public int[] getPathCursorPositionXY() {
-        return new int[]{(int) pathCursorPositionX, (int) pathCursorPositionY};
+        if (isPathCursorEnabled()) {
+            return new int[]{(int) pathCursorPositionX, (int) pathCursorPositionY};
+        } else {
+            return getCursorPositionXY();
+        }
     }
 
     public void resetCursorToCenter() {
@@ -811,6 +816,21 @@ public class CursorController {
 
     public boolean isPathCursorEnabled() {
         return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR);
+    }
+
+    public boolean isPathCursorVisible() {
+        if (!isPathCursorEnabled()) return false;
+        return isPathCursorVisible;
+    }
+
+    public void setIsPathCursorVisible(boolean enable) {
+        if (!isPathCursorEnabled()) {
+            Log.d(TAG, "setIsPathCursorVisible: Path cursor is disabled in config. Forcing invisible.");
+            isPathCursorVisible = false;
+            return;
+        }
+        Log.d(TAG, "setIsPathCursorVisible: " + enable);
+        isPathCursorVisible = enable;
     }
 
     public int getPathCursorConfig() {

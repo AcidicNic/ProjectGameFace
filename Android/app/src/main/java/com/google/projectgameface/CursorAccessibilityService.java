@@ -508,30 +508,28 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                        int gapFrames =
 //                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
 
-                    if (cursorController.isEventActive()) {
-                        if (!isPathCursorActive) {
-                            // Display path cursor if it's still hidden.
-                            cursorController.resetPathCursorPosition();
-                            serviceUiManager.showPathCursor();
-                            isPathCursorActive = true;
-                            if (!cursorController.isPathCursorEnabled()) {
-                                serviceUiManager.hideCursor();
+                    if (cursorController.isPathCursorEnabled()) {
+                        if (cursorController.isEventActive()) {
+                            if (!isPathCursorActive) {
+                                // Display path cursor if it's still hidden.
+                                cursorController.resetPathCursorPosition();
+                                serviceUiManager.showPathCursor();
+                                isPathCursorActive = true;
                             }
+                            serviceUiManager.updatePathCursorImagePositionOnScreen(
+                                cursorController.getPathCursorPositionXY());
+                        } else if (isPathCursorActive) {
+                            // When the path cursor is still visible after an event has ended, hide it.
+                            Log.d(TAG, "Hiding path cursor after event ended.");
+                            serviceUiManager.hidePathCursor();
+                            isPathCursorActive = false;
                         }
-                        serviceUiManager.updatePathCursorImagePositionOnScreen(
-                            cursorController.getPathCursorPositionXY());
-                    } else if (isPathCursorActive) {
-                        // When the path cursor is still visible after an event has ended, hide it.
-                        Log.d(TAG, "Hiding path cursor after event ended.");
-                        serviceUiManager.hidePathCursor();
-                        isPathCursorActive = false;
-                        if (!cursorController.isPathCursorEnabled()) {
-                            serviceUiManager.showCursor();
-                        }
-//                        if (checkKeyboardBoundsAgain) {
-//                            Log.d(TAG, "Re-checking keyboard bounds after event ended.");
-//                            keyboardManager.checkForKeyboardBounds();
-//                        }
+                    }
+
+                    if (checkKeyboardBoundsAgain && !cursorController.isEventActive()) {
+                        Log.d(TAG, "Re-checking keyboard bounds after event ended.");
+                        keyboardManager.checkForKeyboardBounds();
+                        checkKeyboardBoundsAgain = false;
                     }
 
                     cursorController.updateInternalCursorPosition(
@@ -975,12 +973,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 processTypedText(newText);
             }
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-            keyboardManager.checkForKeyboardBounds(event);
-//            boolean kbdCheckSuccess = keyboardManager.checkForKeyboardBounds();
-//            if (!kbdCheckSuccess) {
-//                Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
-//                checkKeyboardBoundsAgain = true;
-//            }
+            if (cursorController.isEventActive()) {
+                checkKeyboardBoundsAgain = true;
+                Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
+            } else {
+                checkKeyboardBoundsAgain = false;
+                keyboardManager.checkForKeyboardBounds();
+            }
         }
     }
     private boolean checkKeyboardBoundsAgain = false;
@@ -2207,6 +2206,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (!swipeEventEnding) {
             serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold());
         }
+    }
+
+    public void onKeyboardStateChanged() {
+        Log.d(TAG, "onKeyboardStateChanged");
     }
 
     private Runnable animateCursorTouchRunnable = () -> {
