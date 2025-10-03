@@ -187,15 +187,13 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 R.styleable.MainKeyboardView_ignoreAltCodeKeyTimeout, 0);
         final int gestureRecognitionUpdateTime = mainKeyboardViewAttr.getInt(
                 R.styleable.MainKeyboardView_gestureRecognitionUpdateTime, 0);
-        mTimerHandler = new TimerHandler(
-                this, ignoreAltCodeKeyTimeout, gestureRecognitionUpdateTime);
+        mTimerHandler = new TimerHandler(this, ignoreAltCodeKeyTimeout, gestureRecognitionUpdateTime);
 
         final float keyHysteresisDistance = mainKeyboardViewAttr.getDimension(
                 R.styleable.MainKeyboardView_keyHysteresisDistance, 0.0f);
         final float keyHysteresisDistanceForSlidingModifier = mainKeyboardViewAttr.getDimension(
                 R.styleable.MainKeyboardView_keyHysteresisDistanceForSlidingModifier, 0.0f);
-        mKeyDetector = new KeyDetector(
-                keyHysteresisDistance, keyHysteresisDistanceForSlidingModifier);
+        mKeyDetector = new KeyDetector(keyHysteresisDistance, keyHysteresisDistanceForSlidingModifier);
 
         PointerTracker.init(mainKeyboardViewAttr, mTimerHandler, this /* DrawingProxy */);
 
@@ -778,10 +776,12 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         final PointerTracker tracker = PointerTracker.getPointerTracker(id);
         // When a more keys panel is showing, we should ignore other fingers' single touch events
         // other than the finger that is showing the more keys panel.
-        if (isShowingMoreKeysPanel() && !tracker.isShowingMoreKeysPanel()
-                && PointerTracker.getActivePointerTrackerCount() == 1) {
-            return true;
-        }
+//        if (isShowingMoreKeysPanel() && !tracker.isShowingMoreKeysPanel()
+//                && PointerTracker.getActivePointerTrackerCount() == 1) {
+//            PointerTracker.cancelAllPointerTrackers();
+//            // TODO: dismiss the more keys panel if the event is ACTION_DOWN outside of the panel.
+//            return true;
+//        }
         tracker.processMotionEvent(event, mKeyDetector);
         return true;
     }

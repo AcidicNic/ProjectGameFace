@@ -19,3 +19,6 @@ local.properties
 # Project
 gameface-realease/
 .kotlin/
+
+# VS Code
+.vscode/

@@ -43,6 +43,9 @@
     <permission
         android:name="com.headswype.permission.SEND_EVENT"
         android:protectionLevel="signature" />
+    
+    <uses-permission android:name="android.permission.BIND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
 
     <application android:label="@string/english_ime_name"
             android:icon="@mipmap/ic_launcher"

@@ -824,7 +824,6 @@ public class ServiceUiManager {
      * Move camera box inside the screen.
      */
     public void fitCameraBoxToScreen() {
-
         updateScreenInfo();
 
         // Update the camera box location
@@ -856,9 +855,10 @@ public class ServiceUiManager {
     }
 
     /**
-     * Animate cursor to the given color.
+     * Animate head cursor to the given color.
      *
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     * @param duration  Duration of the animation in milliseconds.
      */
     public void cursorAnimateToColor(String colorName, int duration) {
         if (cursorView != null) {
@@ -867,7 +867,20 @@ public class ServiceUiManager {
     }
 
     /**
-     * Set cursor color instantly.
+     * Animate head cursor to the given color.
+     *
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     * @param duration  Duration of the animation in milliseconds.
+     * @param offset    Delay before the animation starts in milliseconds.
+     */
+    public void cursorAnimateToColor(String colorName, int duration, int offset) {
+        if (cursorView != null) {
+            cursorView.animateToColor(colorName, duration, offset);
+        }
+    }
+
+    /**
+     * Set head cursor color instantly.
      *
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      */
@@ -877,9 +890,57 @@ public class ServiceUiManager {
         }
     }
 
+    /**
+     * Cancel any ongoing animation on head cursor.
+     */
     public void cursorCancelAnimation() {
         if (cursorView != null) {
             cursorView.cancelAnimation();
+        }
+    }
+
+    /**
+     * Animate path cursor to the given color.
+     *
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     * @param duration  Duration of the animation in milliseconds.
+     */
+    public void pathCursorAnimateToColor(String colorName, int duration) {
+        if (pathCursorView != null) {
+            pathCursorView.animateToColor(colorName, duration);
+        }
+    }
+
+    /**
+     * Animate path cursor to the given color.
+     *
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     * @param duration  Duration of the animation in milliseconds.
+     * @param offset    Delay before the animation starts in milliseconds.
+     */
+    public void pathCursorAnimateToColor(String colorName, int duration, int offset) {
+        if (pathCursorView != null) {
+            pathCursorView.animateToColor(colorName, duration, offset);
+        }
+    }
+
+    /**
+     * Set path cursor color instantly.
+     *
+     * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
+     */
+    public void pathCursorSetColor(String colorName) {
+        if (pathCursorView != null) {
+            pathCursorView.setColor(colorName);
+        }
+    }
+
+    /**
+     * Cancel any ongoing animation on path cursor.
+     */
+    public void pathCursorCancelAnimation() {
+        if (pathCursorView != null) {
+            pathCursorView.cancelAnimation();
         }
     }
 

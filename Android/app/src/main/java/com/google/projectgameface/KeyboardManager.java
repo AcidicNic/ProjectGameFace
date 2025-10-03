@@ -61,7 +61,6 @@ public class KeyboardManager {
      * @param event The accessibility event to check.
      */
     public void checkForKeyboardBounds(AccessibilityEvent event) {
-
         if (cursorController.isEventActive()) return;
 
         boolean keyboardFound = false;
@@ -129,7 +128,6 @@ public class KeyboardManager {
     }
 
     private AccessibilityNodeInfo findChildNodeWithViewId(AccessibilityNodeInfo root, String targetViewId) {
-
         if (root == null) return null;
 
         // Check if this is the keyboard view by resource ID
@@ -155,7 +153,6 @@ public class KeyboardManager {
     }
 
     private AccessibilityNodeInfo LogKeyboardViews(AccessibilityNodeInfo root) {
-
         if (root == null) return null;
 
         String viewId = root.getViewIdResourceName();
@@ -179,7 +176,6 @@ public class KeyboardManager {
      * This method is called when an accessibility event occurs.
      */
     public String checkForKeyboardType() {
-
         String currentKeyboardStr = Settings.Secure.getString(
             context.getContentResolver(),
             Settings.Secure.DEFAULT_INPUT_METHOD);
@@ -202,7 +198,6 @@ public class KeyboardManager {
      * @return true if the event can be injected, false otherwise
      */
     public boolean canInjectEvent(float x, float y) {
-
         for (AccessibilityWindowInfo window: ((CursorAccessibilityService) context).getWindows()) {
             Rect bounds = new Rect();
             window.getBoundsInScreen(bounds);
@@ -237,7 +232,6 @@ public class KeyboardManager {
      * @return true if the window is injectable, false otherwise.
      */
     private boolean isInjectableWindow(AccessibilityWindowInfo window) {
-
         if (window == null) {
             return false;
         }
@@ -261,7 +255,6 @@ public class KeyboardManager {
      * @return true if the package name belongs to the app, false otherwise.
      */
     private boolean isMyAppPackage(String packageName) {
-
         String[] myApps = {"org.dslul.openboard.inputmethod.latin"};
 
         for (String myApp: myApps) {
@@ -297,10 +290,7 @@ public class KeyboardManager {
      * @param isLongPress Whether the key is a long press.
      */
     public void sendKeyEventToIME(int keyCode, boolean isDown, boolean isLongPress) {
-
-        Log.d(
-            TAG,
-            "[openboard] Sending keyEvent to IME - keyCode: " + keyCode + ", isDown: " + isDown +
+        Log.d(TAG, "[openboard] Sending keyEvent to IME - keyCode: " + keyCode + ", isDown: " + isDown +
             ", isLongPress: " + isLongPress);
         Intent intent = new Intent("com.headswype.ACTION_SEND_KEY_EVENT");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
@@ -315,7 +305,6 @@ public class KeyboardManager {
      * @param color The color to send. ("green", "red", "orange")
      */
     public void sendGestureTrailColorToIME(String color) {
-
         Log.d(TAG, "[openboard] Sending gesture trail color to IME - " + color);
         Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
@@ -328,7 +317,6 @@ public class KeyboardManager {
      * @param delay The long press delay in milliseconds.
      */
     public void sendLongPressDelayToIME(int delay) {
-
         Log.d(TAG, "[openboard] Sending long press delay to IME - " + delay + "ms");
         Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
@@ -336,8 +324,8 @@ public class KeyboardManager {
         sendBroadcastToIME(intent);
     }
 
-    public void getKeyInfoFromIME(float x, float y) {
-//        Log.d(TAG, "[openboard] Sending long press delay to IME");
+    public void getKeyInfoFromIME(int x, int y) {
+        Log.d(TAG, "[openboard] Get Key Info from IME - (" + x + ", " + y + ")");
         Intent intent = new Intent("com.headswype.ACTION_GET_KEY_INFO");
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         intent.putExtra("x", x);
@@ -345,13 +333,7 @@ public class KeyboardManager {
         sendBroadcastToIME(intent);
     }
 
-    private void showOrHideKeyPopupIME(
-        int x,
-        int y,
-        boolean showKeyPreview,
-        boolean withAnimation,
-        boolean isLongPress) {
-
+    private void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
         int adjustedX = x - keyboardBounds.left;
         int adjustedY = y - keyboardBounds.top;
 
@@ -366,7 +348,6 @@ public class KeyboardManager {
     }
 
     private void sendBroadcastToIME(Intent intent) {
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
             context.sendOrderedBroadcast(intent, "com.headswype.permission.SEND_EVENT");
         } else {
@@ -375,47 +356,54 @@ public class KeyboardManager {
     }
 
     public void showKeyPopupIME(int x, int y, boolean withAnimation) {
-
         Log.d(TAG, "showKeyPopupIME() - (" + x + ", " + y + ") withAnimation: " + withAnimation);
         showOrHideKeyPopupIME(x, y, true, withAnimation, false);
     }
 
     public void showAltKeyPopupIME(int x, int y) {
-
         Log.d(TAG, "showAltKeyPopupIME() - (" + x + ", " + y + ")");
         showOrHideKeyPopupIME(x, y, true, false, true);
     }
 
     public void hideKeyPopupIME(int x, int y, boolean withAnimation) {
-
         Log.d(TAG, "hideKeyPopupIME() - (" + x + ", " + y + ") withAnimation: " + withAnimation);
         showOrHideKeyPopupIME(x, y, false, withAnimation, false);
     }
 
     public void hideAltKeyPopupIME(int x, int y) {
-
         Log.d(TAG, "hideAltKeyPopupIME() - (" + x + ", " + y + ")");
         showOrHideKeyPopupIME(x, y, false, false, true);
     }
 
     // Getters and setters
     public Rect getKeyboardBounds() {
-
         return keyboardBounds;
     }
 
     public boolean isKeyboardOpen() {
-
         return isKeyboardOpen;
     }
 
     public String getCurrentKeyboard() {
-
         return currentKeyboard;
     }
 
     public DebuggingStats getCurrentDebuggingStats() {
-
         return currentDebuggingStats;
+    }
+
+    // TODO: Implement this method to get key bounds from IME (or via searching accessibilityNodeInfo?)
+    public Rect getKeyBounds(int[] swipeStartPosition) {
+        return null;
+    }
+
+    // TODO: send highlight request to IME
+    public void highlightKeyAt(int x, int y) {
+        Log.d(TAG, "[openboard] Highlight key at - (" + x + ", " + y + ")");
+        Intent intent = new Intent("com.headswype.ACTION_HIGHLIGHT_KEY");
+        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        intent.putExtra("x", (float) x);
+        intent.putExtra("y", (float) y);
+        sendBroadcastToIME(intent);
     }
 }

@@ -18,8 +18,10 @@ package org.dslul.openboard.inputmethod.keyboard;
 
 import static java.lang.Math.abs;
 
+import android.content.Intent;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -522,6 +524,12 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         sListener.onStartBatchInput();
         dismissAllMoreKeysPanels();
         sTimerProxy.cancelLongPressTimersOf(this);
+
+        // batch input started, so send swipe start broadcast to headboard
+        Intent intent = new Intent("com.headswype.ACTION_SWIPE_START");
+        intent.setPackage("com.google.projectgameface");
+        sListener.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        Log.d(TAG, "Sent broadcast to headboard with intent: " + intent);
     }
 
     private void showGestureTrail() {
@@ -602,26 +610,26 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             }
             return;
         }
+
         final int index = me.getActionIndex();
         final int x = (int)me.getX(index);
         final int y = (int)me.getY(index);
         switch (action) {
-        case MotionEvent.ACTION_DOWN:
-        case MotionEvent.ACTION_POINTER_DOWN:
-            onDownEvent(x, y, eventTime, keyDetector);
-            break;
-        case MotionEvent.ACTION_UP:
-        case MotionEvent.ACTION_POINTER_UP:
-            onUpEvent(x, y, eventTime);
-            break;
-        case MotionEvent.ACTION_CANCEL:
-            onCancelEvent(x, y, eventTime);
-            break;
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN:
+                onDownEvent(x, y, eventTime, keyDetector);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                onUpEvent(x, y, eventTime);
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                onCancelEvent(x, y, eventTime);
+                break;
         }
     }
 
-    private void onDownEvent(final int x, final int y, final long eventTime,
-            final KeyDetector keyDetector) {
+    private void onDownEvent(final int x, final int y, final long eventTime, final KeyDetector keyDetector) {
         setKeyDetectorInner(keyDetector);
         if (DEBUG_EVENT) {
             printTouchEvent("onDownEvent:", x, y, eventTime);
@@ -1040,8 +1048,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         if (mIsTrackingForActionDisabled) {
             return;
         }
-        if (currentKey != null && currentKey.isRepeatable()
-                && (currentKey.getCode() == currentRepeatingKeyCode) && !isInDraggingFinger) {
+        if (currentKey != null && currentKey.isRepeatable() && (currentKey.getCode() == currentRepeatingKeyCode) && !isInDraggingFinger) {
             return;
         }
         detectAndSendKey(currentKey, mKeyX, mKeyY, eventTime);
@@ -1209,12 +1216,15 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         callListenerOnRelease(key, code, false /* withSliding */);
     }
 
+    private boolean disableKeyRepeat = true;
+
     private void startRepeatKey(final Key key) {
         if (sInGesture) return;
         if (key == null) return;
         if (!key.isRepeatable()) return;
         // Don't start key repeat when we are in the dragging finger mode.
         if (mIsInDraggingFinger) return;
+        if (disableKeyRepeat) return;
         final int startRepeatCount = 1;
         startKeyRepeatTimer(startRepeatCount);
     }
