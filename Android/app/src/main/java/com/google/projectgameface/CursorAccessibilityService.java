@@ -101,6 +101,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     public Point screenSize;
     private HeadBoardService headBoardService;
     private KeyboardManager keyboardManager;
+    private GestureStreamController gestureStreamController;
 
     private ProcessCameraProvider cameraProvider;
 
@@ -444,6 +445,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager = new ServiceUiManager(this, windowManager, cursorController);
         keyboardManager = new KeyboardManager(this, cursorController, serviceUiManager);
         cursorController.setKeyboardManager(keyboardManager);
+        gestureStreamController = new GestureStreamController(this);
 
         lifecycleRegistry = new LifecycleRegistry(this::getLifecycle);
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
@@ -541,6 +543,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                     // Actually update the UI cursor image.
                     serviceUiManager.updateCursorImagePositionOnScreen(cursorController.getCursorPositionXY());
+                    
+                    // Update gesture stream if it's active
+                    if (gestureStreamController != null && gestureStreamController.isActive()) {
+                        updateGestureStream();
+                    }
+                    
                     dispatchEvent(null, null);
 
                     if (isPitchYawEnabled() && isNoseTipEnabled()) {
@@ -849,6 +857,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         disableSelf();
         handlerThread.quitSafely();
         cursorController.cleanup();
+        
+        // Cleanup gesture stream controller
+        if (gestureStreamController != null) {
+            gestureStreamController.shutdown();
+        }
 
         // Unregister when the service is destroyed
         try { unregisterReceiver(changeServiceStateReceiver); } catch (Exception e) {}
@@ -1345,21 +1358,23 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private int[] dragToggleStartPosition = new int[2];
 
     /**
-     * Handle continuous touch action.
+     * Handle continuous touch action using GestureStreamController.
      */
     public void continuousTouch(boolean isStarting) {
-        Log.d(TAG, "continuousTouch() SWIPE isStarting: " + isStarting);
+        Log.d(TAG, "continuousTouch() GESTURE STREAM isStarting: " + isStarting);
 
         int[] cursorPosition;
         cursorPosition = getCursorPosition();
 
         if (isStarting && !cursorController.continuousTouchActive) {
             cursorController.continuousTouchActive = true;
-            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
+            Log.d(TAG, "continuousTouch() GESTURE STREAM KeyEvent.ACTION_DOWN");
 
             if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
-                startRealtimeSwipe(cursorPosition);
+                // Use GestureStreamController for keyboard gestures
+                startGestureStream(cursorPosition);
             } else {
+                // Use drag toggle for non-keyboard areas
                 dragToggleStartTime = SystemClock.uptimeMillis();
                 dragToggleCancelled = false;
                 dragToggleStartPosition = cursorPosition;
@@ -1369,10 +1384,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else if (cursorController.continuousTouchActive) {
             cursorController.continuousTouchActive = false;
 
-            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_UP");
+            Log.d(TAG, "continuousTouch() GESTURE STREAM KeyEvent.ACTION_UP");
             if (cursorController.isSwiping) {
-                stopRealtimeSwipe();
+                // End gesture stream if it's active
+                endGestureStream();
             } else {
+                // Handle drag toggle logic
                 long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
                 dragToggleHandler.removeCallbacks(dragToggleOrTapOnCancelRunnable);
                 if (elapsedTime < getQuickTapThreshold()) {
@@ -1686,6 +1703,83 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     false),
                 null);
         }
+    }
+
+    /**
+     * Start gesture stream for continuous touch using GestureStreamController.
+     * This method uses the accessibility service's dispatchGesture instead of motion events.
+     *
+     * @param startCoords The starting coordinates for the gesture
+     */
+    private void startGestureStream(int[] startCoords) {
+        Log.d(TAG, "startGestureStream() - Starting gesture stream at (" + startCoords[0] + ", " + startCoords[1] + ")");
+        
+        cursorController.isSwiping = true;
+        cursorController.isRealtimeSwipe = true;
+        startUptime = SystemClock.uptimeMillis();
+        startTime = System.currentTimeMillis();
+        
+        // Start the gesture stream
+        boolean started = gestureStreamController.start(startCoords[0], startCoords[1]);
+        if (started) {
+            Log.d(TAG, "Gesture stream started successfully");
+            debugText[0] = "Gesture Stream";
+            debugText[1] = "X, Y: (" + startCoords[0] + ", " + startCoords[1] + ")";
+        } else {
+            Log.w(TAG, "Failed to start gesture stream");
+            cursorController.isSwiping = false;
+            cursorController.isRealtimeSwipe = false;
+        }
+    }
+
+    /**
+     * Update gesture stream with current cursor position.
+     * This should be called continuously while the gesture is active.
+     */
+    private void updateGestureStream() {
+        if (gestureStreamController.isActive()) {
+            int[] cursorPosition = getPathCursorPosition();
+            if (cursorPosition != null) {
+                gestureStreamController.update(cursorPosition[0], cursorPosition[1]);
+                debugText[0] = "Gesture Stream";
+                debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
+            }
+        }
+    }
+
+    /**
+     * End gesture stream for continuous touch using GestureStreamController.
+     */
+    private void endGestureStream() {
+        Log.d(TAG, "endGestureStream() - Ending gesture stream");
+        
+        endUptime = SystemClock.uptimeMillis();
+        endTime = System.currentTimeMillis();
+        
+        if (gestureStreamController.isActive()) {
+            gestureStreamController.end();
+            Log.d(TAG, "Gesture stream ended successfully");
+        }
+        
+        cursorController.isSwiping = false;
+        cursorController.isRealtimeSwipe = false;
+        serviceUiManager.clearPreviewBitmap();
+    }
+
+    /**
+     * Cancel gesture stream for continuous touch using GestureStreamController.
+     */
+    private void cancelGestureStream() {
+        Log.d(TAG, "cancelGestureStream() - Cancelling gesture stream");
+        
+        if (gestureStreamController.isActive()) {
+            gestureStreamController.cancel();
+            Log.d(TAG, "Gesture stream cancelled");
+        }
+        
+        cursorController.isSwiping = false;
+        cursorController.isRealtimeSwipe = false;
+        serviceUiManager.clearPreviewBitmap();
     }
 
     /**
