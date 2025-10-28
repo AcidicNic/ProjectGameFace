@@ -425,8 +425,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Send broadcast to wake up service.
         Intent intent = new Intent("CHANGE_SERVICE_STATE");
-        intent.putExtra("state", CursorAccessibilityService.ServiceState.ENABLE.ordinal());
+        int stateOrdinal = CursorAccessibilityService.ServiceState.ENABLE.ordinal();
+        intent.putExtra("state", stateOrdinal);
+        Log.i(TAG, "Sending CHANGE_SERVICE_STATE broadcast with state: " + stateOrdinal);
         sendBroadcast(intent);
+        Log.i(TAG, "CHANGE_SERVICE_STATE broadcast sent");
 
         Intent intentFlyOut = new Intent("FLY_OUT_FLOAT_WINDOW");
         sendBroadcast(intentFlyOut);

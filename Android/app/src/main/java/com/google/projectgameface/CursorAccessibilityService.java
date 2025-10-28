@@ -394,23 +394,23 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_LONGPRESS_ANIMATION);
 
         ContextCompat.registerReceiver(this, changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, requestServiceStateReceiver, new IntentFilter("REQUEST_SERVICE_STATE"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, loadSharedConfigBasicReceiver, new IntentFilter("LOAD_SHARED_CONFIG_BASIC"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, loadSharedConfigGestureReceiver, new IntentFilter("LOAD_SHARED_CONFIG_GESTURE"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, enableScorePreviewReceiver, new IntentFilter("ENABLE_SCORE_PREVIEW"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, serviceUiManager.flyInWindowReceiver, new IntentFilter("FLY_IN_FLOAT_WINDOW"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, serviceUiManager.flyOutWindowReceiver, new IntentFilter("FLY_OUT_FLOAT_WINDOW"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, profileChangeReceiver, new IntentFilter("PROFILE_CHANGED"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, resetDebuggingStatsReceiver, new IntentFilter("RESET_DEBUGGING_STATS"),
-            ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter,
             ContextCompat.RECEIVER_EXPORTED);
     }
@@ -1358,17 +1358,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private int[] dragToggleStartPosition = new int[2];
 
     /**
-     * Handle continuous touch action using GestureStreamController.
+     * Handle continuous touch action.
      */
     public void continuousTouch(boolean isStarting) {
-        Log.d(TAG, "continuousTouch() GESTURE STREAM isStarting: " + isStarting);
+        Log.d(TAG, "continuousTouch() SWIPE isStarting: " + isStarting);
 
         int[] cursorPosition;
         cursorPosition = getCursorPosition();
 
         if (isStarting && !cursorController.continuousTouchActive) {
             cursorController.continuousTouchActive = true;
-            Log.d(TAG, "continuousTouch() GESTURE STREAM KeyEvent.ACTION_DOWN");
+            Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
 
             if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
                 // Use GestureStreamController for keyboard gestures
@@ -2089,6 +2089,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "startTapSequence() - Show key popup & send long press delay to IME");
             keyboardManager.showKeyPopupIME(tapStartPosition[0], tapStartPosition[1], true);
             keyboardManager.sendLongPressDelayToIME(100);
+
+            /** TODO: KILL YOURSELF
+             * what the fuck bro what the actual fuck i hate my life so fuckign much bro wtf ugh
+             * j figure out how to get the fucking webcam to work for the emulator's front cam pls
+             * i fucking hate it here bro
+             **/
         }
 
         mainHandler.postDelayed(animateCursorTapRunnable, uiFeedbackDelay);
@@ -2270,7 +2276,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //        Log.d(TAG, "touchGreenToBlueRunnable called");
 //        if (swipeEventEnding) return;
 //
-//        mainHandler.postDelayed(endTouchAnimationRunnable, getLongTapThreshold());
+//        mainHandler.postDelayed(endTouchAnimationRunnable, getLongTapThreshold());z
 //        serviceUiManager.pathCursorSetColor("GREEN");
 //        serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold());
 // //        if (!isInHoverZone) serviceUiManager.pathCursorHideAnimation("RED");
