@@ -1043,7 +1043,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
-        Log.i(TAG, "Service connected");
+        Log.d(TAG, "Service connected");
     }
 
     @Override
@@ -2231,6 +2231,87 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     /* ------------------------------- END OF TAP ACTION HANDLING ------------------------------- */
 
 
+    // Gesture debounce + coalescing helpers to reduce UI-thread stalls
+    private final Object gestureLock = new Object();
+    private volatile long lastGestureTimestamp = 0;
+    private static final long GESTURE_DEBOUNCE_MS = 50; // ignore duplicate events within 50ms
+    private Runnable gestureEndRunnable = null;
+
+
+    public void gestureDescription(boolean isStartingEvent) {
+        if (isStartingEvent) {
+            // Coalesce: ignore starts if already started or ending
+            if (swipeEventStarted || swipeEventEnding) return;
+
+            // Mark swipe/path state similar to swipe flow
+            swipeStartPosition = cursorController.getRollingAverage();
+            cursorController.setPathCursorPosition(swipeStartPosition);
+            swipeStartTime = System.currentTimeMillis();
+            isInHoverZone = true;
+            swipeEventStarted = true;
+            swipeEventEnding = false;
+            cursorController.isCursorTouch = true;
+            uiFeedbackDelay = getUiFeedbackDelay();
+            canStartSwipe = false;
+
+            // Show path cursor and provide quick visual feedback
+            mainHandler.post(() -> {
+                try {
+                    serviceUiManager.showPathCursor();
+                    isPathCursorActive = true;
+                    serviceUiManager.pathCursorSetColor("YELLOW");
+                    // Delegate low-level streaming to the controller (runs on its own thread)
+                    startGestureStream(swipeStartPosition);
+                } catch (Exception e) {
+                    Log.w(TAG, "gestureDescription start error: " + e);
+                }
+            });
+        } else {
+            // end event: coalesce multiple rapid end events into a single finalizer
+            synchronized (gestureLock) {
+                // If there's already a pending end runnable, cancel and reschedule slightly later to coalesce bursts
+                if (gestureEndRunnable != null) {
+                    mainHandler.removeCallbacks(gestureEndRunnable);
+                }
+
+                // Briefly mark that ending is in progress to ignore duplicate end triggers
+                swipeEventEnding = true;
+
+                gestureEndRunnable = () -> {
+                    // offload heavier prep to background executor, but ensure UI finalization runs on main
+                    backgroundExecutor.execute(() -> {
+                        try {
+                            mainHandler.post(() -> {
+                                try {
+                                    // End the streaming gesture
+                                    endGestureStream();
+
+                                    // Reset swipe/path state consistently with swipe flow
+                                    resetSwipeSequence();
+
+                                    // Hide path cursor in case it was shown
+                                    serviceUiManager.hidePathCursor();
+                                    isPathCursorActive = false;
+                                } catch (Exception e) {
+                                    Log.w(TAG, "gestureDescription end UI error: " + e);
+                                }
+                            });
+                        } catch (Exception e) {
+                            Log.w(TAG, "gestureDescription end error: " + e);
+                        }
+                    });
+                    // clear the runnable reference after execution
+                    synchronized (gestureLock) {
+                        gestureEndRunnable = null;
+                    }
+                };
+
+                // small delay to allow transient fluctuations to settle (coalescing)
+                mainHandler.postDelayed(gestureEndRunnable, 30);
+            }
+        }
+    }
+
     /* ----------------------------- START OF SWIPE ACTION HANDLING ----------------------------- */
     private boolean startedInsideKbd;
     private boolean swipeEventStarted = false;
@@ -2421,8 +2502,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     debugText[1] = "X, Y: (" + cursorCoords[0] + ", " + cursorCoords[1] + ")";
                     Log.d(TAG, "MotionEvent.ACTION_UP @ (" + cursorCoords[0] + ", " + cursorCoords[1] + ")");
                 } catch (Exception e) {
-                    writeToFile.logError(TAG,
-                        "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
+                    writeToFile.logError(TAG, "ERROR WHILE ENDING SWIPE!!!: sendPointerSync cannot be called from the main thread." + e);
                     Log.e(TAG, "sendPointerSync cannot be called from the main thread.", e);
                 }
                 cursorController.isSwiping = false;
@@ -2513,6 +2593,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     /**
      * Starts monitoring the cursor position to check if it stays within the hover zone.
+     * This is used specifically for swipe events to provide visual feedback.
      */
     private void startSwipeHoverZoneMonitoring() {
         new Thread(() -> {

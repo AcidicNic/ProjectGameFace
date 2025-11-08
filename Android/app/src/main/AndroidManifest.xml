@@ -17,7 +17,7 @@
         xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.google.projectgameface"
         android:sharedUserId="com.headswype.shared"
-        android:sharedUserMaxSdkVersion="35">
+        android:sharedUserMaxSdkVersion="32">
 
     <uses-sdk
         android:minSdkVersion="28"
@@ -61,8 +61,6 @@
         android:supportsRtl="true"
         android:taskAffinity=""
         android:theme="@style/AppTheme"
-        android:sharedUserId="android.uid.system"
-        android:process="system"
         >
 
         <activity
