@@ -48,10 +48,30 @@ public class DispatchEventHelper {
 
     switch (event.eventType) {
       case CONTINUOUS_TOUCH:
-        Log.d("dispatchEvent", "new gesture description continuous touch");
-        parentService.gestureDescription(event.isStartingEvent);
-//        Log.d("dispatchEvent", "continuous touch");
-//        parentService.handleSwipeEvent(event.isStartingEvent);
+        // Route to handleSwipeEvent if starting inside OpenBoard keyboard, otherwise use gestureDescription
+        if (event.isStartingEvent) {
+          // Check if cursor is inside OpenBoard keyboard at start
+          boolean isInsideOpenBoard = parentService.keyboardManager != null &&
+                                       parentService.keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1]);
+          if (isInsideOpenBoard) {
+            Log.d("dispatchEvent", "continuous touch inside OpenBoard - using handleSwipeEvent");
+            parentService.usingHandleSwipeEvent = true;
+            parentService.handleSwipeEvent(event.isStartingEvent);
+          } else {
+            Log.d("dispatchEvent", "continuous touch outside OpenBoard - using gestureDescription");
+            parentService.usingHandleSwipeEvent = false;
+            parentService.gestureDescription(event.isStartingEvent);
+          }
+        } else {
+          // For end events, route to whichever handler was used for start
+          if (parentService.usingHandleSwipeEvent) {
+            parentService.handleSwipeEvent(event.isStartingEvent);
+          } else {
+            parentService.gestureDescription(event.isStartingEvent);
+          }
+          // Reset the flag after ending
+          parentService.usingHandleSwipeEvent = false;
+        }
         break;
 
       case TOGGLE_TOUCH:

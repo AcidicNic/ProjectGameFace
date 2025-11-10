@@ -128,6 +128,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private HandlerThread handlerThread;
     private Handler handler;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    // Track which swipe handler is currently active (for routing end events correctly)
+    private boolean usingHandleSwipeEvent = false;
     private final SparseBooleanArray keyStates = new SparseBooleanArray();
     private DebuggingStats gboardDebuggingStats = new DebuggingStats("GBoard");
     private DebuggingStats openboardDebuggingStats = new DebuggingStats("OpenBoard");
