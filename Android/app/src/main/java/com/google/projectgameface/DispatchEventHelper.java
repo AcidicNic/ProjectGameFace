@@ -48,10 +48,10 @@ public class DispatchEventHelper {
 
     switch (event.eventType) {
       case CONTINUOUS_TOUCH:
-        Log.d("dispatchEvent", "new gesture description continuous touch");
-        parentService.gestureDescription(event.isStartingEvent);
-//        Log.d("dispatchEvent", "continuous touch");
-//        parentService.handleSwipeEvent(event.isStartingEvent);
+//        Log.d("dispatchEvent", "new gesture description continuous touch");
+//        parentService.gestureDescription(event.isStartingEvent);
+        Log.d("dispatchEvent", "continuous touch");
+        parentService.handleSwipeEvent(event.isStartingEvent);
         break;
 
       case TOGGLE_TOUCH:
