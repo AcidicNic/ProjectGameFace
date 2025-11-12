@@ -93,6 +93,8 @@ public class SettingsValues {
     public final boolean mGestureFloatingPreviewTextEnabled;
     public final boolean mSlidingKeyInputPreviewEnabled;
     public final int mKeyLongpressTimeout;
+    public final int mKeyLongpressShiftLockTimeout;
+    public final int mKeyRepeatStartTimeout;
     public final boolean mEnableEmojiAltPhysicalKey;
     public final boolean mShowAppIcon;
     public final boolean mIsShowAppIconSettingInPreferences;
@@ -179,6 +181,8 @@ public class SettingsValues {
                 && prefs.getBoolean(DebugSettings.PREF_SHOULD_SHOW_LXX_SUGGESTION_UI, true);
         // Compute other readable settings
         mKeyLongpressTimeout = Settings.readKeyLongpressTimeout(prefs, res);
+        mKeyLongpressShiftLockTimeout = Settings.readKeyLongpressShiftLockTimeout(prefs, res);
+        mKeyRepeatStartTimeout = Settings.readKeyRepeatStartTimeout(prefs, res);
         mKeypressVibrationDuration = Settings.readKeypressVibrationDuration(prefs, res);
         mKeypressSoundVolume = Settings.readKeypressSoundVolume(prefs, res);
         mEnableEmojiAltPhysicalKey = prefs.getBoolean(

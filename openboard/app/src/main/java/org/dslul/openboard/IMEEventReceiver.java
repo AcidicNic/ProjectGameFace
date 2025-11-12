@@ -251,6 +251,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
     /**
      * Handles setting the long press delay for the keyboard.
+     * Sets the long press timeout, shift lock timeout, and key repeat start timeout to the same value.
      * @param intent The intent containing the delay value
      */
     private void handleSetLongPressDelay(Intent intent) {
@@ -272,10 +273,14 @@ public class IMEEventReceiver extends BroadcastReceiver {
 
         try {
             final SharedPreferences prefs = getSharedPreferences(mIme);
-            prefs.edit().putInt(Settings.PREF_KEY_LONGPRESS_TIMEOUT, delay).apply();
-            Log.d(TAG, "Long press delay set to: " + delay + " ms");
+            final SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt(Settings.PREF_KEY_LONGPRESS_TIMEOUT, delay);
+            editor.putInt(Settings.PREF_KEY_LONGPRESS_SHIFT_LOCK_TIMEOUT, delay);
+            editor.putInt(Settings.PREF_KEY_REPEAT_START_TIMEOUT, delay);
+            editor.apply();
+            Log.d(TAG, "Long press delays set to: " + delay + " ms (longpress, shift lock, key repeat)");
         } catch (Exception e) {
-            Log.e(TAG, "Error setting long press delay", e);
+            Log.e(TAG, "Error setting long press delays", e);
         }
     }
 

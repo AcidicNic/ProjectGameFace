@@ -1395,7 +1395,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 if (elapsedTime < getQuickTapThreshold()) {
                     dragToggleCancelled = true;
                     // Perform quick tap instead of enabling drag toggle
-                    dispatchTapGesture(dragToggleStartPosition, 250);
+                    // Use shorter duration for non-keyboard areas (suggestion strip) 
+                    // to avoid triggering long press handler
+                    dispatchTapGesture(dragToggleStartPosition, Config.QUICK_TAP_DURATION);
                 } else {
                     cursorController.dragToggleActive = false;
                     if (cursorController.isDragging) {
@@ -1551,7 +1553,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             } else {
                 Log.d(TAG, "Drag toggle cancelled");
                 int[] cursorPosition = dragToggleStartPosition;
-                dispatchTapGesture(cursorPosition, 250);
+                // Use shorter duration for non-keyboard areas (suggestion strip)
+                // to avoid triggering long press handler
+                dispatchTapGesture(cursorPosition, Config.QUICK_TAP_DURATION);
             }
         }
     };
@@ -1901,6 +1905,32 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /**
+     * Check if the given coordinates are on the suggestion strip.
+     * The suggestion strip is at the top of the keyboard window, typically 40-44dp high.
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @return true if the coordinates are on the suggestion strip, false otherwise
+     */
+    private boolean isOnSuggestionStrip(int x, int y) {
+        if (!keyboardManager.isKeyboardOpen()) {
+            return false;
+        }
+        Rect keyboardBounds = keyboardManager.getKeyboardBounds();
+        if (keyboardBounds.isEmpty()) {
+            return false;
+        }
+        // Check if point is within keyboard bounds
+        if (!keyboardBounds.contains(x, y)) {
+            return false;
+        }
+        // Suggestion strip is at the top of the keyboard window, typically 40-44dp (~120-132px at mdpi)
+        // Use a conservative estimate of 150px to account for different screen densities
+        int suggestionStripHeight = 150; // pixels
+        int distanceFromTop = y - keyboardBounds.top;
+        return distanceFromTop <= suggestionStripHeight;
+    }
+
+    /**
      * Get the height of the navigation bar.
      *
      * @param context The context of the application.
@@ -2187,7 +2217,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 Log.d(TAG, "endTapSequence() isTap, outputting quick tap");
                 duration = 100;
             } else {
-                duration = 250;
+                // Use shorter duration for non-keyboard areas (suggestion strip)
+                // to avoid triggering long press handler
+                duration = Config.QUICK_TAP_DURATION;
             }
         } else {
             if (tapInsideKbd) {
@@ -2694,7 +2726,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                 } else {
                     Log.d(TAG, "endSwipeSequence() isQuickTap, outputting quick tap to system");
-                    duration = 250;
+                    // Use shorter duration for suggestion strip to avoid triggering long press handler
+                    // Keep normal duration for other non-keyboard areas
+                    duration = isOnSuggestionStrip(swipeStartPosition[0], swipeStartPosition[1]) 
+                        ? Config.QUICK_TAP_DURATION : 250;
                     dispatchTapGesture(swipeStartPosition, duration);
                 }
             }

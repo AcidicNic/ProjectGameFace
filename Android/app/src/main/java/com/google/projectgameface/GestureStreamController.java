@@ -18,12 +18,13 @@ public final class GestureStreamController {
     private static final long SEGMENT_MS = 17; // slice size (~59fps, matches tick interval)
     private static final float EPS_PX = 1.25f; // min movement to enqueue
     private static final long MIN_SAMPLE_MS = 10; // throttle duplicates
-    private static final int MAX_QUEUE = 64; // backpressure
+    private static final int MAX_QUEUE = 64; // back-pressure
     private static final long START_DEBOUNCE_MS = 50; // avoid double start spam
     
     // Preemptive dispatch: dispatch next segment at 80% of current segment duration
+    // Note: This is an optimization to reduce gaps between segments. The actual timing
+    // is based on the adaptive segment duration, not the fixed SEGMENT_MS.
     private static final double PREEMPTIVE_DISPATCH_RATIO = 0.80;
-    private static final long PREEMPTIVE_DISPATCH_MS = (long) (SEGMENT_MS * PREEMPTIVE_DISPATCH_RATIO);
     
     // Adaptive timing: track completion times in rolling window
     private static final int COMPLETION_TIME_HISTORY_SIZE = 10;
@@ -153,8 +154,15 @@ public final class GestureStreamController {
     /**
      * Schedule preemptive dispatch of next segment before current one completes.
      * This reduces gaps between segments by overlapping dispatch with execution.
+     * 
+     * Note: According to Android documentation, when using continueStroke() with
+     * willContinue=true, the next segment should be dispatched after the previous
+     * one completes. However, preemptive dispatch at ~80% can reduce latency in
+     * practice. The system will queue the gesture appropriately.
+     * 
+     * @param segmentDuration The duration of the current segment in milliseconds
      */
-    private void schedulePreemptiveDispatch() {
+    private void schedulePreemptiveDispatch(long segmentDuration) {
         // Cancel any existing preemptive dispatch
         if (preemptiveDispatchRunnable != null) {
             bg.removeCallbacks(preemptiveDispatchRunnable);
@@ -172,8 +180,11 @@ public final class GestureStreamController {
             }
         };
         
-        // Schedule dispatch at 80% of segment duration
-        bg.postDelayed(preemptiveDispatchRunnable, PREEMPTIVE_DISPATCH_MS);
+        // Schedule dispatch at 80% of the actual segment duration (adaptive)
+        long preemptiveDelay = (long) (segmentDuration * PREEMPTIVE_DISPATCH_RATIO);
+        // Ensure minimum delay to avoid dispatching too early
+        preemptiveDelay = Math.max(preemptiveDelay, 5L);
+        bg.postDelayed(preemptiveDispatchRunnable, preemptiveDelay);
     }
     
     /**
@@ -226,10 +237,11 @@ public final class GestureStreamController {
                         pointsAdded++;
                     }
                     
-                    // If no points in queue, create a minimal path from start point
+                    // If no points in queue, we cannot create a valid path (zero-length paths are invalid)
+                    // Wait for more points to arrive
                     if (pointsAdded == 0) {
-                        path.lineTo(start.x, start.y);
-                        lastPoint = start;
+                        dispatching = false;
+                        return;
                     }
 
                     boolean willContinue = isStreaming || !queue.isEmpty();
@@ -253,7 +265,7 @@ public final class GestureStreamController {
                     
                     // Schedule preemptive dispatch if continuing
                     if (willContinue) {
-                        schedulePreemptiveDispatch();
+                        schedulePreemptiveDispatch(segmentDuration);
                     }
                     return;
                 }
@@ -278,11 +290,21 @@ public final class GestureStreamController {
                     pointsAdded++;
                 }
                 
-                // If no points available, extend from last position (no 0.1px hack)
-                if (last == null) {
-                    last = new PointF(lastX, lastY);
-                    // Create a minimal continuation path
-                    path.lineTo(last.x, last.y);
+                // If no points available, we cannot create a valid continuation path
+                // Zero-length paths (point to itself) are invalid per Android requirements
+                // Wait for more points or end the gesture if streaming has stopped
+                if (pointsAdded == 0) {
+                    if (!isStreaming) {
+                        // Gesture has ended, but we need to send a final segment to lift the pointer
+                        // Create a minimal valid path (small movement to ensure non-zero length)
+                        float epsilon = 0.5f; // Small movement to create valid path
+                        path.lineTo(lastX + epsilon, lastY);
+                        last = new PointF(lastX + epsilon, lastY);
+                    } else {
+                        // Still streaming but no points yet - wait for more data
+                        dispatching = false;
+                        return;
+                    }
                 }
 
                 boolean willContinue = isStreaming || !queue.isEmpty();
@@ -306,7 +328,7 @@ public final class GestureStreamController {
                 
                 // Schedule preemptive dispatch if continuing
                 if (willContinue) {
-                    schedulePreemptiveDispatch();
+                    schedulePreemptiveDispatch(segmentDuration);
                 }
             }
         } catch (Exception e) {
