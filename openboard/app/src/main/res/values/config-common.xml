@@ -116,7 +116,7 @@
     <integer name="config_delay_in_milliseconds_to_update_suggestions">100</integer>
     <integer name="config_delay_in_milliseconds_to_update_old_suggestions">300</integer>
 
-    <!-- Common more suggestions configuraion. -->
+    <!-- Common more suggestions configuration. -->
     <dimen name="config_more_suggestions_key_horizontal_padding">12dp</dimen>
     <dimen name="config_more_suggestions_bottom_gap">6dp</dimen>
     <dimen name="config_more_suggestions_modal_tolerance">32.0dp</dimen>
@@ -133,7 +133,7 @@
     <integer name="config_gesture_trail_max_interpolation_segments">6</integer>
     <dimen name="config_gesture_trail_start_width">10.0dp</dimen>
     <dimen name="config_gesture_trail_end_width">2.5dp</dimen>
-    <!-- Percentages of gesture preview taril body and shadow, in proportion to the trail width.
+    <!-- Percentages of gesture preview tail body and shadow, in proportion to the trail width.
          A negative value of the shadow ratio disables drawing shadow. -->
     <!-- TODO: May use the shadow to alleviate rugged trail drawing. -->
     <integer name="config_gesture_trail_body_ratio">100</integer>

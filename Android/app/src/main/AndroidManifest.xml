@@ -17,7 +17,7 @@
         xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.google.projectgameface"
         android:sharedUserId="com.headswype.shared"
-        android:sharedUserMaxSdkVersion="32">
+        android:sharedUserMaxSdkVersion="36">
 
     <uses-sdk
         android:minSdkVersion="28"
@@ -42,6 +42,8 @@
 
     <uses-permission android:name="android.permission.BIND_SERVICE" />
 
+    <permission android:name="com.headboard.permission.SEND_EVENT"
+        android:protectionLevel="normal" />
     <uses-permission android:name="com.headboard.permission.SEND_EVENT" />
     <permission android:name="com.headboard.permission.UPDATE_CURSOR"
         android:protectionLevel="normal" />
@@ -61,6 +63,7 @@
         android:supportsRtl="true"
         android:taskAffinity=""
         android:theme="@style/AppTheme"
+        android:sharedUserId="android.uid.system"
         >
 
         <activity
