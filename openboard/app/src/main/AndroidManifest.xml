@@ -43,6 +43,7 @@
 
     <permission android:name="com.headboard.permission.SEND_EVENT"
         android:protectionLevel="normal" />
+    <uses-permission android:name="com.headboard.permission.SEND_EVENT" />
     <uses-permission android:name="com.headboard.permission.UPDATE_CURSOR" />
     
     <uses-permission android:name="android.permission.BIND_SERVICE" />
