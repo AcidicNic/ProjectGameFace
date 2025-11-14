@@ -864,9 +864,10 @@ public class ServiceUiManager {
      * @param duration  Duration of the animation in milliseconds.
      */
     public void cursorAnimateToColor(String colorName, int duration) {
-        if (cursorView != null) {
-            cursorView.animateToColor(colorName, duration);
-        }
+        pathCursorAnimateToColor(colorName, duration);
+//        if (cursorView != null) {
+//            cursorView.animateToColor(colorName, duration);
+//        }
     }
 
     /**
@@ -877,9 +878,10 @@ public class ServiceUiManager {
      * @param offset    Delay before the animation starts in milliseconds.
      */
     public void cursorAnimateToColor(String colorName, int duration, int offset) {
-        if (cursorView != null) {
-            cursorView.animateToColor(colorName, duration, offset);
-        }
+        pathCursorAnimateToColor(colorName, duration, offset);
+//        if (cursorView != null) {
+//            cursorView.animateToColor(colorName, duration, offset);
+//        }
     }
 
     /**
@@ -888,27 +890,30 @@ public class ServiceUiManager {
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      */
     public void cursorSetColor(String colorName) {
-        if (cursorView != null) {
-            cursorView.setColor(colorName);
-        }
+        pathCursorSetColor(colorName);
+//        if (cursorView != null) {
+//            cursorView.setColor(colorName);
+//        }
     }
 
     /**
      * Cancel any ongoing animation on head cursor.
      */
     public void cursorCancelAnimation() {
-        if (cursorView != null) {
-            cursorView.cancelAnimation();
-        }
+        pathCursorCancelAnimation();
+//        if (cursorView != null) {
+//            cursorView.cancelAnimation();
+//        }
     }
 
     /**
      * Show head cursor with animation.
      */
     public void cursorShowAnimation() {
-        if (cursorView != null) {
-            cursorView.showAnimation();
-        }
+        pathCursorShowAnimation();
+//        if (cursorView != null) {
+//            cursorView.showAnimation();
+//        }
     }
 
     /**
@@ -917,9 +922,10 @@ public class ServiceUiManager {
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      */
     public void cursorHideAnimation(String colorName) {
-        if (cursorView != null) {
-            cursorView.hideAnimation(colorName);
-        }
+        pathCursorHideAnimation(colorName);
+//        if (cursorView != null) {
+//            cursorView.hideAnimation(colorName);
+//        }
     }
 
     /**
@@ -967,7 +973,7 @@ public class ServiceUiManager {
      * @param colorName The name of the target color state (e.g., "WHITE", "GREEN").
      */
     public void pathCursorSetColor(String colorName) {
-        if (cursorController.isPathCursorEnabled() && cursorController.isPathCursorVisible()) { // ) {
+        if (cursorController.isPathCursorEnabled()) {
             if (pathCursorView != null) {
                 pathCursorView.setColor(colorName);
             }

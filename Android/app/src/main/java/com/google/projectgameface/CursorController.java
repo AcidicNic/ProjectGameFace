@@ -29,8 +29,8 @@ import androidx.core.content.ContextCompat;
 
 import com.google.projectgameface.utils.Config;
 
-import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -643,7 +643,7 @@ public class CursorController {
     }
 
     public boolean isEventActive() {
-        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTap || isCursorTouch;
+        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTouch;
     }
 
     public String getActiveCursorRegionStr() {
@@ -819,8 +819,9 @@ public class CursorController {
     }
 
     public boolean isPathCursorVisible() {
-        if (!isPathCursorEnabled()) return false;
-        return isPathCursorVisible;
+//        if (!isPathCursorEnabled()) return false;
+//        return isPathCursorVisible;
+        return isPathCursorEnabled() & isPathCursorVisible;
     }
 
     public void setIsPathCursorVisible(boolean enable) {

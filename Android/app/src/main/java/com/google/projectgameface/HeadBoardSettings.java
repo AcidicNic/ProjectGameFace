@@ -26,7 +26,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.ViewGroup;
 import android.view.WindowManager.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -231,7 +230,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         progressQuickTapThreshold = findViewById(R.id.progressQuickTapThreshold);
 
         setUpQuickTapThresholdSeekBarAndTextView(
-                quickTapThresholdSeekBar, progressQuickTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD)
+                quickTapThresholdSeekBar, progressQuickTapThreshold, String.valueOf(CursorMovementConfig.CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY)
         );
 
         // Long Tap Threshold
@@ -397,7 +396,7 @@ public class HeadBoardSettings extends AppCompatActivity {
             if (newValue >= quickTapThresholdSeekBar.getMin() && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
                 quickTapThresholdSeekBar.setProgress(newValue);
                 int value = 200 + (newValue * 100);
-                sendValueToService("QUICK_TAP_THRESHOLD", value);
+                sendValueToService("ACTION_STATE_CHANGE_DELAY", value);
             }
         });
 
@@ -407,7 +406,7 @@ public class HeadBoardSettings extends AppCompatActivity {
             if (newValue >= quickTapThresholdSeekBar.getMin() && quickTapThresholdSeekBar.getProgress() <= quickTapThresholdSeekBar.getMax()) {
                 quickTapThresholdSeekBar.setProgress(newValue);
                 int value = 200 + (newValue * 100);
-                sendValueToService("QUICK_TAP_THRESHOLD", value);
+                sendValueToService("ACTION_STATE_CHANGE_DELAY", value);
             }
         });
 
@@ -611,7 +610,7 @@ public class HeadBoardSettings extends AppCompatActivity {
         seekBar.setMax(7); // 500-4000ms in steps of 500ms
         String profileName = ProfileManager.getCurrentProfile(this);
         SharedPreferences preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
-        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.QUICK_TAP_THRESHOLD);
+        int savedProgress = preferences.getInt(preferencesId, CursorMovementConfig.InitialRawValue.ACTION_STATE_CHANGE_DELAY);
         int progress = (savedProgress - 500) / 500;
         seekBar.setProgress(progress);
         textView.setText(String.valueOf(savedProgress));
@@ -777,7 +776,7 @@ public class HeadBoardSettings extends AppCompatActivity {
             smoothingProgress.setText(String.valueOf(avgSmoothing));
 
             // Update quick tap threshold
-            int quickTapThreshold = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
+            int quickTapThreshold = (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY);
             int quickTapProgress = (quickTapThreshold - 200) / 100;
             quickTapThresholdSeekBar.setProgress(quickTapProgress);
             progressQuickTapThreshold.setText(String.valueOf(quickTapThreshold));

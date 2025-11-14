@@ -42,7 +42,7 @@ class CursorMovementConfig {
     public enum CursorMovementConfigType {
         UP_SPEED, DOWN_SPEED, RIGHT_SPEED, LEFT_SPEED, SMOOTH_POINTER, SMOOTH_BLENDSHAPES, HOLD_TIME_MS,
         HOLD_RADIUS, EDGE_HOLD_DURATION, DRAG_TOGGLE_DURATION, HEAD_COORD_SCALE_FACTOR_X,
-        HEAD_COORD_SCALE_FACTOR_Y, AVG_SMOOTHING, PATH_CURSOR, QUICK_TAP_THRESHOLD, LONG_TAP_THRESHOLD,
+        HEAD_COORD_SCALE_FACTOR_Y, AVG_SMOOTHING, PATH_CURSOR, ACTION_STATE_CHANGE_DELAY, LONG_TAP_THRESHOLD,
         UI_FEEDBACK_DELAY, PATH_CURSOR_MIN,
 
         LATEST_AVG_WPM, AVG_WPM, AVG_WORDS_PER_PHRASE, AVG_SWIPE_DURATION, AVG_PHRASE_LENGTH,
@@ -101,7 +101,7 @@ class CursorMovementConfig {
         public static final int AVG_SMOOTHING = Config.DEFAULT_RAW_SMOOTHING;
         public static final boolean PITCH_YAW = Config.DEFAULT_PITCH_YAW;
         public static final boolean NOSE_TIP = Config.DEFAULT_NOSE_TIP;
-        public static final int QUICK_TAP_THRESHOLD = Config.DEFAULT_QUICK_TAP_THRESHOLD;
+        public static final int ACTION_STATE_CHANGE_DELAY = Config.DEFAULT_ACTION_STATE_CHANGE_DELAY;
         public static final int LONG_TAP_THRESHOLD = Config.DEFAULT_LONG_TAP_THRESHOLD;
         public static final int UI_FEEDBACK_DELAY = Config.DEFAULT_UI_FEEDBACK_DELAY;
         public static final int PATH_CURSOR = Config.DEFAULT_PATH_CURSOR;
@@ -169,7 +169,7 @@ class CursorMovementConfig {
         rawValueMap.put(CursorMovementConfigType.EDGE_HOLD_DURATION, InitialRawValue.EDGE_HOLD_DURATION);
         rawValueMap.put(CursorMovementConfigType.DRAG_TOGGLE_DURATION, InitialRawValue.DRAG_TOGGLE_DURATION);
         rawValueMap.put(CursorMovementConfigType.AVG_SMOOTHING, InitialRawValue.AVG_SMOOTHING);
-        rawValueMap.put(CursorMovementConfigType.QUICK_TAP_THRESHOLD, InitialRawValue.QUICK_TAP_THRESHOLD);
+        rawValueMap.put(CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY, InitialRawValue.ACTION_STATE_CHANGE_DELAY);
         rawValueMap.put(CursorMovementConfigType.LONG_TAP_THRESHOLD, InitialRawValue.LONG_TAP_THRESHOLD);
         rawValueMap.put(CursorMovementConfigType.UI_FEEDBACK_DELAY, InitialRawValue.UI_FEEDBACK_DELAY);
         rawValueMap.put(CursorMovementConfigType.PATH_CURSOR, InitialRawValue.PATH_CURSOR);
@@ -395,8 +395,8 @@ class CursorMovementConfig {
             int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.DRAG_TOGGLE_DURATION);
             setRawValueFromUi(configName, configValueInUi);
             Log.i(TAG, "Set raw value to: " + configValueInUi);
-        } else if (targetConfig == CursorMovementConfigType.QUICK_TAP_THRESHOLD) {
-            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.QUICK_TAP_THRESHOLD);
+        } else if (targetConfig == CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.ACTION_STATE_CHANGE_DELAY);
             setRawValueFromUi(configName, configValueInUi);
             Log.i(TAG, "Set raw value to: " + configValueInUi);
         } else if (targetConfig == CursorMovementConfigType.LONG_TAP_THRESHOLD) {

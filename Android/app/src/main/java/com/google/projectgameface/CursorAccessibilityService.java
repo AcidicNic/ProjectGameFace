@@ -16,6 +16,9 @@
 
 package com.google.projectgameface;
 
+import static java.lang.Math.max;
+import static java.lang.Math.round;
+
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
 import android.app.Instrumentation;
@@ -313,8 +316,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 } else {
                     cursorController.cursorMovementConfig.updateOneConfigFromSharedPreference(configName);
                     // Check if this is the LONG_TAP_THRESHOLD setting being updated
-                    if (configName.equals("QUICK_TAP_THRESHOLD")) {
-                        sendLongPressDelayToIME(getQuickTapThreshold());
+                    if (configName.equals("ACTION_STATE_CHANGE_DELAY")) {
+                        sendLongPressDelayToIME(getActionStateChangeDelay());
                     }
                 }
             }
@@ -479,7 +482,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         openboardDebuggingStats.load(this);
         keyboardManager.checkForKeyboardType();
 
-        sendLongPressDelayToIME(getQuickTapThreshold());
+        sendLongPressDelayToIME(getActionStateChangeDelay());
     }
 
     /**
@@ -507,16 +510,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     }
 
                     // Use for smoothing.
-//                        int gapFrames =
-//                                round(max(((float) facelandmarkerHelper.gapTimeMs / (float) UI_UPDATE), 1.0f));
+                    int gapFrames = round(max((facelandmarkerHelper.gapTimeMs / UI_UPDATE), 1.0f));
 
                     if (cursorController.isPathCursorEnabled()) {
                         if (cursorController.isEventActive()) {
                             if (!isPathCursorActive) {
                                 // Display path cursor if it's still hidden.
+                                Log.d(TAG, "Showing path cursor for active event.");
                                 cursorController.resetPathCursorPosition();
                                 serviceUiManager.showPathCursor();
                                 isPathCursorActive = true;
+                                cursorController.setIsPathCursorVisible(true);
                             }
                             serviceUiManager.updatePathCursorImagePositionOnScreen(
                                 cursorController.getPathCursorPositionXY());
@@ -524,6 +528,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             // When the path cursor is still visible after an event has ended, hide it.
                             Log.d(TAG, "Hiding path cursor after event ended.");
                             serviceUiManager.hidePathCursor();
+                            cursorController.setIsPathCursorVisible(false);
                             isPathCursorActive = false;
                         }
                     }
@@ -541,15 +546,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
                         new int[]{screenSize.x, screenSize.y});
 
+                    dispatchEvent(null, null);
+
                     // Actually update the UI cursor image.
                     serviceUiManager.updateCursorImagePositionOnScreen(cursorController.getCursorPositionXY());
                     
                     // Update gesture stream if it's active
-                    if (gestureStreamController != null && gestureStreamController.isActive()) {
-                        updateGestureStream();
-                    }
-                    
-                    dispatchEvent(null, null);
+//                    if (gestureStreamController != null && gestureStreamController.isActive()) {
+//                        updateGestureStream();
+//                    }
 
                     if (isPitchYawEnabled() && isNoseTipEnabled()) {
                         serviceUiManager.drawHeadCenter(
@@ -1379,7 +1384,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 dragToggleCancelled = false;
                 dragToggleStartPosition = cursorPosition;
                 cursorController.dragToggleActive = true;
-                dragToggleHandler.postDelayed(dragToggleOrTapOnCancelRunnable, getQuickTapThreshold());
+                dragToggleHandler.postDelayed(dragToggleOrTapOnCancelRunnable, getActionStateChangeDelay());
             }
         } else if (cursorController.continuousTouchActive) {
             cursorController.continuousTouchActive = false;
@@ -1392,7 +1397,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // Handle drag toggle logic
                 long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
                 dragToggleHandler.removeCallbacks(dragToggleOrTapOnCancelRunnable);
-                if (elapsedTime < getQuickTapThreshold()) {
+                if (elapsedTime < getActionStateChangeDelay()) {
                     dragToggleCancelled = true;
                     // Perform quick tap instead of enabling drag toggle
                     // Use shorter duration for non-keyboard areas (suggestion strip) 
@@ -1444,7 +1449,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private int[] smartTouchStartPosition;
     private boolean smartTouchCancelled = false;
     private final Handler smartTouchHandler = new Handler(Looper.getMainLooper());
-    private int quickTapThreshold = CursorMovementConfig.InitialRawValue.QUICK_TAP_THRESHOLD;
+    private int quickTapThreshold = CursorMovementConfig.InitialRawValue.ACTION_STATE_CHANGE_DELAY;
     private int longTapThreshold = CursorMovementConfig.InitialRawValue.LONG_TAP_THRESHOLD;
 
     /**
@@ -1488,8 +1493,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         if (eventAction == KeyEvent.ACTION_DOWN && !cursorController.smartTouchActive) {
 
-            quickTapThreshold = getQuickTapThreshold();
-            longTapThreshold = getLongTapThreshold();
+            quickTapThreshold = getActionStateChangeDelay();
+            longTapThreshold = getActionStateChangeDelay();
 
             // Start the smart touch sequence
             cursorController.smartTouchActive = true;
@@ -1892,17 +1897,17 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         return (long) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.DRAG_TOGGLE_DURATION);
     }
 
-    public int getQuickTapThreshold() {
-        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD);
+    public int getActionStateChangeDelay() {
+        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY);
     }
 
-    public int getLongTapThreshold() {
-        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
-    }
+//    public int getLongTapThreshold() {
+//        return (int) cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.LONG_TAP_THRESHOLD);
+//    }
 
     public int getUiFeedbackDelay() {
         return (int) ((cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.UI_FEEDBACK_DELAY) / 10) *
-            cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.QUICK_TAP_THRESHOLD));
+            cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY));
     }
 
     /**
@@ -2086,10 +2091,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Runnable animateCursorTapRunnable = () -> {
         if (tapEventEnding) return;
         if (tapInsideKbd) {
-            mainHandler.postDelayed(showAltPopupRunnable, getQuickTapThreshold() - uiFeedbackDelay);
+            mainHandler.postDelayed(showAltPopupRunnable, getActionStateChangeDelay() - uiFeedbackDelay);
         }
         serviceUiManager.cursorSetColor("YELLOW");
-        serviceUiManager.cursorAnimateToColor("BLUE", getQuickTapThreshold(), uiFeedbackDelay);
+        serviceUiManager.cursorAnimateToColor("BLUE", getActionStateChangeDelay(), uiFeedbackDelay);
         if (!isInHoverZone) serviceUiManager.cursorHideAnimation("RED");
     };
 
@@ -2213,7 +2218,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         // Get current state
         long totalTapDuration = System.currentTimeMillis() - tapStartTime;
-        if (totalTapDuration < getQuickTapThreshold()) {
+        if (totalTapDuration < getActionStateChangeDelay()) {
             if (tapInsideKbd) {
                 Log.d(TAG, "endTapSequence() isTap, outputting quick tap");
                 duration = 100;
@@ -2246,7 +2251,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void resetTapSequence() {
         if (tapInsideKbd) {
             Log.d(TAG, "resetTapSequence() sending long press delay to IME");
-            sendLongPressDelayToIME(getQuickTapThreshold());
+            sendLongPressDelayToIME(getActionStateChangeDelay());
         }
         serviceUiManager.cursorShowAnimation();
         serviceUiManager.cursorSetColor("WHITE");
@@ -2417,9 +2422,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     public void onKeyboardLongpressAnimation() {
         Log.d(TAG, "onKeyboardLongpressAnimation");
-        if (!swipeEventEnding) {
-            serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold());
-        }
+//        if (!swipeEventEnding) {
+//            serviceUiManager.pathCursorAnimateToColor("BLUE", getActionStateChangeDelay());
+//        }
     }
 
     public void onKeyboardStateChanged() {
@@ -2437,7 +2442,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 //                keyboardManager.showKeyPopupIME(swipeStartPosition[0], swipeStartPosition[1], true);
             }
         }
-        serviceUiManager.pathCursorAnimateToColor("BLUE", getLongTapThreshold(), uiFeedbackDelay);
+        serviceUiManager.pathCursorAnimateToColor("BLUE", getActionStateChangeDelay(), uiFeedbackDelay);
 //        mainHandler.postDelayed(touchGreenToBlueRunnable, getQuickTapThreshold() - uiFeedbackDelay);
 
 //        if (!isInHoverZone) serviceUiManager.pathCursorHideAnimation("RED");
@@ -2473,7 +2478,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             if (Config.HIGHLIGHT_KEY_ON_TOUCH) {
 //                keyboardManager.highlightKeyAt(swipeStartPosition[0], swipeStartPosition[1]);
             }
-            keyboardManager.sendLongPressDelayToIME(getQuickTapThreshold());
+            keyboardManager.sendLongPressDelayToIME(getActionStateChangeDelay());
             startSwipe(); // start sending touch events immediately for keyboard swype
         }
 
@@ -2587,7 +2592,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     Log.d(TAG, "Coords do not belong to either sender app or IME. TODO: Implement for 3rd party apps.");
                 }
 
-                while (cursorController.isSwiping) {
+                while (swipeEventStarted && !swipeEventEnding) {
                     int[] cursorPosition = getPathCursorPosition();
                     long now = SystemClock.uptimeMillis();
                     try {
@@ -2727,10 +2732,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
                 } else {
                     Log.d(TAG, "endSwipeSequence() isQuickTap, outputting quick tap to system");
-                    // Use shorter duration for suggestion strip to avoid triggering long press handler
-                    // Keep normal duration for other non-keyboard areas
-                    duration = isOnSuggestionStrip(swipeStartPosition[0], swipeStartPosition[1]) 
-                        ? Config.QUICK_TAP_DURATION : 250;
                     dispatchTapGesture(swipeStartPosition, duration);
                 }
             }
@@ -2753,7 +2754,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private void resetSwipeSequence() {
         if (startedInsideKbd) {
             Log.d(TAG, "resetSwipeSequence() sending long press delay to IME");
-            sendLongPressDelayToIME(getQuickTapThreshold());
+            sendLongPressDelayToIME(getActionStateChangeDelay());
         }
         serviceUiManager.pathCursorShowAnimation();
         serviceUiManager.pathCursorSetColor("WHITE");
