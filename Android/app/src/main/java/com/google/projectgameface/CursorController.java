@@ -408,12 +408,12 @@ public class CursorController {
                 normalizedY = (coordsXY[1] - minRawCoordY) / (maxRawCoordY - minRawCoordY);
             }
         }
-
+        //CK What is this test?
         if (noseTipXY[0] == 0 && noseTipXY[1] == 0 && pitchYawXY[0] == 0 && pitchYawXY[1] == 0) {
             normalizedX = 0.5f;
             normalizedY = 0.5f;
         }
-
+        //CK The following is OK, but it presumes we will NEVER have an active region that is less than the entire screen width.  Is that guaranteed?
         int regionMinX = 0;
         int regionMaxX = screenWidth;
         int regionMinY = 0;
