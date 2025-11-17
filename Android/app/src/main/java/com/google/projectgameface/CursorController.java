@@ -470,22 +470,6 @@ public class CursorController {
         
         // Calculate rolling average and optionally use it
         double[] rollingAverage = calculateRollingAverage();
-        if (rollingAverage != null) {
-            // You can uncomment the following lines to use rolling average instead of current position
-            // cursorPositionX = rollingAverage[0];
-            // cursorPositionY = rollingAverage[1];
-            
-            // For now, we'll keep the current behavior but the rolling average is available
-            // Log.d(TAG, "Rolling average: (" + rollingAverage[0] + ", " + rollingAverage[1] + 
-            //       "), Current: (" + cursorPositionX + ", " + cursorPositionY + ")");
-        }
-
-//        if (isSwiping) {
-//            // Track path points for the swipe
-//            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
-//            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
-//            updateTrail((float) cursorPositionX, (float) cursorPositionY);
-//        }
     }
 
     /**
@@ -578,7 +562,6 @@ public class CursorController {
     }
 
     private void handleBoundingLogic() {
-
         if (activeCursorRegion == null || activeCursorRegionStr == null) {
 //            Log.d(TAG, "Active cursor region is not set. Cannot handle bounding logic.");
             edgeHoldStartTime = 0;
@@ -687,7 +670,7 @@ public class CursorController {
                 kbdBottom);
         }
 
-//        Log.d(TAG, "ActiveCursorRegion: (" + activeCursorRegionStr + ") " + activeCursorRegion);
+        Log.d(TAG, "ActiveCursorRegion: (" + activeCursorRegionStr + ") " + activeCursorRegion);
     }
 
     public void clearKeyboardBounds() {
