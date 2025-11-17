@@ -984,19 +984,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (serviceState != ServiceState.ENABLE) {
             return;
         }
-        if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
-            CharSequence newText = event.getText().toString();
-
-            if (newText != null && newText.length() > 0) {
-                processTypedText(newText);
-            }
-        } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
             if (cursorController.isEventActive()) {
                 checkKeyboardBoundsAgain = true;
                 Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
             } else {
                 checkKeyboardBoundsAgain = false;
                 keyboardManager.checkForKeyboardBounds();
+            }
+        } else if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            CharSequence newText = event.getText().toString();
+
+            if (newText != null && newText.length() > 0) {
+                processTypedText(newText);
             }
         }
     }
@@ -2361,6 +2361,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isLongTap = false;
     private Rect swipeKeyBounds = null;
 
+    private boolean openboardSwipeStarted = false;
+
     private boolean isPathCursorActive = false;
 
     /**
@@ -2416,6 +2418,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     public void onKeyboardSwipeStart() {
         Log.d(TAG, "onKeyboardSwipeStart");
         if (swipeEventStarted && !swipeEventEnding) {
+            openboardSwipeStarted = true;
+            mainHandler.removeCallbacks(animateCursorTouchRunnable);
             serviceUiManager.pathCursorSetColor("GREEN");
         }
     }
@@ -2441,6 +2445,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 // show long press popup after user feedback delay
 //                keyboardManager.showKeyPopupIME(swipeStartPosition[0], swipeStartPosition[1], true);
             }
+            if (openboardSwipeStarted) return;
         }
         serviceUiManager.pathCursorAnimateToColor("BLUE", getActionStateChangeDelay(), uiFeedbackDelay);
 //        mainHandler.postDelayed(touchGreenToBlueRunnable, getQuickTapThreshold() - uiFeedbackDelay);
@@ -2468,6 +2473,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorController.isCursorTouch = true;
         uiFeedbackDelay = getUiFeedbackDelay();
         canStartSwipe = false;
+        openboardSwipeStarted = false;
         serviceUiManager.pathCursorSetColor("YELLOW");
 
         startedInsideKbd = keyboardManager.canInjectEvent(swipeStartPosition[0], swipeStartPosition[1]);
@@ -2767,6 +2773,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         swipeEventEnding = false;
         cursorController.isCursorTouch = false;
         canStartSwipe = false;
+        openboardSwipeStarted = false;
     }
     /* ------------------------------ END OF SWIPE ACTION HANDLING ------------------------------ */
 
