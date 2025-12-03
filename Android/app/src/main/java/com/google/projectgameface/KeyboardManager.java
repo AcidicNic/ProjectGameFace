@@ -120,8 +120,8 @@ public class KeyboardManager {
             Log.d(TAG, "[checkForKeyboardBounds()] set kbd: " + keyboardBounds);
             cursorController.setKeyboardBounds(keyboardBounds);
             checkForKeyboardType();
-        } else if (!cursorController.getNavBarBounds().isEmpty()) {
-            // clear the kbd bounds
+        } else {
+            // clear the kbd bounds when keyboard is not open
             Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
             cursorController.clearKeyboardBounds();
         }

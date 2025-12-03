@@ -987,6 +987,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
             if (cursorController.isEventActive()) {
+                Log.d(TAG, String.valueOf(event.getWindowChanges()));
                 checkKeyboardBoundsAgain = true;
                 Log.d(TAG, "onAccessibilityEvent: Failed to get keyboard bounds because event actions is active. Will try again later.");
             } else {
