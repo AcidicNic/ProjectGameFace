@@ -8,7 +8,6 @@ import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.WindowManager;
-import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
@@ -89,6 +88,7 @@ public class KeyboardManager {
 //                }
 
                 if (tempBounds.top > screenSize.y / 2) {
+                    Log.d(TAG, "[checkForKeyboardBounds()] Found keyboard window: " + window);
                     keyboardFound = true;
                     window.getBoundsInScreen(keyboardBounds);
                 }
@@ -96,6 +96,7 @@ public class KeyboardManager {
 //                root.recycle();
             } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null &&
                 window.getTitle().equals("Navigation bar")) {
+                Log.d(TAG, "[checkForKeyboardBounds()] Found nav bar window: " + window);
                 navBarFound = true;
                 window.getBoundsInScreen(navBarBounds);
             }
@@ -111,7 +112,7 @@ public class KeyboardManager {
             cursorController.setNavBarBounds(navBarBounds);
         } else if (cursorController.getNavBarBounds().isEmpty()) {
             // clear the nav bar bounds if it was not found
-//            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
+            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
             cursorController.clearNavBarBounds();
         }
 
@@ -121,7 +122,7 @@ public class KeyboardManager {
             checkForKeyboardType();
         } else if (!cursorController.getNavBarBounds().isEmpty()) {
             // clear the kbd bounds
-//            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
+            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
             cursorController.clearKeyboardBounds();
         }
     }

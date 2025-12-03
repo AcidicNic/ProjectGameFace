@@ -80,7 +80,7 @@ public class CursorController {
     private int screenHeight;
     private Rect keyboardBounds;
     private Rect navBarBounds;
-    private Rect activeCursorRegion;
+    public Rect activeCursorRegion;
     private String activeCursorRegionStr;
     public CursorMovementConfig cursorMovementConfig;
     /** A Config define which face shape should trigger which event */
@@ -94,6 +94,7 @@ public class CursorController {
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
     private KeyboardManager mKeyboardManager;
+    private ServiceUiManager serviceUiManager;
 
     public boolean isSwiping = false;
     public boolean continuousTouchActive = false;
@@ -153,6 +154,10 @@ public class CursorController {
         for (BlendshapeEventTriggerConfig.EventType eventType: BlendshapeEventTriggerConfig.EventType.values()) {
             blendshapeEventTriggeredTracker.put(eventType, false);
         }
+    }
+
+    public void setServiceUiManager(ServiceUiManager serviceUiManager) {
+        this.serviceUiManager = serviceUiManager;
     }
 
     public void cleanup() {
@@ -595,24 +600,22 @@ public class CursorController {
                 // Pop out to the next region based on the edge touched
                 if (isTouchingTopEdge && previousRegion.equals("KBD")) {
                     // Pop out to the top region
-                    activeCursorRegionStr = "TOP";
-                    activeCursorRegion = new Rect(0, 0, screenWidth, activeCursorRegion.top - 1);
+                    setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
                 } else if (isTouchingBottomEdge && previousRegion.equals("KBD")) {
                     // Pop out to the bottom region
-                    activeCursorRegionStr = "NAV";
-                    activeCursorRegion = new Rect(
+                    setActiveCursorRegion("NAV", new Rect(
                         0,
-                        activeCursorRegion.bottom + 1,
+                        activeCursorRegion.bottom + 1, // navBarBounds == null ? screenHeight : navBarBounds.top - 1,
                         screenWidth,
-                        screenHeight);
+                        screenHeight));
                 } else if ((isTouchingTopEdge && previousRegion.equals("NAV")) // touching the top edge of NAV
                         || (isTouchingBottomEdge && previousRegion.equals("TOP"))) { // touching the bottom edge of TOP
-                    activeCursorRegionStr = "KBD";
-                    activeCursorRegion = new Rect(
+                    // Pop back into the keyboard region
+                    setActiveCursorRegion("KBD", new Rect(
                         keyboardBounds.left,
                         keyboardBounds.top,
                         keyboardBounds.right,
-                        (navBarBounds == null ? screenHeight : navBarBounds.top - 1));
+                        (navBarBounds == null ? screenHeight : navBarBounds.top - 1)));
                 }
                 Log.d(
                     TAG,
@@ -623,6 +626,19 @@ public class CursorController {
             // Reset edge hold time if cursor is not at the edge
             edgeHoldStartTime = 0;
         }
+    }
+
+    private void setActiveCursorRegion(String name, Rect region) {
+        if (region == null || region.isEmpty()) {
+            activeCursorRegionStr = null;
+            activeCursorRegion = null;
+            serviceUiManager.updateActiveCursorRegion(null);
+            return;
+        }
+
+        activeCursorRegionStr = name;
+        activeCursorRegion = new Rect(region);
+        serviceUiManager.updateActiveCursorRegion(region);
     }
 
     public boolean isEventActive() {
@@ -656,28 +672,19 @@ public class CursorController {
             kbdBottom = navBarBounds.top - 1;
         }
         if (cursorPositionY < keyboardBounds.top) {
-            activeCursorRegionStr = "TOP";
-            activeCursorRegion = new Rect(0, 0, screenWidth, keyboardBounds.top - 1);
+            setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
         } else if (cursorPositionY > kbdBottom) {
-            activeCursorRegionStr = "NAV";
-            activeCursorRegion = new Rect(0, kbdBottom + 1, screenWidth, screenHeight);
+            setActiveCursorRegion("NAV", new Rect(0, kbdBottom + 1, screenWidth, screenHeight));
         } else {
-            activeCursorRegionStr = "KBD";
-            activeCursorRegion = new Rect(
-                keyboardBounds.left,
-                keyboardBounds.top,
-                keyboardBounds.right,
-                kbdBottom);
+            setActiveCursorRegion("KBD", new Rect(keyboardBounds.left, keyboardBounds.top, keyboardBounds.right, kbdBottom));
         }
-
         Log.d(TAG, "ActiveCursorRegion: (" + activeCursorRegionStr + ") " + activeCursorRegion);
     }
 
     public void clearKeyboardBounds() {
         keyboardBounds = null;
-        activeCursorRegionStr = null;
-        activeCursorRegion = null;
         edgeHoldStartTime = 0;
+        setActiveCursorRegion(null, null);
     }
 
     public int[] getCursorPositionXY() {

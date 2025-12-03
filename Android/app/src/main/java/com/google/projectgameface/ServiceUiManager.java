@@ -694,6 +694,10 @@ public class ServiceUiManager {
         );
     }
 
+    public void updateActiveCursorRegion(Rect region) {
+        fullScreenCanvas.setActiveCursorRegion(region);
+    }
+
     public void updatePreviewBitmap(Bitmap previewBitmap, Rect region) {
         fullScreenCanvas.setPreviewBitmap(
             previewBitmap,

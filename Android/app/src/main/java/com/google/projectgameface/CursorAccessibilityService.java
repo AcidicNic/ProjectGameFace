@@ -446,6 +446,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         cursorController = new CursorController(this, screenSize.x, screenSize.y);
         serviceUiManager = new ServiceUiManager(this, windowManager, cursorController);
+        cursorController.setServiceUiManager(serviceUiManager);
         keyboardManager = new KeyboardManager(this, cursorController, serviceUiManager);
         cursorController.setKeyboardManager(keyboardManager);
         gestureStreamController = new GestureStreamController(this);

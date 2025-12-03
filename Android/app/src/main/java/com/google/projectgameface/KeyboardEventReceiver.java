@@ -45,6 +45,7 @@ public class KeyboardEventReceiver extends BroadcastReceiver {
                 break;
             case ACTION_KBD_STATE_CHANGED:
                 Log.d(TAG, "Received ACTION_KBD_STATE_CHANGED");
+                // TODO: pass it the intent extras and send over the bounds of the keyboard from openboard.
                 service.onKeyboardStateChanged();
                 break;
             default:

@@ -16,10 +16,8 @@
 
 package com.google.projectgameface;
 
-
 import android.accessibilityservice.AccessibilityService;
 import android.util.Log;
-import android.view.KeyEvent;
 
 import com.google.projectgameface.utils.CursorUtils;
 

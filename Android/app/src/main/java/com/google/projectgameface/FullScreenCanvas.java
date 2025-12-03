@@ -38,6 +38,13 @@ public class FullScreenCanvas extends View {
     private final Paint touchCirclePaint;
     private final Paint dragLinePaint;
     private final Paint holdCirclePaint;
+    private Paint activeRegionPaint = new Paint() {{
+        setStyle(Paint.Style.STROKE);
+        setColor(Color.GREEN);
+        setStrokeWidth(2);
+    }};
+    private Rect activeRegionBorder = null;
+
     private final Paint trailPaint;
     private final Paint opacityPaint;
 
@@ -50,12 +57,13 @@ public class FullScreenCanvas extends View {
     private boolean isShowingTouch = false;
     private CursorController cursorController;
 
+    private boolean showRect = false;
     private Rect rectCoords;
     private Bitmap previewBitmap = null;
     private Rect previewRegion = null;
 
-    public FullScreenCanvas(Context context, AttributeSet attributeSet) {
 
+    public FullScreenCanvas(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
 
         touchCirclePaint = new Paint();
@@ -80,12 +88,10 @@ public class FullScreenCanvas extends View {
     }
 
     public void initialize(CursorController cursorController) {
-
         this.cursorController = cursorController;
     }
 
     @Override protected void onDraw(Canvas canvas) {
-
         super.onDraw(canvas);
 
         if (previewBitmap != null && previewRegion != null) {
@@ -107,13 +113,12 @@ public class FullScreenCanvas extends View {
 //            drawCursorTrail(canvas);
 //        }
 
-        if (rectCoords != null) {
-//            canvas.drawRect(rectCoords.left, rectCoords.top, rectCoords.right, rectCoords.bottom, holdCirclePaint);
+        if (cursorController.activeCursorRegion != null) {
+            canvas.drawRect(cursorController.activeCursorRegion, activeRegionPaint);
         }
     }
 
     public void drawTouchCircle(float x, float y) {
-
         drawX = x;
         drawY = y;
         invalidate();
@@ -121,21 +126,18 @@ public class FullScreenCanvas extends View {
     }
 
     public void setDragLineStart(float x, float y) {
-
         dragStartX = x;
         dragStartY = y;
         isShowingDrag = true;
     }
 
     public void updateDragLine(float x, float y) {
-
         dragEndX = x;
         dragEndY = y;
         invalidate();
     }
 
     public void clearDragLine() {
-
         isShowingDrag = false;
         invalidate();
     }
@@ -158,17 +160,14 @@ public class FullScreenCanvas extends View {
      * @param holdRadius
      */
     public void setHoldRadius(float holdRadius) {
-
         this.holdRadius = (int) holdRadius;
     }
 
     public void setRect(Rect rect) {
-
         rectCoords = rect;
     }
 
     public void setPreviewBitmap(Bitmap bitmap, Rect region) {
-
         Log.d("FullScreenCanvas", "Setting preview bitmap");
         previewBitmap = bitmap;
         previewRegion = region;
@@ -176,10 +175,15 @@ public class FullScreenCanvas extends View {
     }
 
     public void clearPreviewBitmap() {
-
         Log.d("FullScreenCanvas", "Clearing preview bitmap");
         previewBitmap = null;
         previewRegion = null;
+        invalidate();
+    }
+
+    public void setActiveCursorRegion(Rect region) {
+        Log.d("FullScreenCanvas", "updateActiveCursorRegion()");
+        activeRegionBorder = region;
         invalidate();
     }
 }
