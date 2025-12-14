@@ -42,6 +42,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseBooleanArray;
@@ -540,42 +541,77 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         checkKeyboardBoundsAgain = false;
                     }
 
-                    cursorController.updateInternalCursorPosition(
-                        facelandmarkerHelper.getHeadCoordXY(),
-                        facelandmarkerHelper.getNoseCoordXY(),
-                        facelandmarkerHelper.getPitchYaw(),
-                        new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
-                        new int[]{screenSize.x, screenSize.y});
+                    // Check if we should enter joystick mode for JustType native app IME
+                    boolean shouldEnterJoystickMode = isJustTypeNativeAppIME() &&
+                        "KBD".equals(cursorController.getActiveCursorRegionStr()) &&
+                        keyboardManager.isKeyboardOpen();
 
-                    dispatchEvent(null, null);
+                    if (shouldEnterJoystickMode) {
+                        // Enter joystick mode
+                        if (!isJustTypeJoystickMode) {
+                            Log.d(TAG, "Entering JustType joystick mode - hiding cursor");
+                            isJustTypeJoystickMode = true;
+                            // Hide both regular and path cursors
+                            serviceUiManager.hideCursor();
+                            if (isPathCursorActive) {
+                                serviceUiManager.hidePathCursor();
+                                cursorController.setIsPathCursorVisible(false);
+                            }
+                        }
 
-                    // Actually update the UI cursor image.
-                    serviceUiManager.updateCursorImagePositionOnScreen(cursorController.getCursorPositionXY());
-                    
-                    // Update gesture stream if it's active
+                        // Get pitch/yaw values, normalize, and send broadcast
+                        float[] pitchYaw = facelandmarkerHelper.getPitchYaw();
+                        float[] normalizedValues = normalizePitchYaw(pitchYaw);
+                        sendJoystickInputToJustType(normalizedValues);
+
+                        // Skip normal cursor update/display logic in joystick mode
+                    } else {
+                        // Exit joystick mode if we were in it
+                        if (isJustTypeJoystickMode) {
+                            Log.d(TAG, "Exiting JustType joystick mode - showing cursor");
+                            isJustTypeJoystickMode = false;
+                            // Show cursor again
+                            serviceUiManager.showCursor();
+                        }
+
+                        // Normal cursor behavior
+                        cursorController.updateInternalCursorPosition(
+                            facelandmarkerHelper.getHeadCoordXY(),
+                            facelandmarkerHelper.getNoseCoordXY(),
+                            facelandmarkerHelper.getPitchYaw(),
+                            new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
+                            new int[]{screenSize.x, screenSize.y});
+
+                        dispatchEvent(null, null);
+
+                        // Actually update the UI cursor image.
+                        serviceUiManager.updateCursorImagePositionOnScreen(cursorController.getCursorPositionXY());
+                        
+                        // Update gesture stream if it's active
 //                    if (gestureStreamController != null && gestureStreamController.isActive()) {
 //                        updateGestureStream();
 //                    }
 
-                    if (isPitchYawEnabled() && isNoseTipEnabled()) {
-                        serviceUiManager.drawHeadCenter(
-                            facelandmarkerHelper.getNoseCoordXY(),
-                            facelandmarkerHelper.mpInputWidth,
-                            facelandmarkerHelper.mpInputHeight);
-                        serviceUiManager.drawSecondDot(
-                            facelandmarkerHelper.getHeadCoordXY(),
-                            facelandmarkerHelper.mpInputWidth,
-                            facelandmarkerHelper.mpInputHeight);
-                    } else if (isPitchYawEnabled()) {
-                        serviceUiManager.drawHeadCenter(
-                            facelandmarkerHelper.getHeadCoordXY(),
-                            facelandmarkerHelper.mpInputWidth,
-                            facelandmarkerHelper.mpInputHeight);
-                    } else {
-                        serviceUiManager.drawHeadCenter(
-                            facelandmarkerHelper.getNoseCoordXY(),
-                            facelandmarkerHelper.mpInputWidth,
-                            facelandmarkerHelper.mpInputHeight);
+                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
+                            serviceUiManager.drawHeadCenter(
+                                facelandmarkerHelper.getNoseCoordXY(),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight);
+                            serviceUiManager.drawSecondDot(
+                                facelandmarkerHelper.getHeadCoordXY(),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight);
+                        } else if (isPitchYawEnabled()) {
+                            serviceUiManager.drawHeadCenter(
+                                facelandmarkerHelper.getHeadCoordXY(),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight);
+                        } else {
+                            serviceUiManager.drawHeadCenter(
+                                facelandmarkerHelper.getNoseCoordXY(),
+                                facelandmarkerHelper.mpInputWidth,
+                                facelandmarkerHelper.mpInputHeight);
+                        }
                     }
 
 //                    if (isDebugSwipeEnabled()) {
@@ -1913,6 +1949,75 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /**
+     * Check if the current IME package name is "com.justtype.nativeapp".
+     * @return true if the current IME package name matches, false otherwise
+     */
+    private boolean isJustTypeNativeAppIME() {
+        try {
+            String currentKeyboardStr = Settings.Secure.getString(
+                getContentResolver(),
+                Settings.Secure.DEFAULT_INPUT_METHOD);
+            if (currentKeyboardStr == null) {
+                return false;
+            }
+            // IME ID format is "package/.ServiceName", extract package name
+            int slashIndex = currentKeyboardStr.indexOf('/');
+            if (slashIndex > 0) {
+                String packageName = currentKeyboardStr.substring(0, slashIndex);
+                return "com.justtype.nativeapp".equals(packageName);
+            }
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking IME package name: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Normalize pitch/yaw degrees to -1.0 to 1.0 range.
+     * Clamps values to ±45° bounds then divides by 45.0f.
+     * @param pitchYaw Array containing [pitch, yaw] in degrees
+     * @return Array containing normalized [x, y] where x maps to yaw and y maps to pitch
+     */
+    private float[] normalizePitchYaw(float[] pitchYaw) {
+        if (pitchYaw == null || pitchYaw.length < 2) {
+            return new float[]{0.0f, 0.0f};
+        }
+        float pitch = pitchYaw[0];
+        float yaw = pitchYaw[1];
+        
+        // Clamp to ±45° bounds
+        float clampedPitch = Math.max(-45.0f, Math.min(45.0f, pitch));
+        float clampedYaw = Math.max(-45.0f, Math.min(45.0f, yaw));
+        
+        // Normalize: divide by 45.0f to get -1.0 to 1.0 range
+        // x maps to yaw (horizontal movement)
+        // y maps to pitch (vertical movement)
+        float normalizedX = clampedYaw / 45.0f;
+        float normalizedY = clampedPitch / 45.0f;
+        
+        return new float[]{normalizedX, normalizedY};
+    }
+
+    /**
+     * Send broadcast intent with normalized pitch/yaw values to JustType native app IME.
+     * @param normalizedValues Array containing [x, y] normalized values (-1.0 to 1.0)
+     */
+    private void sendJoystickInputToJustType(float[] normalizedValues) {
+        if (normalizedValues == null || normalizedValues.length < 2) {
+            return;
+        }
+        try {
+            Intent intent = new Intent("com.justtype.nativeapp.EXTERNAL_JOYSTICK_INPUT");
+            intent.putExtra("x", normalizedValues[0]); // yaw maps to x
+            intent.putExtra("y", normalizedValues[1]); // pitch maps to y
+            sendBroadcast(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending joystick input to JustType: " + e.getMessage());
+        }
+    }
+
+    /**
      * Check if the given coordinates are on the suggestion strip.
      * The suggestion strip is at the top of the keyboard window, typically 40-44dp high.
      * @param x X coordinate
@@ -2366,6 +2471,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean openboardSwipeStarted = false;
 
     private boolean isPathCursorActive = false;
+
+    private boolean isJustTypeJoystickMode = false;
 
     /**
      * Handles swipe actions based on version 3.0 specs

@@ -43,7 +43,13 @@ public class FullScreenCanvas extends View {
         setColor(Color.GREEN);
         setStrokeWidth(2);
     }};
+    private Paint activeRegionEdgeHoldPaint = new Paint() {{
+        setStyle(Paint.Style.STROKE);
+        setColor(Color.parseColor("#FFA500")); // Orange color
+        setStrokeWidth(3);
+    }};
     private Rect activeRegionBorder = null;
+    private boolean isEdgeHoldActive = false;
 
     private final Paint trailPaint;
     private final Paint opacityPaint;
@@ -113,8 +119,10 @@ public class FullScreenCanvas extends View {
 //            drawCursorTrail(canvas);
 //        }
 
-        if (cursorController.activeCursorRegion != null) {
-            canvas.drawRect(cursorController.activeCursorRegion, activeRegionPaint);
+        if (activeRegionBorder != null) {
+            // Use edge hold paint (orange) when timer is active, otherwise use normal paint (green)
+            Paint paintToUse = isEdgeHoldActive ? activeRegionEdgeHoldPaint : activeRegionPaint;
+            canvas.drawRect(activeRegionBorder, paintToUse);
         }
     }
 
@@ -185,5 +193,12 @@ public class FullScreenCanvas extends View {
         Log.d("FullScreenCanvas", "updateActiveCursorRegion()");
         activeRegionBorder = region;
         invalidate();
+    }
+
+    public void setEdgeHoldActive(boolean isActive) {
+        if (isEdgeHoldActive != isActive) {
+            isEdgeHoldActive = isActive;
+            invalidate();
+        }
     }
 }

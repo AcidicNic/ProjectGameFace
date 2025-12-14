@@ -698,6 +698,10 @@ public class ServiceUiManager {
         fullScreenCanvas.setActiveCursorRegion(region);
     }
 
+    public void updateEdgeHoldActive(boolean isActive) {
+        fullScreenCanvas.setEdgeHoldActive(isActive);
+    }
+
     public void updatePreviewBitmap(Bitmap previewBitmap, Rect region) {
         fullScreenCanvas.setPreviewBitmap(
             previewBitmap,

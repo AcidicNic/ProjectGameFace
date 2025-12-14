@@ -590,11 +590,15 @@ public class CursorController {
             // Cursor is at the edge of the active region
             if (edgeHoldStartTime == 0) {
                 edgeHoldStartTime = currentTime;
+                // Notify that edge hold has started
+                serviceUiManager.updateEdgeHoldActive(true);
             }
 
             if (currentTime - edgeHoldStartTime > getHoldDuration()) {
                 Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
                 edgeHoldStartTime = 0;
+                // Notify that edge hold has ended
+                serviceUiManager.updateEdgeHoldActive(false);
                 String previousRegion = activeCursorRegionStr;
 
                 // Pop out to the next region based on the edge touched
@@ -624,6 +628,10 @@ public class CursorController {
             }
         } else {
             // Reset edge hold time if cursor is not at the edge
+            if (edgeHoldStartTime > 0) {
+                // Notify that edge hold has ended
+                serviceUiManager.updateEdgeHoldActive(false);
+            }
             edgeHoldStartTime = 0;
         }
     }
@@ -647,6 +655,14 @@ public class CursorController {
 
     public String getActiveCursorRegionStr() {
         return activeCursorRegionStr;
+    }
+
+    /**
+     * Check if the edge hold timer is currently active (cursor is at edge and timer has started).
+     * @return true if edge hold timer is active, false otherwise
+     */
+    public boolean isEdgeHoldActive() {
+        return edgeHoldStartTime > 0;
     }
 
     public Rect getNavBarBounds() {
