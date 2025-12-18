@@ -1094,6 +1094,20 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (serviceState != ServiceState.ENABLE && serviceState != ServiceState.PAUSE) {
             return false;
         }
+        
+        // If JustType IME is open and cursor is inside keyboard region, let the key event pass through
+        if (isJustTypeNativeAppIME() && keyboardManager.isKeyboardOpen()) {
+            Rect keyboardBounds = keyboardManager.getKeyboardBounds();
+            if (!keyboardBounds.isEmpty()) {
+                int[] cursorPosition = getCursorPosition();
+                if (cursorPosition != null && keyboardBounds.contains(cursorPosition[0], cursorPosition[1])) {
+                    // JustType IME is open and cursor is inside keyboard region - let event pass through
+                    Log.d(TAG, "onKeyEvent: JustType IME open, cursor in keyboard region - allowing key event to pass through");
+                    return false;
+                }
+            }
+        }
+        
         if (Config.VALID_KEY_EVENT_KEYS.contains(event.getKeyCode())) {
             return handleKeyEvent(event);
         }
