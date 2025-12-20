@@ -16,6 +16,8 @@
 
 package com.google.projectgameface;
 
+import static android.accessibilityservice.GestureDescription.getMaxGestureDuration;
+import static android.accessibilityservice.GestureDescription.getMaxStrokeCount;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
@@ -38,11 +40,11 @@ import android.view.WindowManager.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.EditText;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -87,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.w("DEBUG", "MAX STROKE COUNT: " + getMaxStrokeCount());
+        Log.w("DEBUG", "MAX GESTURE DURATION: " + getMaxGestureDuration());
         // Handle the splash screen transition.
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);

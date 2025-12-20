@@ -52,8 +52,6 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
 
 import org.dslul.openboard.IMEEventReceiver;
-import com.google.projectgameface.KeyInfo;
-import com.google.projectgameface.KeyBounds;
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
 import org.dslul.openboard.inputmethod.annotations.UsedForTesting;
 import org.dslul.openboard.inputmethod.compat.EditorInfoCompatUtils;
@@ -823,11 +821,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             eventTime = startUpTime;
         }
 
-//        // Try to send via HeadBoard service first (preferred method)
-//        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
-//            mHeadBoardServiceConnection.sendMotionEvent(x, y, action, startUpTime, eventTime);
-//            return;
-//        }
         startUpTime = SystemClock.uptimeMillis();
 
         View rootView = getWindow().getWindow().getDecorView();
@@ -869,11 +862,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
      * @param isLongPress True if the key is long pressed.
      **/
     public void dispatchKeyEvent(int keyCode, boolean isDown, boolean isLongPress) {
-        // Try to send via HeadBoard service first (preferred method)
-        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
-            mHeadBoardServiceConnection.sendKeyEvent(keyCode, isDown, isLongPress);
-            return;
-        }
 
         // For key presses, we need to call both onPressKey and onCodeInput
         if (isDown) {
@@ -901,11 +889,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
 
     public void setGestureTrailColor(int color) {
-        // Try to send via HeadBoard service first (preferred method)
-        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
-            mHeadBoardServiceConnection.setGestureTrailColor(color);
-            return;
-        }
 
         // Get the MainKeyboardView which contains the gesture trail preview
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
@@ -924,11 +907,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     private Map<String, MoreKeysPanel[]> keyCoordsToAltPopups = new HashMap<>(2);
 
     public void showOrHideKeyPopup(boolean showKeyPreview, int[] coords, boolean withAnimation, boolean isLongPressPopup) {
-        // Try to send via HeadBoard service first (preferred method)
-        if (mHeadBoardServiceConnection != null && mHeadBoardServiceConnection.isConnected()) {
-            mHeadBoardServiceConnection.showOrHideKeyPopup(coords[0], coords[1], showKeyPreview, withAnimation, isLongPressPopup);
-            return;
-        }
 
         MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
         if (mainKeyboardView == null) {

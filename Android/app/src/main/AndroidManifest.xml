@@ -13,13 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<manifest xmlns:tools="http://schemas.android.com/tools"
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        package="com.google.projectgameface">
-
-    <uses-sdk
-        android:minSdkVersion="28"
-        android:targetSdkVersion="34" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -27,8 +21,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
-
-<!--    <uses-permission android:name="android.permission.INJECT_EVENTS" />-->
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.SYSTEM_MANAGE_APP_PERMISSIONS" />
@@ -122,10 +114,6 @@
             android:name=".TutorialPhoneStandActivity"
             android:exported="true" />
 
-<!--        <activity-->
-<!--            android:name=".ScreenCapturePermissionActivity"-->
-<!--            android:exported="true" />-->
-
         <service
             android:name=".CursorAccessibilityService"
             android:enabled="true"
@@ -143,23 +131,13 @@
         <receiver
             android:name=".KeyboardEventReceiver"
             android:exported="true"
-            android:permission="org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT">
+            android:permission="com.google.projectgameface.permission.RECEIVE_IME_EVENT">
             <intent-filter>
                 <action android:name="com.google.projectgameface.ACTION_IME_SWIPE_START" />
                 <action android:name="com.google.projectgameface.ACTION_IME_LONGPRESS_ANIMATION" />
                 <action android:name="com.google.projectgameface.ACTION_IME_STATE_CHANGED" />
             </intent-filter>
         </receiver>
-
-        <service
-            android:name=".HeadBoardService"
-            android:enabled="true"
-            android:exported="true"
-            android:process=":headboard_service">
-            <intent-filter>
-                <action android:name="com.google.projectgameface.HeadBoardService" />
-            </intent-filter>
-        </service>
 
     </application>
 
