@@ -11,9 +11,9 @@ import android.util.Log;
 public class KeyboardEventReceiver extends BroadcastReceiver {
     public static final String KEYBOARD_PACKAGE_NAME = "org.dslul.openboard.inputmethod.latin";
 
-    public static final String ACTION_SWIPE_START = "com.headswype.ACTION_SWIPE_START";
-    public static final String ACTION_LONGPRESS_ANIMATION = "com.headswype.ACTION_LONGPRESS_ANIMATION";
-    public static final String ACTION_KBD_STATE_CHANGED = "com.headswype.ACTION_KBD_STATE_CHANGED";
+    public static final String ACTION_SWIPE_START = "com.google.projectgameface.ACTION_IME_SWIPE_START";
+    public static final String ACTION_LONGPRESS_ANIMATION = "com.google.projectgameface.ACTION_IME_LONGPRESS_ANIMATION";
+    public static final String ACTION_KBD_STATE_CHANGED = "com.google.projectgameface.ACTION_IME_STATE_CHANGED";
 
     private static final String TAG = "KeyboardEventReceiver";
 

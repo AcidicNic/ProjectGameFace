@@ -527,9 +527,9 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         sTimerProxy.cancelLongPressTimersOf(this);
 
         // batch input started, so send swipe start broadcast to headboard
-        Intent intent = new Intent("com.headswype.ACTION_SWIPE_START");
+        Intent intent = new Intent("com.google.projectgameface.ACTION_IME_SWIPE_START");
         intent.setPackage("com.google.projectgameface");
-        sListener.sendBroadcast(intent, "com.headboard.permission.SEND_EVENT");
+        sListener.sendBroadcast(intent, "com.google.projectgameface.permission.RECEIVE_IME_EVENT");
         Log.d(TAG, "Sent broadcast to headboard with intent: " + intent);
     }
 

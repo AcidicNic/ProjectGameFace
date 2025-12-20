@@ -15,9 +15,7 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="org.dslul.openboard.inputmethod.latin"
-        android:sharedUserId="com.headswype.shared"
-        android:sharedUserMaxSdkVersion="36">
+        package="org.dslul.openboard.inputmethod.latin">
 
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -41,12 +39,14 @@
     <permission android:name="org.dslul.openboard.inputmethod.latin.HIDE_SOFT_INPUT"
                 android:protectionLevel="signature" />
 
-    <permission android:name="com.headboard.permission.SEND_EVENT"
-        android:protectionLevel="normal" />
-    <uses-permission android:name="com.headboard.permission.SEND_EVENT" />
-    <uses-permission android:name="com.headboard.permission.UPDATE_CURSOR" />
+    <!-- Permissions for communication with HeadBoard -->
+    <!-- Define permission that HeadBoard can use to send events to OpenBoard -->
+    <permission android:name="org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT" />
     
-    <uses-permission android:name="android.permission.BIND_SERVICE" />
+    <!-- Permission to send events to HeadBoard (defined by HeadBoard) -->
+    <uses-permission android:name="com.google.projectgameface.permission.RECEIVE_IME_EVENT" />
 
     <application android:label="@string/english_ime_name"
             android:icon="@mipmap/ic_launcher"
@@ -154,9 +154,15 @@
         <receiver
             android:name="org.dslul.openboard.IMEEventReceiver"
             android:exported="true"
-            android:permission="com.headboard.permission.SEND_EVENT">
+            android:permission="com.google.projectgameface.permission.RECEIVE_IME_EVENT">
             <intent-filter>
-                <action android:name="com.headswype.ACTION_SEND_EVENT" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_MOTION_EVENT" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_KEY_EVENT" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_SET_LONG_PRESS_DELAY" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_CHANGE_TRAIL_COLOR" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_GET_KEY_BOUNDS" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_SHOW_OR_HIDE_KEY_POPUP" />
+                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_HIGHLIGHT_KEY" />
             </intent-filter>
         </receiver>
 

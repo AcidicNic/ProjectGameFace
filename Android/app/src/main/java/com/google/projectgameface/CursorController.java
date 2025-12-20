@@ -638,10 +638,19 @@ public class CursorController {
 
     private void setActiveCursorRegion(String name, Rect region) {
         if (region == null || region.isEmpty()) {
+            // If cursor was in keyboard region and now leaving, send clear highlights broadcast
+            if ("KBD".equals(activeCursorRegionStr) && mKeyboardManager != null) {
+                mKeyboardManager.sendClearHighlightsToJustType();
+            }
             activeCursorRegionStr = null;
             activeCursorRegion = null;
             serviceUiManager.updateActiveCursorRegion(null);
             return;
+        }
+
+        // If cursor was in keyboard region ("KBD") and is now moving to a different region, send clear highlights broadcast
+        if ("KBD".equals(activeCursorRegionStr) && !"KBD".equals(name) && mKeyboardManager != null) {
+            mKeyboardManager.sendClearHighlightsToJustType();
         }
 
         activeCursorRegionStr = name;

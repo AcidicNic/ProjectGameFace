@@ -124,6 +124,8 @@ public class KeyboardManager {
             // clear the kbd bounds when keyboard is not open
             Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
             cursorController.clearKeyboardBounds();
+            // Send broadcast to JustType to clear highlights when keyboard closes
+            sendClearHighlightsToJustType();
         }
     }
 
@@ -405,5 +407,36 @@ public class KeyboardManager {
         intent.putExtra("x", (float) x);
         intent.putExtra("y", (float) y);
         sendBroadcastToIME(intent);
+    }
+
+    /**
+     * Send clear highlights broadcast to JustType IME.
+     * This is called when the keyboard closes or when the cursor leaves the keyboard region.
+     */
+    public void sendClearHighlightsToJustType() {
+        try {
+            String currentKeyboardStr = Settings.Secure.getString(
+                context.getContentResolver(),
+                Settings.Secure.DEFAULT_INPUT_METHOD);
+            if (currentKeyboardStr != null && currentKeyboardStr.contains("justtype")) {
+                Log.d(TAG, "[sendClearHighlightsToJustType] Sending clear highlights broadcast to JustType");
+                Intent intent = new Intent("com.justtype.nativeapp.CLEAR_HIGHLIGHTS");
+                sendBroadcastToJustType(intent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending clear highlights to JustType: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Send broadcast to JustType IME using optimized ordered broadcast with permission.
+     * This matches the pattern used for OpenBoard communication.
+     */
+    private void sendBroadcastToJustType(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
+            context.sendOrderedBroadcast(intent, "com.headboard.permission.SEND_EVENT");
+        } else {
+            context.sendBroadcast(intent, "com.headboard.permission.SEND_EVENT");
+        }
     }
 }

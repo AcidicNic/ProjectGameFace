@@ -45,7 +45,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
 class FaceLandmarkerHelper extends HandlerThread {
     public static final String TAG = "FaceLandmarkerHelper";
 
-    // number of allowed multiple detection works at the sametime.
+    // number of allowed multiple detection works at the same time.
     private static final int N_WORKS_LIMIT = 1;
 
     // Indicates if have new face landmarks detected.

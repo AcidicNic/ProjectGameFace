@@ -16,14 +16,6 @@
 
 package com.google.projectgameface;
 
-import android.view.MenuItem;
-import android.view.ViewTreeObserver;
-import android.view.WindowManager.LayoutParams;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.core.math.MathUtils;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -31,11 +23,20 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
+import android.view.ViewTreeObserver;
+import android.view.WindowManager.LayoutParams;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.math.MathUtils;
+
 import com.google.projectgameface.CursorAccessibilityService.ServiceState;
 
 import java.util.Objects;
@@ -246,7 +247,7 @@ public class GestureSizeActivity extends AppCompatActivity {
     private void scorePreview(boolean status, String requestedScoreName) {
         Intent intent = new Intent("ENABLE_SCORE_PREVIEW");
         intent.putExtra("enable", status);
-        intent.putExtra("blendshapesName", requestedScoreName);
+        intent.putExtra("blendshapeName", requestedScoreName);
         sendBroadcast(intent);
     }
 

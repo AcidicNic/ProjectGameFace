@@ -124,6 +124,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
     private BroadcastReceiver resetDebuggingStatsReceiver;
+    private BroadcastHelper broadcastHelper;
+    private JustTypeResponseReceiver justTypeResponseReceiver;
     private long startUptime;
     private long startTime;
     private long endUptime;
@@ -369,7 +371,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             @Override
             public void onReceive(Context context, Intent intent) {
                 shouldSendScore = intent.getBooleanExtra("enable", false);
-                requestedScoreBlendshapeName = intent.getStringExtra("blendshapesName");
+                requestedScoreBlendshapeName = intent.getStringExtra("blendshapeName");
             }
         };
 
@@ -396,6 +398,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         IntentFilter kbdFilter = new IntentFilter();
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_SWIPE_START);
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_LONGPRESS_ANIMATION);
+        
+        // Register receiver for JustType response broadcasts
+        justTypeResponseReceiver = new JustTypeResponseReceiver(broadcastHelper);
+        IntentFilter justTypeResponseFilter = new IntentFilter(JustTypeResponseReceiver.ACTION_JUSTTYPE_RESPONSE);
 
         ContextCompat.registerReceiver(this, changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"),
             ContextCompat.RECEIVER_EXPORTED);
@@ -416,6 +422,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         ContextCompat.registerReceiver(this, resetDebuggingStatsReceiver, new IntentFilter("RESET_DEBUGGING_STATS"),
             ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter,
+            ContextCompat.RECEIVER_EXPORTED);
+        ContextCompat.registerReceiver(this, justTypeResponseReceiver, justTypeResponseFilter,
             ContextCompat.RECEIVER_EXPORTED);
     }
 
@@ -451,6 +459,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         keyboardManager = new KeyboardManager(this, cursorController, serviceUiManager);
         cursorController.setKeyboardManager(keyboardManager);
         gestureStreamController = new GestureStreamController(this);
+        
+        // Initialize BroadcastHelper for request-response communication with JustType
+        broadcastHelper = new BroadcastHelper(this);
 
         lifecycleRegistry = new LifecycleRegistry(this::getLifecycle);
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
@@ -911,6 +922,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         try { unregisterReceiver(loadSharedConfigBasicReceiver); } catch (Exception e) {}
         try { unregisterReceiver(loadSharedConfigGestureReceiver); } catch (Exception e) {}
         try { unregisterReceiver(enableScorePreviewReceiver); } catch (Exception e) {}
+        try { unregisterReceiver(justTypeResponseReceiver); } catch (Exception e) {}
+        
+        // Cancel all pending broadcast requests
+        if (broadcastHelper != null) {
+            broadcastHelper.cancelAllRequests();
+        }
         try { unregisterReceiver(serviceUiManager.flyInWindowReceiver); } catch (Exception e) {}
         try { unregisterReceiver(serviceUiManager.flyOutWindowReceiver); } catch (Exception e) {}
         try { unregisterReceiver(profileChangeReceiver); } catch (Exception e) {}
@@ -2025,9 +2042,21 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Intent intent = new Intent("com.justtype.nativeapp.EXTERNAL_JOYSTICK_INPUT");
             intent.putExtra("x", normalizedValues[0]); // yaw maps to x
             intent.putExtra("y", normalizedValues[1]); // pitch maps to y
-            sendBroadcast(intent);
+            sendBroadcastToJustType(intent);
         } catch (Exception e) {
             Log.e(TAG, "Error sending joystick input to JustType: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Send broadcast to JustType IME using optimized ordered broadcast with permission.
+     * This matches the pattern used for OpenBoard communication.
+     */
+    private void sendBroadcastToJustType(Intent intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
+            sendOrderedBroadcast(intent, "com.headboard.permission.SEND_EVENT");
+        } else {
+            sendBroadcast(intent, "com.headboard.permission.SEND_EVENT");
         }
     }
 
@@ -2246,12 +2275,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "startTapSequence() - Show key popup & send long press delay to IME");
             keyboardManager.showKeyPopupIME(tapStartPosition[0], tapStartPosition[1], true);
             keyboardManager.sendLongPressDelayToIME(100);
-
-            /** TODO: KILL YOURSELF
-             * what the fuck bro what the actual fuck i hate my life so fuckign much bro wtf ugh
-             * j figure out how to get the fucking webcam to work for the emulator's front cam pls
-             * i fucking hate it here bro
-             **/
         }
 
         mainHandler.postDelayed(animateCursorTapRunnable, uiFeedbackDelay);

@@ -52,7 +52,6 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodSubtype;
 
 import org.dslul.openboard.IMEEventReceiver;
-import org.dslul.openboard.HeadBoardServiceConnection;
 import com.google.projectgameface.KeyInfo;
 import com.google.projectgameface.KeyBounds;
 import org.dslul.openboard.inputmethod.accessibility.AccessibilityUtils;
@@ -184,7 +183,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             new DictionaryDumpBroadcastReceiver(this);
 
     private IMEEventReceiver imeEventReceiver;
-    private HeadBoardServiceConnection mHeadBoardServiceConnection;
     private long startUpTime = 0;
 
     final static class HideSoftInputReceiver extends BroadcastReceiver {
@@ -693,41 +691,8 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_INFO);
         eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_BOUNDS);
         eventFilter.addAction(IMEEventReceiver.ACTION_SHOW_OR_HIDE_KEY_POPUP);
-        registerReceiver(imeEventReceiver, eventFilter, "com.headboard.permission.SEND_EVENT", null, RECEIVER_EXPORTED);
+        registerReceiver(imeEventReceiver, eventFilter, "com.google.projectgameface.permission.RECEIVE_IME_EVENT", null, RECEIVER_EXPORTED);
         Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
-
-        // Initialize HeadBoard service connection
-        mHeadBoardServiceConnection = new HeadBoardServiceConnection(this, new HeadBoardServiceConnection.HeadBoardServiceListener() {
-            @Override
-            public void onServiceConnected() {
-                Log.d(TAG, "HeadBoard service connected");
-            }
-
-            @Override
-            public void onServiceDisconnected() {
-                Log.d(TAG, "HeadBoard service disconnected");
-            }
-
-            @Override
-            public void onKeyInfo(KeyInfo keyInfo) {
-                Log.d(TAG, "Received key info from HeadBoard: " + keyInfo);
-                // Handle key info if needed
-            }
-
-            @Override
-            public void onKeyBounds(KeyBounds keyBounds) {
-                Log.d(TAG, "Received key bounds from HeadBoard: " + keyBounds);
-                // Handle key bounds if needed
-            }
-
-            @Override
-            public void onError(int errorCode, String errorMessage) {
-                Log.e(TAG, "HeadBoard service error: " + errorCode + " - " + errorMessage);
-            }
-        });
-
-        // Connect to HeadBoard service
-        mHeadBoardServiceConnection.connect();
     }
 
     // Has to be package-visible for unit tests
@@ -845,11 +810,6 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             Log.d(TAG, "IMEEventReceiver unregistered.");
         }
 
-        // Disconnect from HeadBoard service
-        if (mHeadBoardServiceConnection != null) {
-            mHeadBoardServiceConnection.disconnect();
-            Log.d(TAG, "HeadBoard service disconnected.");
-        }
 
         super.onDestroy();
     }

@@ -26,19 +26,19 @@ public class IMEEventReceiver extends BroadcastReceiver {
     private static final String TAG = "IMEEventReceiver";
     public static final String HEADBOARD_PACKAGE_NAME = "com.google.projectgameface";
     
-    // Actions for incoming broadcasts
-    public static final String ACTION_SEND_MOTION_EVENT = "com.headswype.ACTION_SEND_EVENT";
-    public static final String ACTION_SEND_KEY_EVENT = "com.headswype.ACTION_SEND_KEY_EVENT";
-    public static final String ACTION_SET_LONG_PRESS_DELAY = "com.headswype.ACTION_SET_LONG_PRESS_DELAY";
-    public static final String ACTION_CHANGE_TRAIL_COLOR = "com.headswype.ACTION_CHANGE_TRAIL_COLOR";
-    public static final String ACTION_GET_KEY_INFO = "com.headswype.ACTION_GET_KEY_INFO";
-    public static final String ACTION_GET_KEY_BOUNDS = "com.headswype.ACTION_GET_KEY_BOUNDS";
-    public static final String ACTION_SHOW_OR_HIDE_KEY_POPUP = "com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP";
-    public static final String ACTION_HIGHLIGHT_KEY = "com.headswype.ACTION_HIGHLIGHT_KEY";
+    // Actions for incoming broadcasts from HeadBoard
+    public static final String ACTION_SEND_MOTION_EVENT = "org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_MOTION_EVENT";
+    public static final String ACTION_SEND_KEY_EVENT = "org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_KEY_EVENT";
+    public static final String ACTION_SET_LONG_PRESS_DELAY = "org.dslul.openboard.inputmethod.latin.ACTION_SET_LONG_PRESS_DELAY";
+    public static final String ACTION_CHANGE_TRAIL_COLOR = "org.dslul.openboard.inputmethod.latin.ACTION_CHANGE_TRAIL_COLOR";
+    public static final String ACTION_GET_KEY_INFO = "org.dslul.openboard.inputmethod.latin.ACTION_GET_KEY_INFO";
+    public static final String ACTION_GET_KEY_BOUNDS = "org.dslul.openboard.inputmethod.latin.ACTION_GET_KEY_BOUNDS";
+    public static final String ACTION_SHOW_OR_HIDE_KEY_POPUP = "org.dslul.openboard.inputmethod.latin.ACTION_SHOW_OR_HIDE_KEY_POPUP";
+    public static final String ACTION_HIGHLIGHT_KEY = "org.dslul.openboard.inputmethod.latin.ACTION_HIGHLIGHT_KEY";
     
-    // Response actions
-    private static final String RESPONSE_ACTION_GET_KEY_INFO = "org.dslul.openboard.ACTION_GET_KEY_INFO";
-    private static final String RESPONSE_ACTION_GET_KEY_BOUNDS = "org.dslul.openboard.ACTION_GET_KEY_BOUNDS";
+    // Response actions sent back to HeadBoard
+    private static final String RESPONSE_ACTION_GET_KEY_INFO = "com.google.projectgameface.ACTION_IME_KEY_INFO_RESPONSE";
+    private static final String RESPONSE_ACTION_GET_KEY_BOUNDS = "com.google.projectgameface.ACTION_IME_KEY_BOUNDS_RESPONSE";
     
     // Intent extra keys
     private static final String EXTRA_X = "x";
@@ -464,7 +464,7 @@ public class IMEEventReceiver extends BroadcastReceiver {
                 intent.putExtras(extras);
             }
             intent.setPackage(HEADBOARD_PACKAGE_NAME);
-            mIme.sendBroadcast(intent, null);
+            mIme.sendBroadcast(intent, "com.google.projectgameface.permission.RECEIVE_IME_EVENT");
         } catch (Exception e) {
             Log.e(TAG, "Error sending broadcast response", e);
         }
