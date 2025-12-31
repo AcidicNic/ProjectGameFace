@@ -104,7 +104,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private Handler tickFunctionHandler;
     public Point screenSize;
     private KeyboardManager keyboardManager;
-    private GestureStreamController gestureStreamController;
+    private ContinuousGestureController continuousGestureController;
 
     private ProcessCameraProvider cameraProvider;
 
@@ -450,7 +450,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorController.setServiceUiManager(serviceUiManager);
         keyboardManager = new KeyboardManager(this, cursorController, serviceUiManager);
         cursorController.setKeyboardManager(keyboardManager);
-        gestureStreamController = new GestureStreamController(this);
+        continuousGestureController = new ContinuousGestureController(this, mainHandler);
 
         lifecycleRegistry = new LifecycleRegistry(this::getLifecycle);
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
@@ -573,46 +573,50 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             // Show cursor again
                             serviceUiManager.showCursor();
                         }
+                    }
 
-                        // Normal cursor behavior
-                        cursorController.updateInternalCursorPosition(
-                            facelandmarkerHelper.getHeadCoordXY(),
-                            facelandmarkerHelper.getNoseCoordXY(),
-                            facelandmarkerHelper.getPitchYaw(),
-                            new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
-                            new int[]{screenSize.x, screenSize.y});
+                    // Normal cursor behavior
+                    cursorController.updateInternalCursorPosition(
+                        facelandmarkerHelper.getHeadCoordXY(),
+                        facelandmarkerHelper.getNoseCoordXY(),
+                        facelandmarkerHelper.getPitchYaw(),
+                        new int[]{facelandmarkerHelper.mpInputWidth, facelandmarkerHelper.frameHeight},
+                        new int[]{screenSize.x, screenSize.y});
 
-                        dispatchEvent(null, null);
+                    dispatchEvent(null, null);
 
-                        // Actually update the UI cursor image.
-                        serviceUiManager.updateCursorImagePositionOnScreen(cursorController.getCursorPositionXY());
-                        
-                        // Update gesture stream if it's active
-//                    if (gestureStreamController != null && gestureStreamController.isActive()) {
-//                        updateGestureStream();
-//                    }
+                    // Actually update the UI cursor image.
+                    serviceUiManager.updateCursorImagePositionOnScreen(cursorController.getCursorPositionXY());
 
-                        if (isPitchYawEnabled() && isNoseTipEnabled()) {
-                            serviceUiManager.drawHeadCenter(
-                                facelandmarkerHelper.getNoseCoordXY(),
-                                facelandmarkerHelper.mpInputWidth,
-                                facelandmarkerHelper.mpInputHeight);
-                            serviceUiManager.drawSecondDot(
-                                facelandmarkerHelper.getHeadCoordXY(),
-                                facelandmarkerHelper.mpInputWidth,
-                                facelandmarkerHelper.mpInputHeight);
-                        } else if (isPitchYawEnabled()) {
-                            serviceUiManager.drawHeadCenter(
-                                facelandmarkerHelper.getHeadCoordXY(),
-                                facelandmarkerHelper.mpInputWidth,
-                                facelandmarkerHelper.mpInputHeight);
-                        } else {
-                            serviceUiManager.drawHeadCenter(
-                                facelandmarkerHelper.getNoseCoordXY(),
-                                facelandmarkerHelper.mpInputWidth,
-                                facelandmarkerHelper.mpInputHeight);
+                    // Update continuous swipe gesture if it's active
+                    if (continuousGestureController != null) {
+                        ContinuousGestureController.GestureStatus status = continuousGestureController.getStatus();
+                        if (status.isActive) {
+                            updateGestureDescSwipe();
                         }
                     }
+
+                    if (isPitchYawEnabled() && isNoseTipEnabled()) {
+                        serviceUiManager.drawHeadCenter(
+                            facelandmarkerHelper.getNoseCoordXY(),
+                            facelandmarkerHelper.mpInputWidth,
+                            facelandmarkerHelper.mpInputHeight);
+                        serviceUiManager.drawSecondDot(
+                            facelandmarkerHelper.getHeadCoordXY(),
+                            facelandmarkerHelper.mpInputWidth,
+                            facelandmarkerHelper.mpInputHeight);
+                    } else if (isPitchYawEnabled()) {
+                        serviceUiManager.drawHeadCenter(
+                            facelandmarkerHelper.getHeadCoordXY(),
+                            facelandmarkerHelper.mpInputWidth,
+                            facelandmarkerHelper.mpInputHeight);
+                    } else {
+                        serviceUiManager.drawHeadCenter(
+                            facelandmarkerHelper.getNoseCoordXY(),
+                            facelandmarkerHelper.mpInputWidth,
+                            facelandmarkerHelper.mpInputHeight);
+                    }
+
 
 //                    if (isDebugSwipeEnabled()) {
 //                        serviceUiManager.updateDebugTextOverlay(
@@ -900,9 +904,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         handlerThread.quitSafely();
         cursorController.cleanup();
         
-        // Cleanup gesture stream controller
-        if (gestureStreamController != null) {
-            gestureStreamController.shutdown();
+        // Cleanup continuous swipe gesture controller
+        if (continuousGestureController != null) {
+            continuousGestureController.cleanup();
         }
 
         // Unregister when the service is destroyed
@@ -1428,8 +1432,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.d(TAG, "continuousTouch() SWIPE KeyEvent.ACTION_DOWN");
 
             if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
-                // Use GestureStreamController for keyboard gestures
-                startGestureStream(cursorPosition);
+                // Use ContinuousGestureController for keyboard
+//                startGestureDescSwipe(cursorPosition);
+                throw new UnsupportedOperationException("Continuous swipe gesture not implemented yet.");
             } else {
                 // Use drag toggle for non-keyboard areas
                 dragToggleStartTime = SystemClock.uptimeMillis();
@@ -1441,10 +1446,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else if (cursorController.continuousTouchActive) {
             cursorController.continuousTouchActive = false;
 
-            Log.d(TAG, "continuousTouch() GESTURE STREAM KeyEvent.ACTION_UP");
+            Log.d(TAG, "continuousTouch() CONTINUOUS GESTURE SWIPE KeyEvent.ACTION_UP");
             if (cursorController.isSwiping) {
-                // End gesture stream if it's active
-                endGestureStream();
+                // End continuous swipe gesture if it's active
+                endGestureDescSwipe();
             } else {
                 // Handle drag toggle logic
                 long elapsedTime = SystemClock.uptimeMillis() - dragToggleStartTime;
@@ -1699,7 +1704,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         endUptime = SystemClock.uptimeMillis();
         endTime = System.currentTimeMillis();
         int[] cursorPosition = getPathCursorPosition();
-        serviceUiManager.clearPreviewBitmap();
         int keyWidth = keyboardManager.getKeyboardBounds().width() / 10;
         if (cursorController.startedSwipeFromRightKbd && (cursorPosition[0] < screenSize.x) &&
             (cursorPosition[0] >= screenSize.x - (keyWidth * 2)) /*(cursorPosition[0] (screenSize.x / 2))*/) {
@@ -1770,80 +1774,61 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
 
     /**
-     * Start gesture stream for continuous touch using GestureStreamController.
+     * Start continuous swipe gesture for touch simulation using ContinuousGestureController.
      * This method uses the accessibility service's dispatchGesture instead of motion events.
      *
-     * @param startCoords The starting coordinates for the gesture
+     * @param startCoords The starting coordinates for the continuous swipe gesture
      */
-    private void startGestureStream(int[] startCoords) {
-        Log.d(TAG, "startGestureStream() - Starting gesture stream at (" + startCoords[0] + ", " + startCoords[1] + ")");
+    private void startGestureDescSwipe(int[] startCoords) {
+        Log.d(TAG, "startContinuousSwipe() - Starting continuous swipe gesture at (" + startCoords[0] + ", " + startCoords[1] + ")");
         
         cursorController.isSwiping = true;
         cursorController.isRealtimeSwipe = true;
         startUptime = SystemClock.uptimeMillis();
         startTime = System.currentTimeMillis();
         
-        // Start the gesture stream
-        boolean started = gestureStreamController.start(startCoords[0], startCoords[1]);
-        if (started) {
-            Log.d(TAG, "Gesture stream started successfully");
-            debugText[0] = "Gesture Stream";
-            debugText[1] = "X, Y: (" + startCoords[0] + ", " + startCoords[1] + ")";
-        } else {
-            Log.w(TAG, "Failed to start gesture stream");
-            cursorController.isSwiping = false;
-            cursorController.isRealtimeSwipe = false;
-        }
+        // Start the continuous swipe gesture and send initial position
+        continuousGestureController.startGesture();
+        continuousGestureController.updateCursorPosition(startCoords[0], startCoords[1]);
+        
+        Log.d(TAG, "Continuous swipe gesture started successfully");
+        debugText[0] = "Gesture Swipe";
+        debugText[1] = "X, Y: (" + startCoords[0] + ", " + startCoords[1] + ")";
     }
 
     /**
-     * Update gesture stream with current cursor position.
-     * This should be called continuously while the gesture is active.
+     * Update continuous swipe gesture with current cursor position.
+     * This should be called continuously while the continuous swipe gesture is active.
      */
-    private void updateGestureStream() {
-        if (gestureStreamController.isActive()) {
+    private void updateGestureDescSwipe() {
+        ContinuousGestureController.GestureStatus status = continuousGestureController.getStatus();
+        if (status.isActive) {
             int[] cursorPosition = getPathCursorPosition();
             if (cursorPosition != null) {
-                gestureStreamController.update(cursorPosition[0], cursorPosition[1]);
-                debugText[0] = "Gesture Stream";
+                continuousGestureController.updateCursorPosition(cursorPosition[0], cursorPosition[1]);
+                debugText[0] = "Continuous Gesture Swipe";
                 debugText[1] = "X, Y: (" + cursorPosition[0] + ", " + cursorPosition[1] + ")";
             }
         }
     }
 
     /**
-     * End gesture stream for continuous touch using GestureStreamController.
+     * End continuous swipe gesture for touch simulation using ContinuousGestureController.
      */
-    private void endGestureStream() {
-        Log.d(TAG, "endGestureStream() - Ending gesture stream");
+    private void endGestureDescSwipe() {
+        Log.d(TAG, "endContinuousSwipe() - Ending continuous swipe gesture");
         
         endUptime = SystemClock.uptimeMillis();
         endTime = System.currentTimeMillis();
         
-        if (gestureStreamController.isActive()) {
-            gestureStreamController.end();
-            Log.d(TAG, "Gesture stream ended successfully");
+        ContinuousGestureController.GestureStatus status = continuousGestureController.getStatus();
+        if (status.isActive) {
+            continuousGestureController.stopGesture();
+            Log.d(TAG, "Continuous swipe gesture ended successfully");
         }
         
         cursorController.isSwiping = false;
         cursorController.isRealtimeSwipe = false;
-        serviceUiManager.clearPreviewBitmap();
-    }
-
-    /**
-     * Cancel gesture stream for continuous touch using GestureStreamController.
-     */
-    private void cancelGestureStream() {
-        Log.d(TAG, "cancelGestureStream() - Cancelling gesture stream");
-        
-        if (gestureStreamController.isActive()) {
-            gestureStreamController.cancel();
-            Log.d(TAG, "Gesture stream cancelled");
-        }
-        
-        cursorController.isSwiping = false;
-        cursorController.isRealtimeSwipe = false;
-        serviceUiManager.clearPreviewBitmap();
     }
 
     /**
@@ -1990,6 +1975,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
     }
 
+    float maxXValue = 0.0f; // max yaw
+    float minXValue = 0.0f; // min yaw
+    float maxYValue = 0.0f; // max pitch
+    float minYValue = 0.0f; // min pitch
+
     /**
      * Normalize pitch/yaw degrees to -1.0 to 1.0 range.
      * Clamps values to ±45° bounds then divides by 45.0f.
@@ -2000,18 +1990,36 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (pitchYaw == null || pitchYaw.length < 2) {
             return new float[]{0.0f, 0.0f};
         }
-        float pitch = pitchYaw[0];
+
+        // update min/max for debugging
+        if (pitchYaw[1] > maxXValue) {
+            maxXValue = pitchYaw[1];
+        }
+        if (pitchYaw[1] < minXValue) {
+            minXValue = pitchYaw[1];
+        }
+        if (pitchYaw[0] > maxYValue) {
+            maxYValue = pitchYaw[0];
+        }
+        if (pitchYaw[0] < minYValue) {
+            minYValue = pitchYaw[0];
+        }
+        Log.d(TAG, "Raw Pitch/Yaw - " +
+            "\n\tYaw/X:   " + pitchYaw[1] + " (min: " + minXValue + ", max: " + maxXValue + "), " +
+            "\n\tPitch/Y: " + pitchYaw[0] + " (min: " + minYValue + ", max: " + maxYValue + ")");
+
         float yaw = pitchYaw[1];
+        float pitch = pitchYaw[0];
         
-        // Clamp to ±45° bounds
-        float clampedPitch = Math.max(-45.0f, Math.min(45.0f, pitch));
-        float clampedYaw = Math.max(-45.0f, Math.min(45.0f, yaw));
+        // Clamp to ±30° bounds
+        float clampedYaw = Math.max(-30.0f, Math.min(30.0f, yaw));
+        float clampedPitch = Math.max(-30.0f, Math.min(30.0f, pitch));
         
-        // Normalize: divide by 45.0f to get -1.0 to 1.0 range
+        // Normalize: divide by 30.0f to get -1.0 to 1.0 range
         // x maps to yaw (horizontal movement)
         // y maps to pitch (vertical movement)
-        float normalizedX = clampedYaw / 45.0f;
-        float normalizedY = clampedPitch / 45.0f;
+        float normalizedX = clampedYaw / 30.0f;
+        float normalizedY = clampedPitch / 30.0f;
         
         return new float[]{normalizedX, normalizedY};
     }
@@ -2368,88 +2376,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     }
     /* ------------------------------- END OF TAP ACTION HANDLING ------------------------------- */
 
-
-    // Gesture debounce + coalescing helpers to reduce UI-thread stalls
-    private final Object gestureLock = new Object();
-    private volatile long lastGestureTimestamp = 0;
-    private static final long GESTURE_DEBOUNCE_MS = 50; // ignore duplicate events within 50ms
-    private Runnable gestureEndRunnable = null;
-
-
-    public void gestureDescription(boolean isStartingEvent) {
-        if (isStartingEvent) {
-            // Coalesce: ignore starts if already started or ending
-            if (swipeEventStarted || swipeEventEnding) return;
-
-            // Mark swipe/path state similar to swipe flow
-            swipeStartPosition = cursorController.getRollingAverage();
-            cursorController.setPathCursorPosition(swipeStartPosition);
-            swipeStartTime = System.currentTimeMillis();
-            isInHoverZone = true;
-            swipeEventStarted = true;
-            swipeEventEnding = false;
-            cursorController.isCursorTouch = true;
-            uiFeedbackDelay = getUiFeedbackDelay();
-            canStartSwipe = false;
-
-            // Show path cursor and provide quick visual feedback
-            mainHandler.post(() -> {
-                try {
-                    serviceUiManager.showPathCursor();
-                    isPathCursorActive = true;
-                    serviceUiManager.pathCursorSetColor("YELLOW");
-                    // Delegate low-level streaming to the controller (runs on its own thread)
-                    startGestureStream(swipeStartPosition);
-                } catch (Exception e) {
-                    Log.w(TAG, "gestureDescription start error: " + e);
-                }
-            });
-        } else {
-            // end event: coalesce multiple rapid end events into a single finalizer
-            synchronized (gestureLock) {
-                // If there's already a pending end runnable, cancel and reschedule slightly later to coalesce bursts
-                if (gestureEndRunnable != null) {
-                    mainHandler.removeCallbacks(gestureEndRunnable);
-                }
-
-                // Briefly mark that ending is in progress to ignore duplicate end triggers
-                swipeEventEnding = true;
-
-                gestureEndRunnable = () -> {
-                    // offload heavier prep to background executor, but ensure UI finalization runs on main
-                    backgroundExecutor.execute(() -> {
-                        try {
-                            mainHandler.post(() -> {
-                                try {
-                                    // End the streaming gesture
-                                    endGestureStream();
-
-                                    // Reset swipe/path state consistently with swipe flow
-                                    resetSwipeSequence();
-
-                                    // Hide path cursor in case it was shown
-                                    serviceUiManager.hidePathCursor();
-                                    isPathCursorActive = false;
-                                } catch (Exception e) {
-                                    Log.w(TAG, "gestureDescription end UI error: " + e);
-                                }
-                            });
-                        } catch (Exception e) {
-                            Log.w(TAG, "gestureDescription end error: " + e);
-                        }
-                    });
-                    // clear the runnable reference after execution
-                    synchronized (gestureLock) {
-                        gestureEndRunnable = null;
-                    }
-                };
-
-                // small delay to allow transient fluctuations to settle (coalescing)
-                mainHandler.postDelayed(gestureEndRunnable, 30);
-            }
-        }
-    }
-
     /* ----------------------------- START OF SWIPE ACTION HANDLING ----------------------------- */
     private boolean startedInsideKbd;
     private boolean swipeEventStarted = false;
@@ -2588,12 +2514,14 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             }
             keyboardManager.sendLongPressDelayToIME(getActionStateChangeDelay());
             startSwipe(); // start sending touch events immediately for keyboard swype
+            mainHandler.postDelayed(animateCursorTouchRunnable, uiFeedbackDelay);
+        } else if (!startedInsideKbd && !swipeEventEnding) {
+            startGestureDescSwipe(swipeStartPosition);
         }
 
 //        swipeKeyBounds = keyboardManager.getKeyBounds(swipeStartPosition);
 
         // Start initial hover period (D1A)
-        mainHandler.postDelayed(animateCursorTouchRunnable, uiFeedbackDelay);
 
 //        if (!startedInsideKbd && !swipeEventEnding) {
 //            startSwipeHoverZoneMonitoring(); // Start monitoring cursor position for hover zone
@@ -2608,7 +2536,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             endUptime = SystemClock.uptimeMillis();
             endTime = System.currentTimeMillis();
             int[] cursorPosition = getPathCursorPosition();
-            serviceUiManager.clearPreviewBitmap();
             // TODO: if kbd bounds is null, use screen (or active bound) width as default.
             //       AND set actual key width in keyboardManager via searching node tree.
             int keyWidth = keyboardManager.getKeyboardBounds().width() / 10;
@@ -2816,33 +2743,36 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         int duration = 200;
         try {
             if (cursorController.isSwiping) {
-                Log.d(TAG, "endSwipeSequence() - Ending swipe");
+                Log.d(TAG, "endSwipeSequence() - Ending openboard swipe");
                 endSwipe();
+            } else if (!startedInsideKbd) {
+                Log.d(TAG, "endSwipeSequence() - ending gesture desc swipe in system");
+                endGestureDescSwipe();
             }
-            else if (isLongTap) { // long tap
-                serviceUiManager.pathCursorSetColor("BLUE");
-                if (startedInsideKbd) {
-                    Log.d(TAG, "endSwipeSequence() isLongTap, sending long press to IME");
-//                    duration = 105;
+//            else if (isLongTap) { // long tap
+//                serviceUiManager.pathCursorSetColor("BLUE");
+//                if (startedInsideKbd) {
+//                    Log.d(TAG, "endSwipeSequence() isLongTap, sending long press to IME");
+////                    duration = 105;
+////                    dispatchTapGesture(swipeStartPosition, duration);
+//
+//                } else {
+//                    Log.d(TAG, "endSwipeSequence() isLongTap, outputting long press to system");
+//                    duration = getSystemLongpressDelay() + 5;
 //                    dispatchTapGesture(swipeStartPosition, duration);
-
-                } else {
-                    Log.d(TAG, "endSwipeSequence() isLongTap, outputting long press to system");
-                    duration = getSystemLongpressDelay() + 5;
-                    dispatchTapGesture(swipeStartPosition, duration);
-                }
-            } else { // quick tap
-                serviceUiManager.pathCursorSetColor("YELLOW");
-                if (startedInsideKbd) {
-                    Log.d(TAG, "endSwipeSequence() isQuickTap, sending quick tap to IME");
-//                    duration = 95;
+//                }
+//            } else { // quick tap
+//                serviceUiManager.pathCursorSetColor("YELLOW");
+//                if (startedInsideKbd) {
+//                    Log.d(TAG, "endSwipeSequence() isQuickTap, sending quick tap to IME");
+////                    duration = 95;
+////                    dispatchTapGesture(swipeStartPosition, duration);
+//
+//                } else {
+//                    Log.d(TAG, "endSwipeSequence() isQuickTap, outputting quick tap to system");
 //                    dispatchTapGesture(swipeStartPosition, duration);
-
-                } else {
-                    Log.d(TAG, "endSwipeSequence() isQuickTap, outputting quick tap to system");
-                    dispatchTapGesture(swipeStartPosition, duration);
-                }
-            }
+//                }
+//            }
         } catch (Exception e) {
             Log.e(TAG, "Error while ending swipe sequence: " + e);
             writeToFile.logError(TAG, "Error while ending swipe sequence: " + e);

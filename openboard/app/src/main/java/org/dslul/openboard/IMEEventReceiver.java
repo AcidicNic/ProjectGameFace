@@ -9,7 +9,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.os.Build;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
 
@@ -36,10 +35,6 @@ public class IMEEventReceiver extends BroadcastReceiver {
     public static final String ACTION_SHOW_OR_HIDE_KEY_POPUP = "org.dslul.openboard.inputmethod.latin.ACTION_SHOW_OR_HIDE_KEY_POPUP";
     public static final String ACTION_HIGHLIGHT_KEY = "org.dslul.openboard.inputmethod.latin.ACTION_HIGHLIGHT_KEY";
     
-    // Response actions sent back to HeadBoard
-    private static final String RESPONSE_ACTION_GET_KEY_INFO = "com.google.projectgameface.ACTION_IME_KEY_INFO_RESPONSE";
-    private static final String RESPONSE_ACTION_GET_KEY_BOUNDS = "com.google.projectgameface.ACTION_IME_KEY_BOUNDS_RESPONSE";
-    
     // Intent extra keys
     private static final String EXTRA_X = "x";
     private static final String EXTRA_Y = "y";
@@ -51,12 +46,6 @@ public class IMEEventReceiver extends BroadcastReceiver {
     private static final String EXTRA_COLOR = "color";
     private static final String EXTRA_SHOW_KEY_PREVIEW = "showKeyPreview";
     private static final String EXTRA_WITH_ANIMATION = "withAnimation";
-    
-    // Bundle keys for responses
-    private static final String BUNDLE_TOP = "top";
-    private static final String BUNDLE_LEFT = "left";
-    private static final String BUNDLE_RIGHT = "right";
-    private static final String BUNDLE_BOTTOM = "bottom";
     
     // Color constants
     private static final String COLOR_GREEN = "green";
@@ -368,8 +357,6 @@ public class IMEEventReceiver extends BroadcastReceiver {
             Key targetKey = mIme.getKeyFromCoords(x, y);
             Rect keyBounds = targetKey.getHitBox();
 
-            sendKeyBounds(keyBounds, targetKey);
-
             Log.d(TAG, String.format("Key found: Label=%s, Bounds=[%d, %d, %d, %d]",
                 targetKey.getLabel(), keyBounds.left, keyBounds.top, keyBounds.right, keyBounds.bottom));
         } catch (Exception e) {
@@ -439,53 +426,5 @@ public class IMEEventReceiver extends BroadcastReceiver {
     public void handleHighlightKey(Intent intent) {
         Log.d(TAG, "handleHighlightKey: delegating to showOrHideKeyPopup");
         showOrHideKeyPopup(intent);
-    }
-
-    /**
-     * Sends a broadcast response to the external application.
-     * @param action The action string for the broadcast
-     * @param extras The extras to include in the broadcast
-     */
-    public void sendResponse(String action, Bundle extras) {
-        if (action == null || action.trim().isEmpty()) {
-            Log.e(TAG, "sendResponse: null or empty action");
-            return;
-        }
-
-        if (mIme == null) {
-            Log.e(TAG, "sendResponse: LatinIME instance is null");
-            return;
-        }
-
-        try {
-            Log.d(TAG, "Sent broadcast response with action: " + action);
-            Intent intent = new Intent(action);
-            if (extras != null) {
-                intent.putExtras(extras);
-            }
-            intent.setPackage(HEADBOARD_PACKAGE_NAME);
-            mIme.sendBroadcast(intent, "com.google.projectgameface.permission.RECEIVE_IME_EVENT");
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending broadcast response", e);
-        }
-    }
-
-    /**
-     * Sends key bounds information to the external application.
-     * @param keyBounds The bounds of the key
-     */
-    public void sendKeyBounds(Rect keyBounds, Key key) {
-        if (keyBounds == null) {
-            Log.e(TAG, "sendKeyBounds: keyBounds is null");
-            return;
-        }
-
-        Bundle extras = new Bundle();
-        extras.putInt(BUNDLE_TOP, keyBounds.top);
-        extras.putInt(BUNDLE_LEFT, keyBounds.left);
-        extras.putInt(BUNDLE_BOTTOM, keyBounds.bottom);
-        extras.putInt(BUNDLE_RIGHT, keyBounds.right);
-        
-        sendResponse(RESPONSE_ACTION_GET_KEY_BOUNDS, extras);
     }
 }

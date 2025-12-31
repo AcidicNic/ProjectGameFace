@@ -434,9 +434,9 @@ public class KeyboardManager {
     private void sendBroadcastToOpenBoardIME(Intent intent) {
         intent.setPackage("org.dslul.openboard.inputmethod.latin");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
-            context.sendOrderedBroadcast(intent, "org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT");
+            context.sendOrderedBroadcast(intent, null);
         } else {
-            context.sendBroadcast(intent, "org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT");
+            context.sendBroadcast(intent);
         }
     }
 
@@ -444,12 +444,11 @@ public class KeyboardManager {
      * Send broadcast to JustType IME using optimized ordered broadcast with permission.
      */
     private void sendBroadcastToJustType(Intent intent) {
-        String justTypePermission = "com.justtype.nativeapp.permission.<INSERT_PERMISSION_NAME>"; // TODO: replace with actual permission name
         intent.setPackage("com.justtype.nativeapp");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
             context.sendOrderedBroadcast(intent, null);
         } else {
-            context.sendBroadcast(intent, null);
+            context.sendBroadcast(intent);
         }
     }
 }

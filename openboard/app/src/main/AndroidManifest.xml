@@ -14,7 +14,8 @@
      limitations under the License.
 -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.dslul.openboard.inputmethod.latin">
 
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -42,7 +43,6 @@
     <!-- Define permission that HeadBoard can use to send events to OpenBoard -->
     <permission android:name="org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT"
         android:protectionLevel="signature" />
-    <uses-permission android:name="org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT" />
     
     <!-- Permission to send events to HeadBoard (defined by HeadBoard) -->
     <uses-permission android:name="com.google.projectgameface.permission.RECEIVE_IME_EVENT" />
@@ -152,8 +152,7 @@
 
         <receiver
             android:name="org.dslul.openboard.IMEEventReceiver"
-            android:exported="true"
-            android:permission="com.google.projectgameface.permission.RECEIVE_IME_EVENT">
+            android:exported="true">
             <intent-filter>
                 <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_MOTION_EVENT" />
                 <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_KEY_EVENT" />

@@ -689,7 +689,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_INFO);
         eventFilter.addAction(IMEEventReceiver.ACTION_GET_KEY_BOUNDS);
         eventFilter.addAction(IMEEventReceiver.ACTION_SHOW_OR_HIDE_KEY_POPUP);
-        registerReceiver(imeEventReceiver, eventFilter, "com.google.projectgameface.permission.RECEIVE_IME_EVENT", null, RECEIVER_EXPORTED);
+        registerReceiver(imeEventReceiver, eventFilter, null, null, RECEIVER_EXPORTED);
         Log.d(TAG, "[HeadBoard] IMEEventReceiver registered for motion and key events.");
     }
 
