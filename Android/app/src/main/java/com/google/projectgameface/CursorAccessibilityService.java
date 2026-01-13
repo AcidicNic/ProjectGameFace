@@ -1860,7 +1860,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     private void injectMotionEvent(MotionEvent event) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) { // Android 12 (API 31)
-            if (cursorController.isDragging) cancelDragOrHold();
+            if (cursorController.isDragging) {
+                mainHandler.post(() -> {;
+                    cancelDragOrHold();
+                });
+            }
+
 //            Log.d(TAG, "[666] Sending MotionEvent to IME");
 //            Log.d(TAG, "MotionEvent sent: (" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")");
             sendMotionEventToIME((int) event.getX(), (int) event.getY(), event.getAction());
@@ -1882,7 +1887,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      * @param action The action of the touch event (e.g., MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP).
      */
     private void sendMotionEventToIME(int x, int y, int action) {
-        cancelDragOrHold();
         keyboardManager.sendMotionEventToIME(x, y, action);
     }
 
