@@ -659,6 +659,14 @@ public class CursorController {
         serviceUiManager.updateActiveCursorRegion(region);
     }
 
+    /**
+     * Public method to set the active cursor region.
+     * Used by CursorAccessibilityService for pop-out behavior.
+     */
+    public void setActiveCursorRegionPublic(String name, Rect region) {
+        setActiveCursorRegion(name, region);
+    }
+
     public boolean isEventActive() {
         return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTouch || isDragging;
     }
