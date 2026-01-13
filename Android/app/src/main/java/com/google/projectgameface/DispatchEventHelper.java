@@ -75,14 +75,14 @@ public class DispatchEventHelper {
       case BEGIN_TOUCH:
         Log.d("dispatchEvent", "start touch");
         if (event.isStartingEvent) {
-          parentService.startTouch();
+          parentService.handleSwipeEvent(true);
         }
         break;
 
       case END_TOUCH:
         Log.d("dispatchEvent", "end touch");
         if (event.isStartingEvent) {
-          parentService.stopTouch();
+          parentService.handleSwipeEvent(false);
         }
         break;
 

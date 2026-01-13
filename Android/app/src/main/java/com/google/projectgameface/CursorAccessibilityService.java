@@ -1184,14 +1184,11 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         serviceUiManager.drawTouchDot(cursorPosition);
     }
 
-    /**
-     * Dispatches a drag or hold action based on the current cursor position.
-     */
-    public void dispatchDragOrHold() {
-        Log.d("dispatchDragOrHold", "dispatchDragOrHold");
-        int[] cursorPosition = cursorController.getPathCursorPositionXY();
-
-        // Register new drag action.
+    public void beginDragOrHold(int[] cursorPosition) {
+        if (cursorController.isDragging) {
+            Log.d("dispatchDragOrHold", "cancel previous drag action");
+            cancelDragOrHold();
+        }
         if (!cursorController.isDragging) {
             Log.d("dispatchDragOrHold", "new drag action");
 
@@ -1202,51 +1199,73 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
             serviceUiManager.setDragLineStart(cursorPosition[0], cursorPosition[1]);
         }
+    }
+
+    public void endDragOrHold(int[] cursorPosition) {
+        cursorController.prepareDragEnd(cursorPosition[0], cursorPosition[1]);
+        serviceUiManager.fullScreenCanvas.clearDragLine();
+
+        // Cursor path distance.
+        float xOffset = cursorController.dragEndX - cursorController.dragStartX;
+        float yOffset = cursorController.dragEndY - cursorController.dragStartY;
+
+        // Is action finished inside defined circle or not.
+        boolean isFinishedInside =
+            (Math.abs(xOffset) < cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS)) &&
+                (Math.abs(yOffset) <  cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
+
+        // If finished inside a circle, trigger HOLD action.
+        if (isFinishedInside) {
+            // Dispatch HOLD event.
+            dispatchGesture(
+                CursorUtils.createClick(
+                    cursorController.dragStartX,
+                    cursorController.dragStartY,
+                    0,
+                    (long)
+                        cursorController.cursorMovementConfig.get(
+                            CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
+                /* callback= */ null,
+                /* handler= */ null);
+
+        }
+        // Trigger normal DRAG action.
+        else {
+            dispatchGesture(
+                CursorUtils.createSwipe(
+                    cursorController.dragStartX,
+                    cursorController.dragStartY,
+                    xOffset,
+                    yOffset,
+                    /* duration= */
+                    250
+                ),
+                /* callback= */ null,
+                /* handler= */ null
+            );
+        }
+    }
+
+    private void cancelDragOrHold() {
+        serviceUiManager.fullScreenCanvas.clearDragLine();
+        cursorController.prepareDragEnd(0, 0);
+    }
+
+    /**
+     * Dispatches a drag or hold action based on the current cursor position.
+     */
+    public void dispatchDragOrHold() {
+        Log.d("dispatchDragOrHold", "dispatchDragOrHold");
+        int[] cursorPosition = cursorController.getPathCursorPositionXY();
+
+        // Register new drag action.
+        if (!cursorController.isDragging) {
+            beginDragOrHold(cursorPosition);
+        }
         // Finish drag action.
         else {
             Log.d("dispatchDragOrHold", "end drag action");
-            cursorController.prepareDragEnd(cursorPosition[0], cursorPosition[1]);
-            serviceUiManager.fullScreenCanvas.clearDragLine();
-
-            // Cursor path distance.
-            float xOffset = cursorController.dragEndX - cursorController.dragStartX;
-            float yOffset = cursorController.dragEndY - cursorController.dragStartY;
-
-            // Is action finished inside defined circle or not.
-            boolean isFinishedInside =
-                (Math.abs(xOffset) < cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS)) &&
-                (Math.abs(yOffset) <  cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
-
-            // If finished inside a circle, trigger HOLD action.
-            if (isFinishedInside) {
-                // Dispatch HOLD event.
-                dispatchGesture(
-                    CursorUtils.createClick(
-                            cursorController.dragStartX,
-                            cursorController.dragStartY,
-                            0,
-                            (long)
-                            cursorController.cursorMovementConfig.get(
-                                    CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
-                    /* callback= */ null,
-                    /* handler= */ null);
-
-            }
-            // Trigger normal DRAG action.
-            else {
-                dispatchGesture(
-                    CursorUtils.createSwipe(
-                        cursorController.dragStartX,
-                        cursorController.dragStartY,
-                        xOffset,
-                        yOffset,
-                        /* duration= */
-                        250
-                    ),
-                    /* callback= */ null,
-                    /* handler= */ null
-                );
-            }
+            endDragOrHold(cursorPosition);
         }
     }
 
@@ -1257,19 +1276,19 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     public void toggleTouch() {
         Log.d(TAG, "toggleTouch()");
-        int[] cursorPosition = getCursorPosition();
+        int[] cursorPosition = getPathCursorPosition();
 
         if (cursorController.isSwiping && cursorController.swipeToggleActive) {
             Log.d(TAG, "STOP SWIPE TOGGLE KeyEvent.ACTION_DOWN");
             cursorController.swipeToggleActive = false;
-            stopRealtimeSwipe();
-        } else if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
+            handleSwipeEvent(false);
+        } else if (!cursorController.isSwiping && !cursorController.swipeToggleActive) {
             Log.d(TAG, "START SWIPE TOGGLE KeyEvent.ACTION_DOWN");
             cursorController.swipeToggleActive = true;
-            startRealtimeSwipe(cursorPosition);
-        } else {
+            handleSwipeEvent(true);
+        } else if (cursorController.isDragging) {
             Log.d(TAG, "DRAG TOGGLE KeyEvent.ACTION_DOWN");
-            dispatchDragOrHold();
+            cancelDragOrHold();
         }
     }
 
@@ -1461,10 +1480,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     // to avoid triggering long press handler
                     dispatchTapGesture(dragToggleStartPosition, Config.QUICK_TAP_DURATION);
                 } else {
-                    cursorController.isDragging = false;
-                    if (cursorController.isDragging) {
-                        dispatchDragOrHold();
-                    }
+                    endDragOrHold(cursorPosition);
                 }
             }
         }
@@ -1479,10 +1495,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (keyboardManager.canInjectEvent(cursorPosition[0], cursorPosition[1])) {
             Log.d(TAG, "START SWIPE");
             cursorController.swipeToggleActive = true;
+            cancelDragOrHold();
             startRealtimeSwipe(cursorPosition);
         } else if (!cursorController.isDragging) {
             Log.d(TAG, "START DRAG");
-            dispatchDragOrHold();
+            beginDragOrHold(cursorPosition);
+        } else {
+            cancelDragOrHold();
         }
     }
 
@@ -1497,7 +1516,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             stopRealtimeSwipe();
         } else if (cursorController.isDragging) {
             Log.d(TAG, "STOP DRAG");
-            dispatchDragOrHold();
+            endDragOrHold(cursorPosition);
+        }
+        else {
+            cancelDragOrHold();
         }
     }
 
@@ -1838,8 +1860,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     private void injectMotionEvent(MotionEvent event) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) { // Android 12 (API 31)
+            if (cursorController.isDragging) cancelDragOrHold();
 //            Log.d(TAG, "[666] Sending MotionEvent to IME");
-            Log.d(TAG, "MotionEvent sent: (" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")");
+//            Log.d(TAG, "MotionEvent sent: (" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")");
             sendMotionEventToIME((int) event.getX(), (int) event.getY(), event.getAction());
         } else {
             try {
@@ -1859,6 +1882,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      * @param action The action of the touch event (e.g., MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP).
      */
     private void sendMotionEventToIME(int x, int y, int action) {
+        cancelDragOrHold();
         keyboardManager.sendMotionEventToIME(x, y, action);
     }
 
@@ -2490,6 +2514,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             Log.e(TAG, "startSwipeSequence: initialPosition is invalid");
             return;
         }
+        cancelDragOrHold();
 
 //        swipeStartPosition = new int[]{initialPosition[0], initialPosition[1]}; // actual raw start pos
         swipeStartPosition = cursorController.getRollingAverage(); // rolling avg from last D1A ms
@@ -2516,7 +2541,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             startSwipe(); // start sending touch events immediately for keyboard swype
             mainHandler.postDelayed(animateCursorTouchRunnable, uiFeedbackDelay);
         } else if (!startedInsideKbd && !swipeEventEnding) {
-            startSwipe(); // start sending touch events immediately for keyboard swype
+            beginDragOrHold(swipeStartPosition);
 //            startGestureDescSwipe(swipeStartPosition);
         }
 
@@ -2586,8 +2611,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else {
             // Handle non-realtime swipe logic here
             Log.d(TAG, "cancelSwipe() drag toggle");
-            cursorController.isDragging = false;
-            dispatchDragOrHold();
+            endDragOrHold(cursorController.getPathCursorPositionXY());
         }
     }
 
@@ -2659,9 +2683,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else {
             // Handle non-realtime swipe logic here
             Log.d(TAG, "startSwipe() drag toggle");
-            cursorController.isDragging = true;
+            beginDragOrHold(swipeStartPosition);
             serviceUiManager.pathCursorSetColor("GREEN");
-            dispatchDragOrHold();
         }
     }
 
@@ -2743,13 +2766,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
         int duration = 200;
         try {
-            if (cursorController.isSwiping) {
+            if (cursorController.isRealtimeSwipe) {
                 Log.d(TAG, "endSwipeSequence() - Ending openboard swipe");
                 endSwipe();
             } else if (!startedInsideKbd) {
                 Log.d(TAG, "endSwipeSequence() - ending gesture desc swipe in system");
-                startSwipe();
+                endDragOrHold(cursorController.getPathCursorPositionXY());
 //                endGestureDescSwipe();
+            } else {
+                cancelDragOrHold();
             }
 //            else if (isLongTap) { // long tap
 //                serviceUiManager.pathCursorSetColor("BLUE");
@@ -2778,6 +2803,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } catch (Exception e) {
             Log.e(TAG, "Error while ending swipe sequence: " + e);
             writeToFile.logError(TAG, "Error while ending swipe sequence: " + e);
+            cancelDragOrHold();
             if (startedInsideKbd) {
                 Log.d(TAG, "endSwipeSequence() err, sending ACTION_CANCEL to IME");
                 sendMotionEventToIME(swipeStartPosition[0], swipeStartPosition[1], MotionEvent.ACTION_CANCEL);
@@ -2808,6 +2834,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorController.isCursorTouch = false;
         canStartSwipe = false;
         openboardSwipeStarted = false;
+        cancelDragOrHold();
     }
     /* ------------------------------ END OF SWIPE ACTION HANDLING ------------------------------ */
 

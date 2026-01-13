@@ -224,11 +224,11 @@ public class MainActivity extends AppCompatActivity {
             // Assign some default binding so user can navigate around.
             Log.i(TAG, "First launch, assign default binding");
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE,
-                    BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 0);
+                    BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 7);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO,
-                    BlendshapeEventTriggerConfig.EventType.CURSOR_TAP, 0);
+                    BlendshapeEventTriggerConfig.EventType.CURSOR_TAP, 7);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE,
-                    BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 0);
+                    BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 7);
             String profileName = ProfileManager.getCurrentProfile(this);
             preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
             preferences.edit().putBoolean(KEY_FIRST_RUN, false).apply();
