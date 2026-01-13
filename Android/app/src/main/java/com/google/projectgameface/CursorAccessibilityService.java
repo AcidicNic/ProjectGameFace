@@ -1440,7 +1440,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 dragToggleStartTime = SystemClock.uptimeMillis();
                 dragToggleCancelled = false;
                 dragToggleStartPosition = cursorPosition;
-                cursorController.dragToggleActive = true;
+                cursorController.isDragging = true;
                 dragToggleHandler.postDelayed(dragToggleOrTapOnCancelRunnable, getActionStateChangeDelay());
             }
         } else if (cursorController.continuousTouchActive) {
@@ -1461,7 +1461,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     // to avoid triggering long press handler
                     dispatchTapGesture(dragToggleStartPosition, Config.QUICK_TAP_DURATION);
                 } else {
-                    cursorController.dragToggleActive = false;
+                    cursorController.isDragging = false;
                     if (cursorController.isDragging) {
                         dispatchDragOrHold();
                     }
@@ -2516,7 +2516,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
             startSwipe(); // start sending touch events immediately for keyboard swype
             mainHandler.postDelayed(animateCursorTouchRunnable, uiFeedbackDelay);
         } else if (!startedInsideKbd && !swipeEventEnding) {
-            startGestureDescSwipe(swipeStartPosition);
+            startSwipe(); // start sending touch events immediately for keyboard swype
+//            startGestureDescSwipe(swipeStartPosition);
         }
 
 //        swipeKeyBounds = keyboardManager.getKeyBounds(swipeStartPosition);
@@ -2585,7 +2586,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else {
             // Handle non-realtime swipe logic here
             Log.d(TAG, "cancelSwipe() drag toggle");
-            cursorController.dragToggleActive = false;
+            cursorController.isDragging = false;
             dispatchDragOrHold();
         }
     }
@@ -2658,7 +2659,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } else {
             // Handle non-realtime swipe logic here
             Log.d(TAG, "startSwipe() drag toggle");
-            cursorController.dragToggleActive = true;
+            cursorController.isDragging = true;
             serviceUiManager.pathCursorSetColor("GREEN");
             dispatchDragOrHold();
         }
@@ -2747,7 +2748,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                 endSwipe();
             } else if (!startedInsideKbd) {
                 Log.d(TAG, "endSwipeSequence() - ending gesture desc swipe in system");
-                endGestureDescSwipe();
+                startSwipe();
+//                endGestureDescSwipe();
             }
 //            else if (isLongTap) { // long tap
 //                serviceUiManager.pathCursorSetColor("BLUE");

@@ -53,9 +53,9 @@ public class GestureSizeActivity extends AppCompatActivity {
     private int thresholdInUi;
 
 
-    private final int seekBarDefaultValue = 6;
+    private final int seekBarDefaultValue = 7;
     private static final int SEEK_BAR_MAXIMUM_VALUE = 10;
-    private static final int SEEK_BAR_MINIMUM_VALUE = 0;
+    private static final int SEEK_BAR_MINIMUM_VALUE = 1;
 
     private static final int SEEK_BAR_LOW_CLIP = 10;
     private static final int SEEK_BAR_HIGH_CLIP = 100;
@@ -152,9 +152,9 @@ public class GestureSizeActivity extends AppCompatActivity {
 
         findViewById(R.id.Bigger).setOnClickListener(v -> {
             int currentValue = gestureSizeSeekBar.getProgress();
-            int newValue = currentValue+1;
-            if(newValue<11){
-                thresholdInUi = newValue*10;
+            int newValue = currentValue + 1;
+            if(newValue < 11){
+                thresholdInUi = newValue * 10;
                 gestureSizeSeekBar.setProgress(newValue);
             }
         });
@@ -162,7 +162,7 @@ public class GestureSizeActivity extends AppCompatActivity {
         findViewById(R.id.Smaller).setOnClickListener(v -> {
             int currentValue = gestureSizeSeekBar.getProgress();
             int newValue = currentValue - 1;
-            if(newValue>-1){
+            if(newValue > -1){
                 thresholdInUi = newValue * 10;
                 gestureSizeSeekBar.setProgress(newValue);
             }

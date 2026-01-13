@@ -62,7 +62,6 @@ public class CursorController {
             this.y = y;
         }
     }
-    public boolean isDragging = false;
     private static final int MAX_BUFFER_SIZE = 100;
     /** Array for storing user face coordinate x coordinate (detected from FaceLandmarks). */
     ArrayList<Float> rawCoordXBuffer;
@@ -100,7 +99,7 @@ public class CursorController {
     public boolean continuousTouchActive = false;
     public boolean smartTouchActive = false;
     public boolean swipeToggleActive = false;
-    public boolean dragToggleActive = false;
+    public boolean isDragging = false;
     public boolean checkForSwipingFromRightKbd = false;
     public boolean startedSwipeFromRightKbd = false;
     private boolean isPathCursorVisible = false;
@@ -659,7 +658,7 @@ public class CursorController {
     }
 
     public boolean isEventActive() {
-        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTouch;
+        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTouch || isDragging;
     }
 
     public String getActiveCursorRegionStr() {
