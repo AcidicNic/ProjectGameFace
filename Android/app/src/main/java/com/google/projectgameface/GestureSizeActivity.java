@@ -16,14 +16,6 @@
 
 package com.google.projectgameface;
 
-import android.view.MenuItem;
-import android.view.ViewTreeObserver;
-import android.view.WindowManager.LayoutParams;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.core.math.MathUtils;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -31,11 +23,20 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
+import android.view.ViewTreeObserver;
+import android.view.WindowManager.LayoutParams;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.core.math.MathUtils;
+
 import com.google.projectgameface.CursorAccessibilityService.ServiceState;
 
 import java.util.Objects;
@@ -52,9 +53,9 @@ public class GestureSizeActivity extends AppCompatActivity {
     private int thresholdInUi;
 
 
-    private final int seekBarDefaultValue = 6;
+    private final int seekBarDefaultValue = 7;
     private static final int SEEK_BAR_MAXIMUM_VALUE = 10;
-    private static final int SEEK_BAR_MINIMUM_VALUE = 0;
+    private static final int SEEK_BAR_MINIMUM_VALUE = 1;
 
     private static final int SEEK_BAR_LOW_CLIP = 10;
     private static final int SEEK_BAR_HIGH_CLIP = 100;
@@ -151,9 +152,9 @@ public class GestureSizeActivity extends AppCompatActivity {
 
         findViewById(R.id.Bigger).setOnClickListener(v -> {
             int currentValue = gestureSizeSeekBar.getProgress();
-            int newValue = currentValue+1;
-            if(newValue<11){
-                thresholdInUi = newValue*10;
+            int newValue = currentValue + 1;
+            if(newValue < 11){
+                thresholdInUi = newValue * 10;
                 gestureSizeSeekBar.setProgress(newValue);
             }
         });
@@ -161,7 +162,7 @@ public class GestureSizeActivity extends AppCompatActivity {
         findViewById(R.id.Smaller).setOnClickListener(v -> {
             int currentValue = gestureSizeSeekBar.getProgress();
             int newValue = currentValue - 1;
-            if(newValue>-1){
+            if(newValue > -1){
                 thresholdInUi = newValue * 10;
                 gestureSizeSeekBar.setProgress(newValue);
             }
@@ -246,7 +247,7 @@ public class GestureSizeActivity extends AppCompatActivity {
     private void scorePreview(boolean status, String requestedScoreName) {
         Intent intent = new Intent("ENABLE_SCORE_PREVIEW");
         intent.putExtra("enable", status);
-        intent.putExtra("blendshapesName", requestedScoreName);
+        intent.putExtra("blendshapeName", requestedScoreName);
         sendBroadcast(intent);
     }
 

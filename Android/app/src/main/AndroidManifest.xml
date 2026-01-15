@@ -14,14 +14,7 @@
  limitations under the License.
 -->
 <manifest xmlns:tools="http://schemas.android.com/tools"
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        package="com.google.projectgameface"
-        android:sharedUserId="com.headswype.shared"
-        android:sharedUserMaxSdkVersion="35">
-
-    <uses-sdk
-        android:minSdkVersion="28"
-        android:targetSdkVersion="34" />
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -29,8 +22,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" android:required="false" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
-
-<!--    <uses-permission android:name="android.permission.INJECT_EVENTS" />-->
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.SYSTEM_MANAGE_APP_PERMISSIONS" />
@@ -40,11 +31,22 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <uses-permission android:name="com.headswype.permission.SEND_EVENT" />
-    <uses-permission android:name="android.permission.BIND_SERVICE" />
-<!--    <instrumentation-->
-<!--        android:name=".MyInstrumentation"-->
-<!--        android:targetPackage="org.dslul.openboard.inputmethod.latin" />-->
+    <!-- Permissions for communication with OpenBoard IME -->
+    <!-- Define permission that OpenBoard can use to send events to HeadBoard -->
+    <permission android:name="com.google.projectgameface.permission.RECEIVE_IME_EVENT"
+        android:protectionLevel="normal" />
+    
+    <!-- Permission to send events to OpenBoard IME (defined by OpenBoard) -->
+    <uses-permission android:name="org.dslul.openboard.inputmethod.latin.permission.RECEIVE_HEADBOARD_EVENT" />
+
+    <!-- Permissions for communication with JustType IME -->
+    <!-- Define permission that JustType can use to send events to HeadBoard -->
+    <!-- Note: Using normal protection level since HeadBoard and JustType don't share a signing key -->
+    <permission android:name="com.google.projectgameface.permission.RECEIVE_JUSTTYPE_EVENT"
+        android:protectionLevel="normal" />
+    
+    <!-- Permission to send events to JustType IME (defined by JustType) -->
+    <uses-permission android:name="com.justtype.nativeapp.permission.RECEIVE_HEADBOARD_EVENT" />
 
     <uses-feature
         android:name="android.hardware.camera2.full"
@@ -54,16 +56,12 @@
         android:required="false" />
 
     <application
-        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:taskAffinity=""
-        android:theme="@style/AppTheme"
-        android:sharedUserId="android.uid.system"
-        android:process="system"
-        >
+        android:theme="@style/AppTheme">
 
         <activity
             android:name=".GestureSizeActivity"
@@ -124,15 +122,12 @@
             android:name=".TutorialPhoneStandActivity"
             android:exported="true" />
 
-<!--        <activity-->
-<!--            android:name=".ScreenCapturePermissionActivity"-->
-<!--            android:exported="true" />-->
-
         <service
             android:name=".CursorAccessibilityService"
             android:enabled="true"
             android:exported="true"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            tools:ignore="AccessibilityPolicy">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
@@ -144,23 +139,13 @@
 
         <receiver
             android:name=".KeyboardEventReceiver"
-            android:exported="true"
-            android:permission="com.headswype.permission.SEND_EVENT">
+            android:exported="true">
             <intent-filter>
-                <action android:name="com.headswype.ACTION_SWIPE_START" />
-                <action android:name="com.headswype.ACTION_LONGPRESS_ANIMATION" />
+                <action android:name="com.google.projectgameface.ACTION_IME_SWIPE_START" />
+                <action android:name="com.google.projectgameface.ACTION_IME_LONGPRESS_ANIMATION" />
+                <action android:name="com.google.projectgameface.ACTION_IME_STATE_CHANGED" />
             </intent-filter>
         </receiver>
-
-        <service
-            android:name=".HeadBoardService"
-            android:enabled="true"
-            android:exported="true"
-            android:process=":headboard_service">
-            <intent-filter>
-                <action android:name="com.google.projectgameface.HeadBoardService" />
-            </intent-filter>
-        </service>
 
     </application>
 

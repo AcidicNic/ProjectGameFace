@@ -25,12 +25,13 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.os.Handler;
+import android.os.Message;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.accessibility.AccessibilityEvent;
@@ -57,8 +58,7 @@ import java.util.ArrayList;
 
 import androidx.core.view.ViewCompat;
 
-public final class SuggestionStripView extends RelativeLayout implements OnClickListener,
-        OnLongClickListener {
+public final class SuggestionStripView extends RelativeLayout implements OnClickListener {
     public interface Listener {
         void pickSuggestionManually(SuggestedWordInfo word);
         void onCodeInput(int primaryCode, int x, int y, boolean isKeyRepeat);
@@ -89,6 +89,26 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
 
     private final SuggestionStripLayoutHelper mLayoutHelper;
     private final StripVisibilityGroup mStripVisibilityGroup;
+
+    // Handler for custom long press timeout
+    private static final int MSG_LONG_PRESS = 1;
+    private final Handler mLongPressHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            if (msg.what == MSG_LONG_PRESS) {
+                final View view = (View) msg.obj;
+                if (view != null && view == mPendingLongPressView) {
+                    // Long press triggered, mark it and trigger the handler
+                    mLongPressTriggeredView = view;
+                    mPendingLongPressView = null;
+                    mLongPressHandler.removeMessages(MSG_LONG_PRESS);
+                    onLongClick(view);
+                }
+            }
+        }
+    };
+    private View mPendingLongPressView;
+    private View mLongPressTriggeredView;
 
     private static class StripVisibilityGroup {
         private final View mSuggestionStripView;
@@ -140,7 +160,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
             final TextView word = new TextView(context, null, R.attr.suggestionWordStyle);
             word.setContentDescription(getResources().getString(R.string.spoken_empty_suggestion));
             word.setOnClickListener(this);
-            word.setOnLongClickListener(this);
+            word.setOnTouchListener(new CustomLongPressTouchListener());
             mWordViews.add(word);
             final View divider = inflater.inflate(R.layout.suggestion_divider, null);
             mDividerViews.add(divider);
@@ -159,10 +179,10 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mMoreSuggestionsBuilder = new MoreSuggestions.Builder(context, mMoreSuggestionsView);
 
         final Resources res = context.getResources();
-        mMoreSuggestionsModalTolerance = res.getDimensionPixelOffset(
-                R.dimen.config_more_suggestions_modal_tolerance);
-        mMoreSuggestionsSlidingDetector = new GestureDetector(
-                context, mMoreSuggestionsSlidingListener);
+//        mMoreSuggestionsModalTolerance = res.getDimensionPixelOffset(
+//                R.dimen.config_more_suggestions_modal_tolerance);
+//        mMoreSuggestionsSlidingDetector = new GestureDetector(
+//                context, mMoreSuggestionsSlidingListener);
 
         final TypedArray keyboardAttr = context.obtainStyledAttributes(attrs,
                 R.styleable.Keyboard, defStyle, R.style.SuggestionStripView);
@@ -174,7 +194,7 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mVoiceKey.setOnClickListener(this);
         mClipboardKey.setImageDrawable(iconClipboard);
         mClipboardKey.setOnClickListener(this);
-        mClipboardKey.setOnLongClickListener(this);
+        mClipboardKey.setOnTouchListener(new CustomLongPressTouchListener());
 
         mOtherKey.setImageDrawable(iconIncognito);
     }
@@ -266,8 +286,93 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
         mMoreSuggestionsView.dismissMoreKeysPanel();
     }
 
-    @Override
-    public boolean onLongClick(final View view) {
+    /**
+     * Custom touch listener that implements long press with configurable timeout from Settings.
+     */
+    private class CustomLongPressTouchListener implements View.OnTouchListener {
+        private static final int LONG_PRESS_MOVE_TOLERANCE = 10; // pixels
+
+        @Override
+        public boolean onTouch(View view, MotionEvent event) {
+            final int action = event.getAction();
+            switch (action) {
+                case MotionEvent.ACTION_DOWN:
+                    // Reset long press state
+                    if (mLongPressTriggeredView == view) {
+                        mLongPressTriggeredView = null;
+                    }
+                    // Cancel any pending long press
+                    cancelPendingLongPress();
+                    // Get the configured long press timeout from Settings
+                    final int timeout = getLongPressTimeout();
+                    if (timeout > 0) {
+                        mPendingLongPressView = view;
+                        mLongPressHandler.sendMessageDelayed(
+                                mLongPressHandler.obtainMessage(MSG_LONG_PRESS, view),
+                                timeout);
+                    }
+                    // Allow the view to handle the click normally
+                    return false;
+
+                case MotionEvent.ACTION_MOVE:
+                    // Cancel long press if finger moved too far
+                    final float x = event.getX();
+                    final float y = event.getY();
+                    if (x < -LONG_PRESS_MOVE_TOLERANCE || x > view.getWidth() + LONG_PRESS_MOVE_TOLERANCE ||
+                            y < -LONG_PRESS_MOVE_TOLERANCE || y > view.getHeight() + LONG_PRESS_MOVE_TOLERANCE) {
+                        cancelPendingLongPress();
+                    }
+                    return false;
+
+                case MotionEvent.ACTION_UP:
+                    // If long press was triggered, consume the event to prevent click
+                    if (mLongPressTriggeredView == view) {
+                        cancelPendingLongPress();
+                        mLongPressTriggeredView = null;
+                        return true; // Consume the event to prevent onClick
+                    }
+                    // Cancel long press if user lifted finger before timeout
+                    cancelPendingLongPress();
+                    return false;
+
+                case MotionEvent.ACTION_CANCEL:
+                    // Cancel long press if touch was cancelled
+                    cancelPendingLongPress();
+                    if (mLongPressTriggeredView == view) {
+                        mLongPressTriggeredView = null;
+                    }
+                    return false;
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Gets the long press timeout from Settings, matching the keyboard key timeout.
+     */
+    private int getLongPressTimeout() {
+        try {
+            return Settings.getInstance().getCurrent().mKeyLongpressTimeout;
+        } catch (Exception e) {
+            // Fallback to default if Settings not available
+            return getContext().getResources().getInteger(R.integer.config_default_longpress_key_timeout);
+        }
+    }
+
+    /**
+     * Cancels any pending long press timer.
+     */
+    private void cancelPendingLongPress() {
+        mLongPressHandler.removeMessages(MSG_LONG_PRESS);
+        mPendingLongPressView = null;
+        // Note: mLongPressTriggeredView is cleared in ACTION_UP/ACTION_CANCEL handlers
+    }
+
+    /**
+     * Handles long press events triggered by our custom touch listener.
+     * This method is called when the custom long press timeout expires.
+     */
+    private boolean onLongClick(final View view) {
         if (view == mClipboardKey) {
             ClipboardManager clipboardManager = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clipData = clipboardManager.getPrimaryClip();
@@ -328,55 +433,55 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
     private int mLastY;
     private int mOriginX;
     private int mOriginY;
-    private final int mMoreSuggestionsModalTolerance;
+//    private final int mMoreSuggestionsModalTolerance;
     private boolean mNeedsToTransformTouchEventToHoverEvent;
     private boolean mIsDispatchingHoverEventToMoreSuggestions;
-    private final GestureDetector mMoreSuggestionsSlidingDetector;
-    private final GestureDetector.OnGestureListener mMoreSuggestionsSlidingListener =
-            new GestureDetector.SimpleOnGestureListener() {
-        @Override
-        public boolean onScroll(MotionEvent down, MotionEvent me, float deltaX, float deltaY) {
-            final float dy = me.getY() - down.getY();
-            if (deltaY > 0 && dy < 0) {
-                return showMoreSuggestions();
-            }
-            return false;
-        }
-    };
+//    private final GestureDetector mMoreSuggestionsSlidingDetector;
+//    private final GestureDetector.OnGestureListener mMoreSuggestionsSlidingListener =
+//            new GestureDetector.SimpleOnGestureListener() {
+//        @Override
+//        public boolean onScroll(MotionEvent down, MotionEvent me, float deltaX, float deltaY) {
+//            final float dy = me.getY() - down.getY();
+//            if (deltaY > 0 && dy < 0) {
+//                return showMoreSuggestions();
+//            }
+//            return false;
+//        }
+//    };
 
-    @Override
-    public boolean onInterceptTouchEvent(final MotionEvent me) {
-        // Detecting sliding up finger to show {@link MoreSuggestionsView}.
-        if (!mMoreSuggestionsView.isShowingInParent()) {
-            mLastX = (int)me.getX();
-            mLastY = (int)me.getY();
-            return mMoreSuggestionsSlidingDetector.onTouchEvent(me);
-        }
-        if (mMoreSuggestionsView.isInModalMode()) {
-            return false;
-        }
-
-        final int action = me.getAction();
-        final int index = me.getActionIndex();
-        final int x = (int)me.getX(index);
-        final int y = (int)me.getY(index);
-        if (Math.abs(x - mOriginX) >= mMoreSuggestionsModalTolerance
-                || mOriginY - y >= mMoreSuggestionsModalTolerance) {
-            // Decided to be in the sliding suggestion mode only when the touch point has been moved
-            // upward. Further {@link MotionEvent}s will be delivered to
-            // {@link #onTouchEvent(MotionEvent)}.
-            mNeedsToTransformTouchEventToHoverEvent =
-                    AccessibilityUtils.Companion.getInstance().isTouchExplorationEnabled();
-            mIsDispatchingHoverEventToMoreSuggestions = false;
-            return true;
-        }
-
-        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-            // Decided to be in the modal input mode.
-            mMoreSuggestionsView.setModalMode();
-        }
-        return false;
-    }
+//    @Override
+//    public boolean onInterceptTouchEvent(final MotionEvent me) {
+//        // Detecting sliding up finger to show {@link MoreSuggestionsView}.
+//        if (!mMoreSuggestionsView.isShowingInParent()) {
+//            mLastX = (int)me.getX();
+//            mLastY = (int)me.getY();
+//            return mMoreSuggestionsSlidingDetector.onTouchEvent(me);
+//        }
+//        if (mMoreSuggestionsView.isInModalMode()) {
+//            return false;
+//        }
+//
+//        final int action = me.getAction();
+//        final int index = me.getActionIndex();
+//        final int x = (int)me.getX(index);
+//        final int y = (int)me.getY(index);
+//        if (Math.abs(x - mOriginX) >= mMoreSuggestionsModalTolerance
+//                || mOriginY - y >= mMoreSuggestionsModalTolerance) {
+//            // Decided to be in the sliding suggestion mode only when the touch point has been moved
+//            // upward. Further {@link MotionEvent}s will be delivered to
+//            // {@link #onTouchEvent(MotionEvent)}.
+//            mNeedsToTransformTouchEventToHoverEvent =
+//                    AccessibilityUtils.Companion.getInstance().isTouchExplorationEnabled();
+//            mIsDispatchingHoverEventToMoreSuggestions = false;
+//            return true;
+//        }
+//
+//        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+//            // Decided to be in the modal input mode.
+//            mMoreSuggestionsView.setModalMode();
+//        }
+//        return false;
+//    }
 
     @Override
     public boolean dispatchPopulateAccessibilityEvent(final AccessibilityEvent event) {
@@ -466,6 +571,8 @@ public final class SuggestionStripView extends RelativeLayout implements OnClick
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        cancelPendingLongPress();
+        mLongPressTriggeredView = null;
         dismissMoreSuggestionsPanel();
     }
 

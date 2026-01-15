@@ -44,21 +44,23 @@
 <!--            app:layout_constraintStart_toStartOf="parent"-->
 <!--            app:layout_constraintTop_toTopOf="parent" />-->
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/realtimeSwipeSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Realtime Swipe "
+            app:switchPadding="10dp"
             android:layout_marginTop="10dp"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/parent" />
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/durationPopOutSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:text="Keybaord Pop Out (Velocity / Duration)"
+            app:switchPadding="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/realtimeSwipeSwitch" />
 
@@ -77,7 +79,7 @@
                 android:id="@+id/progressHoldDuration"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="5"
+                android:text="0"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -110,7 +112,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/decrease"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -123,7 +125,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/increase"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -134,12 +136,13 @@
                 app:layout_constraintTop_toBottomOf="@+id/holdDurationSeekBar" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/directMappingSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:text="Directly Map Head Movement to Cursor"
+            app:switchPadding="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/edgeHoldDurationLayout" />
 
@@ -191,7 +194,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:textColor="#444746"
-                    android:text="Decrease"
+                    android:text="@string/decrease"
                     android:paddingTop="4dp"
                     android:paddingBottom="5dp"
                     android:paddingLeft="10dp"
@@ -204,7 +207,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Increase"
+                    android:text="@string/increase"
                     android:paddingTop="4dp"
                     android:paddingBottom="5dp"
                     android:paddingLeft="10dp"
@@ -258,7 +261,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     android:textColor="#444746"
-                    android:text="Decrease"
+                    android:text="@string/decrease"
                     android:paddingTop="4dp"
                     android:paddingBottom="5dp"
                     android:paddingLeft="10dp"
@@ -271,7 +274,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Increase"
+                    android:text="@string/increase"
                     android:paddingTop="4dp"
                     android:paddingBottom="5dp"
                     android:paddingLeft="10dp"
@@ -288,21 +291,23 @@
 
 
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/noseTipSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Nose Tip Cursor Control"
+            app:switchPadding="10dp"
             android:layout_marginTop="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/headCoordScaleFactorLayout" />
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/pitchYawSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:text="Pitch + Yaw Cursor Control"
+            app:switchPadding="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/noseTipSwitch" />
 
@@ -336,7 +341,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:max="10"
+                android:max="20"
                 android:maxHeight="3dp"
                 android:min="0"
                 android:progressDrawable="@drawable/custom_seekbar"
@@ -351,7 +356,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/decrease"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -364,7 +369,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/increase"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -375,20 +380,22 @@
                 app:layout_constraintTop_toBottomOf="@+id/smoothingSeekBar" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/exponentialSmoothingSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Exponential Smoothing Slider"
             android:layout_marginTop="10dp"
+            app:switchPadding="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/smoothingLayout" />
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/debugSwipeSwitch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Debug Swipe Info"
+            app:switchPadding="10dp"
             android:layout_marginTop="10dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/exponentialSmoothingSwitch" />
@@ -521,7 +528,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/decrease"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -534,7 +541,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/increase"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -590,7 +597,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/decrease"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -603,7 +610,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/increase"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -634,7 +641,7 @@
                 android:id="@+id/quickTapThresholdTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Quick Tap Threshold (ms)"
+                android:text="Long Press Delay (ms)"
                 android:textStyle="bold"
                 android:textColor="#FFC107"
                 app:layout_constraintStart_toStartOf="parent"
@@ -660,7 +667,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/decrease"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -673,7 +680,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/increase"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -688,6 +695,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/longTapThresholdLayout"
+            android:visibility="gone"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/quickTapThresholdLayout"
             android:layout_marginTop="10dp"
@@ -730,7 +738,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/decrease"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -743,7 +751,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/increase"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
@@ -754,28 +762,40 @@
                 app:layout_constraintTop_toBottomOf="@+id/longTapThresholdSeekBar" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/pathCursorSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:text="Show Path Cursor"
+            app:switchPadding="10dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/longTapThresholdLayout" />
+
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/pathCursorLayout"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/longTapThresholdLayout"
+            app:layout_constraintTop_toBottomOf="@+id/pathCursorSwitch"
             android:layout_marginTop="10dp"
             >
             <TextView
                 android:id="@+id/progressPathCursor"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0"
+                android:text="12"
                 android:textStyle="bold"
+                android:textColor="@color/textview_color_selector"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
             <TextView
                 android:id="@+id/pathCursorTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Path Cursor %"
+                android:text="Path Cursor Acceleration"
                 android:textStyle="bold"
+                android:textColor="@color/textview_color_selector"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
             <SeekBar
@@ -784,10 +804,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:max="39"
                 android:maxHeight="3dp"
+                android:max="24"
                 android:min="0"
-                android:progressDrawable="@drawable/custom_seekbar"
+                android:progress="12"
+                android:progressDrawable="@drawable/custom_seekbar_selector"
                 android:thumbTint="#1a73e8"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="1.0"
@@ -799,12 +820,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/slower"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
-                android:background="@drawable/textview_custom"
+                android:background="@drawable/inc_dec_button_selector"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/pathCursorSeekBar" />
             <TextView
@@ -812,12 +833,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/faster"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
-                android:background="@drawable/textview_custom"
+                android:background="@drawable/inc_dec_button_selector"
                 android:textColor="#444746"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/pathCursorSeekBar" />
@@ -826,70 +847,72 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/lmfaoLayout"
+            android:id="@+id/pathCursorMinLayout"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/pathCursorLayout"
             android:layout_marginTop="10dp"
             >
             <TextView
-                android:id="@+id/progressPathCursor"
+                android:id="@+id/pathCursorMinProgress"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0"
                 android:textStyle="bold"
+                android:textColor="@color/textview_color_selector"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
             <TextView
-                android:id="@+id/lmfaoTxt"
+                android:id="@+id/pathCursorMinTxt"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Path Cursor %"
+                android:text="Path Cursor Minimum Speed [WIP]"
                 android:textStyle="bold"
+                android:textColor="@color/textview_color_selector"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
             <SeekBar
-                android:id="@+id/lmfaoSeekBar"
+                android:id="@+id/pathCursorMinSeekBar"
                 style="@style/Widget.AppCompat.SeekBar.Discrete"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:max="10"
+                android:max="9"
                 android:maxHeight="3dp"
                 android:min="0"
-                android:progressDrawable="@drawable/custom_seekbar"
+                android:progressDrawable="@drawable/custom_seekbar_selector"
                 android:thumbTint="#1a73e8"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="1.0"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/lmfaoTxt" />
+                app:layout_constraintTop_toBottomOf="@+id/pathCursorMinTxt" />
             <TextView
-                android:id="@+id/decreasePathCursor"
+                android:id="@+id/pathCursorMinDecrease"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:textColor="#444746"
-                android:text="Decrease"
+                android:text="@string/slower"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
-                android:background="@drawable/textview_custom"
+                android:background="@drawable/inc_dec_button_selector"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/lmfaoSeekBar" />
+                app:layout_constraintTop_toBottomOf="@+id/pathCursorMinSeekBar" />
             <TextView
-                android:id="@+id/increasePathCursor"
+                android:id="@+id/pathCursorMinIncrease"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Increase"
+                android:text="@string/faster"
                 android:paddingTop="4dp"
                 android:paddingBottom="5dp"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
-                android:background="@drawable/textview_custom"
+                android:background="@drawable/inc_dec_button_selector"
                 android:textColor="#444746"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/lmfaoSeekBar" />
+                app:layout_constraintTop_toBottomOf="@+id/pathCursorMinSeekBar" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>

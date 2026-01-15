@@ -19,7 +19,10 @@
 
     <string name="service_description">HeadBoard\'s Accessibility Service</string>
     <string name="service_summary">Allows headboard to run in the background while you navigate your device.</string>
-
+    <string name="increase">Increase</string>
+    <string name="decrease">Decrease</string>
+    <string name="faster">Faster</string>
+    <string name="slower">Slower</string>
 
 
     <string-array name="event_type_description_keys">

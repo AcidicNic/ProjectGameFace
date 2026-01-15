@@ -29,8 +29,8 @@ import androidx.core.content.ContextCompat;
 
 import com.google.projectgameface.utils.Config;
 
-import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,7 +62,6 @@ public class CursorController {
             this.y = y;
         }
     }
-    public boolean isDragging = false;
     private static final int MAX_BUFFER_SIZE = 100;
     /** Array for storing user face coordinate x coordinate (detected from FaceLandmarks). */
     ArrayList<Float> rawCoordXBuffer;
@@ -80,7 +79,7 @@ public class CursorController {
     private int screenHeight;
     private Rect keyboardBounds;
     private Rect navBarBounds;
-    private Rect activeCursorRegion;
+    public Rect activeCursorRegion;
     private String activeCursorRegionStr;
     public CursorMovementConfig cursorMovementConfig;
     /** A Config define which face shape should trigger which event */
@@ -94,14 +93,16 @@ public class CursorController {
     private BroadcastReceiver profileChangeReceiver;
     private Context parentContext;
     private KeyboardManager mKeyboardManager;
+    private ServiceUiManager serviceUiManager;
 
     public boolean isSwiping = false;
     public boolean continuousTouchActive = false;
     public boolean smartTouchActive = false;
     public boolean swipeToggleActive = false;
-    public boolean dragToggleActive = false;
+    public boolean isDragging = false;
     public boolean checkForSwipingFromRightKbd = false;
     public boolean startedSwipeFromRightKbd = false;
+    private boolean isPathCursorVisible = false;
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -152,6 +153,10 @@ public class CursorController {
         for (BlendshapeEventTriggerConfig.EventType eventType: BlendshapeEventTriggerConfig.EventType.values()) {
             blendshapeEventTriggeredTracker.put(eventType, false);
         }
+    }
+
+    public void setServiceUiManager(ServiceUiManager serviceUiManager) {
+        this.serviceUiManager = serviceUiManager;
     }
 
     public void cleanup() {
@@ -407,12 +412,12 @@ public class CursorController {
                 normalizedY = (coordsXY[1] - minRawCoordY) / (maxRawCoordY - minRawCoordY);
             }
         }
-
+        //CK What is this test?
         if (noseTipXY[0] == 0 && noseTipXY[1] == 0 && pitchYawXY[0] == 0 && pitchYawXY[1] == 0) {
             normalizedX = 0.5f;
             normalizedY = 0.5f;
         }
-
+        //CK The following is OK, but it presumes we will NEVER have an active region that is less than the entire screen width.  Is that guaranteed?
         int regionMinX = 0;
         int regionMaxX = screenWidth;
         int regionMinY = 0;
@@ -438,46 +443,37 @@ public class CursorController {
         cursorPositionX += smoothingFactor * (centeredX - cursorPositionX);
         cursorPositionY += smoothingFactor * (centeredY - cursorPositionY);
 
-        if (Double.isNaN(pathCursorPositionX)) pathCursorPositionX = cursorPositionX;
-        if (Double.isNaN(pathCursorPositionY)) pathCursorPositionY = cursorPositionY;
+        if (isPathCursorEnabled()) {
+            if (Double.isNaN(pathCursorPositionX)) pathCursorPositionX = cursorPositionX;
+            if (Double.isNaN(pathCursorPositionY)) pathCursorPositionY = cursorPositionY;
 
-        // the path cursor is modofied down by a percentage to slowly catch up to the position of the cursor
-        float percentage = getPathCursorPercentage();
-        pathCursorPositionX = cursorPositionX * percentage + pathCursorPositionX * (1 - percentage);
-        pathCursorPositionY = cursorPositionY * percentage + pathCursorPositionY * (1 - percentage);
+            // the path cursor is modofied down by a percentage to slowly catch up to the position of the cursor
+            // the higher the perecntage float is the faster it catches up
+            float percentage = getPathCursorPercentage();
+            pathCursorPositionX = cursorPositionX * percentage + pathCursorPositionX * (1 - percentage);
+            pathCursorPositionY = cursorPositionY * percentage + pathCursorPositionY * (1 - percentage);
+        }
 
-        // Curor Regon Bounding
+        // Cursor Regon Bounding
         if (activeCursorRegion != null) {
             handleBoundingLogic();
             // Ensure cursor stays within the bounds of the active region
             cursorPositionY = clamp(cursorPositionY, activeCursorRegion.top, activeCursorRegion.bottom);
+            pathCursorPositionY = clamp(pathCursorPositionY, activeCursorRegion.top, activeCursorRegion.bottom);
+        } else {
+            cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+            pathCursorPositionY = clamp(pathCursorPositionY, 0, screenHeight);
         }
 
         // Clamp cursor position to screen bounds
         cursorPositionX = clamp(cursorPositionX, 0, screenWidth);
-        cursorPositionY = clamp(cursorPositionY, 0, screenHeight);
+        pathCursorPositionX = clamp(pathCursorPositionX, 0, screenWidth);
 
         // Add current cursor position to history for rolling average calculation
         addCursorPositionToHistory(cursorPositionX, cursorPositionY);
         
         // Calculate rolling average and optionally use it
         double[] rollingAverage = calculateRollingAverage();
-        if (rollingAverage != null) {
-            // You can uncomment the following lines to use rolling average instead of current position
-            // cursorPositionX = rollingAverage[0];
-            // cursorPositionY = rollingAverage[1];
-            
-            // For now, we'll keep the current behavior but the rolling average is available
-            // Log.d(TAG, "Rolling average: (" + rollingAverage[0] + ", " + rollingAverage[1] + 
-            //       "), Current: (" + cursorPositionX + ", " + cursorPositionY + ")");
-        }
-
-//        if (isSwiping) {
-//            // Track path points for the swipe
-//            swipePathPoints.add(new float[]{(float) cursorPositionX, (float) cursorPositionY});
-//            updateSwipe((float) cursorPositionX, (float) cursorPositionY);
-//            updateTrail((float) cursorPositionX, (float) cursorPositionY);
-//        }
     }
 
     /**
@@ -552,26 +548,24 @@ public class CursorController {
      */
     public float getSmoothFactor(float minSmoothingFactor, float maxSmoothingFactor) {
         // get the smoothing factor from the config and invert it
-        int smoothInt = 9 - getSmoothing();
+        int smoothInt = 19 - getSmoothing();
 
-        // Ensure the intValue is within the expected range [0, 9]
-        smoothInt = clamp(smoothInt, 0, 9);
+        // Ensure the intValue is within the expected range [0, 19]
+        smoothInt = clamp(smoothInt, 0, 19);
 
         boolean useExponential = cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING);
 
         if (useExponential) {
             // Use exponential mapping for a more balanced feel
-            // The base of 1.6 was chosen to provide a good distribution of values
-            float normalizedValue = (float) (Math.pow(1.6, smoothInt) - 1) / (float) (Math.pow(1.6, 9) - 1);
+            float normalizedValue = (float) (Math.pow(1.6, smoothInt) - 1) / (float) (Math.pow(1.6, 19) - 1);
             return minSmoothingFactor + (maxSmoothingFactor - minSmoothingFactor) * normalizedValue;
         } else {
             // Use linear mapping
-            return minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 9) * smoothInt;
+            return minSmoothingFactor + ((maxSmoothingFactor - minSmoothingFactor) / 19) * smoothInt;
         }
     }
 
     private void handleBoundingLogic() {
-
         if (activeCursorRegion == null || activeCursorRegionStr == null) {
 //            Log.d(TAG, "Active cursor region is not set. Cannot handle bounding logic.");
             edgeHoldStartTime = 0;
@@ -595,34 +589,38 @@ public class CursorController {
             // Cursor is at the edge of the active region
             if (edgeHoldStartTime == 0) {
                 edgeHoldStartTime = currentTime;
+                // Notify that edge hold has started
+                serviceUiManager.updateEdgeHoldActive(true);
             }
 
             if (currentTime - edgeHoldStartTime > getHoldDuration()) {
                 Log.d(TAG, "Edge hold duration " + getHoldDuration() + "ms reached. Pop out cursor.");
                 edgeHoldStartTime = 0;
+                // Notify that edge hold has ended
+                serviceUiManager.updateEdgeHoldActive(false);
                 String previousRegion = activeCursorRegionStr;
 
                 // Pop out to the next region based on the edge touched
                 if (isTouchingTopEdge && previousRegion.equals("KBD")) {
-                    // Pop out to the top region
-                    activeCursorRegionStr = "TOP";
-                    activeCursorRegion = new Rect(0, 0, screenWidth, activeCursorRegion.top - 1);
+//                    // Pop out to the top region
+//                    setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
+                    return; // Disable popping to TOP region for now
                 } else if (isTouchingBottomEdge && previousRegion.equals("KBD")) {
                     // Pop out to the bottom region
-                    activeCursorRegionStr = "NAV";
-                    activeCursorRegion = new Rect(
-                        0,
-                        activeCursorRegion.bottom + 1,
-                        screenWidth,
-                        screenHeight);
+//                    setActiveCursorRegion("NAV", new Rect(
+//                        0,
+//                        activeCursorRegion.bottom + 1, // navBarBounds == null ? screenHeight : navBarBounds.top - 1,
+//                        screenWidth,
+//                        screenHeight));
+                    return; // Disable popping to NAV region from KBD for now
                 } else if ((isTouchingTopEdge && previousRegion.equals("NAV")) // touching the top edge of NAV
                         || (isTouchingBottomEdge && previousRegion.equals("TOP"))) { // touching the bottom edge of TOP
-                    activeCursorRegionStr = "KBD";
-                    activeCursorRegion = new Rect(
+                    // Pop back into the keyboard region
+                    setActiveCursorRegion("KBD", new Rect(
                         keyboardBounds.left,
                         keyboardBounds.top,
                         keyboardBounds.right,
-                        (navBarBounds == null ? screenHeight : navBarBounds.top - 1));
+                        (navBarBounds == null ? screenHeight : navBarBounds.top - 1)));
                 }
                 Log.d(
                     TAG,
@@ -631,16 +629,50 @@ public class CursorController {
             }
         } else {
             // Reset edge hold time if cursor is not at the edge
+            if (edgeHoldStartTime > 0) {
+                // Notify that edge hold has ended
+                serviceUiManager.updateEdgeHoldActive(false);
+            }
             edgeHoldStartTime = 0;
         }
     }
 
+    private void setActiveCursorRegion(String name, Rect region) {
+        if (region == null || region.isEmpty()) {
+            // If cursor was in keyboard region and now leaving, send clear highlights broadcast
+            if ("KBD".equals(activeCursorRegionStr) && mKeyboardManager != null) {
+                mKeyboardManager.sendClearHighlightsToJustType();
+            }
+            activeCursorRegionStr = null;
+            activeCursorRegion = null;
+            serviceUiManager.updateActiveCursorRegion(null);
+            return;
+        }
+
+        // If cursor was in keyboard region ("KBD") and is now moving to a different region, send clear highlights broadcast
+        if ("KBD".equals(activeCursorRegionStr) && !"KBD".equals(name) && mKeyboardManager != null) {
+            mKeyboardManager.sendClearHighlightsToJustType();
+        }
+
+        activeCursorRegionStr = name;
+        activeCursorRegion = new Rect(region);
+        serviceUiManager.updateActiveCursorRegion(region);
+    }
+
     public boolean isEventActive() {
-        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTap || isCursorTouch;
+        return isCursorTap || isSwiping || continuousTouchActive || swipeToggleActive || isCursorTouch || isDragging;
     }
 
     public String getActiveCursorRegionStr() {
         return activeCursorRegionStr;
+    }
+
+    /**
+     * Check if the edge hold timer is currently active (cursor is at edge and timer has started).
+     * @return true if edge hold timer is active, false otherwise
+     */
+    public boolean isEdgeHoldActive() {
+        return edgeHoldStartTime > 0;
     }
 
     public Rect getNavBarBounds() {
@@ -666,28 +698,19 @@ public class CursorController {
             kbdBottom = navBarBounds.top - 1;
         }
         if (cursorPositionY < keyboardBounds.top) {
-            activeCursorRegionStr = "TOP";
-            activeCursorRegion = new Rect(0, 0, screenWidth, keyboardBounds.top - 1);
+            setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
         } else if (cursorPositionY > kbdBottom) {
-            activeCursorRegionStr = "NAV";
-            activeCursorRegion = new Rect(0, kbdBottom + 1, screenWidth, screenHeight);
+            setActiveCursorRegion("NAV", new Rect(0, kbdBottom + 1, screenWidth, screenHeight));
         } else {
-            activeCursorRegionStr = "KBD";
-            activeCursorRegion = new Rect(
-                keyboardBounds.left,
-                keyboardBounds.top,
-                keyboardBounds.right,
-                kbdBottom);
+            setActiveCursorRegion("KBD", new Rect(keyboardBounds.left, keyboardBounds.top, keyboardBounds.right, kbdBottom));
         }
-
-//        Log.d(TAG, "ActiveCursorRegion: (" + activeCursorRegionStr + ") " + activeCursorRegion);
+        Log.d(TAG, "ActiveCursorRegion: (" + activeCursorRegionStr + ") " + activeCursorRegion);
     }
 
     public void clearKeyboardBounds() {
         keyboardBounds = null;
-        activeCursorRegionStr = null;
-        activeCursorRegion = null;
         edgeHoldStartTime = 0;
+        setActiveCursorRegion(null, null);
     }
 
     public int[] getCursorPositionXY() {
@@ -695,7 +718,11 @@ public class CursorController {
     }
 
     public int[] getPathCursorPositionXY() {
-        return new int[]{(int) pathCursorPositionX, (int) pathCursorPositionY};
+        if (isPathCursorEnabled()) {
+            return new int[]{(int) pathCursorPositionX, (int) pathCursorPositionY};
+        } else {
+            return getCursorPositionXY();
+        }
     }
 
     public void resetCursorToCenter() {
@@ -713,6 +740,7 @@ public class CursorController {
 //            Log.w(TAG, "Resetting path cursor position with NaN values. Resetting to center.");
 //            resetCursorToCenter();
 //        }
+        Log.d(TAG, "Resetting path cursor position to current cursor position: (" + cursorPositionX + ", " + cursorPositionY + ")");
         pathCursorPositionX = cursorPositionX;
         pathCursorPositionY = cursorPositionY;
     }
@@ -722,15 +750,16 @@ public class CursorController {
      * Uses default value if the path cursor config is invalid.
      *
      * @return The percentage of the path cursor as a float.
+     *         Returns 0.00f for value 0
      *         Returns 0.002f to 0.04f for values 1-20
-     *         Returns 0.04f to 0.20f for values 21-40
+     *         Returns 0.048f to 0.20f for values 21-40
      */
     public float getPathCursorPercentage() {
-        int pathCursorValue = getPathCursorConfig(); // int between 1 and 40
-        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
-            Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
-            pathCursorValue = Config.DEFAULT_PATH_CURSOR;
-        }
+        int pathCursorValue = getPathCursorConfig(); // int between 0 and 24
+//        if (pathCursorValue < 0 || pathCursorValue > 24) {
+//            Log.w(TAG, "Invalid path cursor config: " + pathCursorValue + ". Defaulting to default.");
+//            pathCursorValue = Config.DEFAULT_PATH_CURSOR;
+//        }
         return getPathCursorPercentageFrom(pathCursorValue);
     }
 
@@ -738,23 +767,31 @@ public class CursorController {
      * Get the percentage of the path cursor based on the path cursor config.
      * Static method that can be used without creating a CursorController instance.
      *
-     * @return The percentage of the path cursor as a float.
-     *         Returns 0.002f to 0.04f for values 1-20
-     *         Returns 0.04f to 0.20f for values 21-40
-     *         Returns 0.04f for invalid values (less than 1 or greater than 40)
+     * @return The percentage of the path cursor as a float. (0.01f to 0.25f)
      */
     public static float getPathCursorPercentageFrom(int pathCursorValue) {
-        if (pathCursorValue <= 0 || pathCursorValue >= 40) {
-            Log.w(TAG, "Invalid path cursor value: " + pathCursorValue + ". Defaulting to 0.04f.");
-            return 0.04f; // Default value for invalid path cursor config
+        if (pathCursorValue < 0) {
+            Log.w(TAG, "Invalid path cursor value < 0: " + pathCursorValue + ". Defaulting to 0.01f.");
+            return 0.01f;
+        } else if (pathCursorValue > 24) {
+            Log.w(TAG, "Invalid path cursor value > 24: " + pathCursorValue + ". Defaulting to 0.25f.");
+            return 0.25f;
         }
-        if (pathCursorValue <= 20) {
-            // mapping 1-20 to 0.002f-0.04f linearly
-            return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
-        } else {
-            // mapping 21-40 to 0.04f-0.20f linearly
-            return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
-        }
+
+        //mapping 0-24 to 0.01f-0.25f linearly
+        return 0.01f + pathCursorValue * (0.25f / 25);
+
+//        if (pathCursorValue == 0) {
+//            return 0.01f;
+//        } else if (pathCursorValue <= 20) {
+//            // mapping 1-20 to 0.002f-0.04f linearly
+//            return 0.002f + (pathCursorValue - 1) * (0.038f / 19);
+//        } else if (pathCursorValue <= 20) {
+//            // mapping 21-40 to 0.04f-0.20f linearly
+//            return 0.04f + (pathCursorValue - 20) * (0.16f / 20);
+//        } else {
+//            return 0.25f;
+//        }
     }
 
     public boolean isDurationPopOutEnabled() {
@@ -791,6 +828,26 @@ public class CursorController {
 
     public int getSmoothing() {
         return (int) cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.AVG_SMOOTHING);
+    }
+
+    public boolean isPathCursorEnabled() {
+        return cursorMovementConfig.get(CursorMovementConfig.CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR);
+    }
+
+    public boolean isPathCursorVisible() {
+//        if (!isPathCursorEnabled()) return false;
+//        return isPathCursorVisible;
+        return isPathCursorEnabled() & isPathCursorVisible;
+    }
+
+    public void setIsPathCursorVisible(boolean enable) {
+        if (!isPathCursorEnabled()) {
+            Log.d(TAG, "setIsPathCursorVisible: Path cursor is disabled in config. Forcing invisible.");
+            isPathCursorVisible = false;
+            return;
+        }
+        Log.d(TAG, "setIsPathCursorVisible: " + enable);
+        isPathCursorVisible = enable;
     }
 
     public int getPathCursorConfig() {

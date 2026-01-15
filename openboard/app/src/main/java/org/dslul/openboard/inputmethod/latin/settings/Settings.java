@@ -105,6 +105,8 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
             "pref_vibration_duration_settings";
     public static final String PREF_KEYPRESS_SOUND_VOLUME = "pref_keypress_sound_volume";
     public static final String PREF_KEY_LONGPRESS_TIMEOUT = "pref_key_longpress_timeout";
+    public static final String PREF_KEY_LONGPRESS_SHIFT_LOCK_TIMEOUT = "pref_key_longpress_shift_lock_timeout";
+    public static final String PREF_KEY_REPEAT_START_TIMEOUT = "pref_key_repeat_start_timeout";
     public static final String PREF_ENABLE_EMOJI_ALT_PHYSICAL_KEY =
             "pref_enable_emoji_alt_physical_key";
     public static final String PREF_GESTURE_PREVIEW_TRAIL = "pref_gesture_preview_trail";
@@ -339,6 +341,30 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
 
     public static int readDefaultKeyLongpressTimeout(final Resources res) {
         return res.getInteger(R.integer.config_default_longpress_key_timeout);
+    }
+
+    public static int readKeyLongpressShiftLockTimeout(final SharedPreferences prefs,
+                                                       final Resources res) {
+        final int milliseconds = prefs.getInt(
+                PREF_KEY_LONGPRESS_SHIFT_LOCK_TIMEOUT, UNDEFINED_PREFERENCE_VALUE_INT);
+        return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds
+                : readDefaultKeyLongpressShiftLockTimeout(res);
+    }
+
+    public static int readDefaultKeyLongpressShiftLockTimeout(final Resources res) {
+        return res.getInteger(R.integer.config_longpress_shift_lock_timeout);
+    }
+
+    public static int readKeyRepeatStartTimeout(final SharedPreferences prefs,
+                                                final Resources res) {
+        final int milliseconds = prefs.getInt(
+                PREF_KEY_REPEAT_START_TIMEOUT, UNDEFINED_PREFERENCE_VALUE_INT);
+        return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds
+                : readDefaultKeyRepeatStartTimeout(res);
+    }
+
+    public static int readDefaultKeyRepeatStartTimeout(final Resources res) {
+        return res.getInteger(R.integer.config_key_repeat_start_timeout);
     }
 
     public static int readKeypressVibrationDuration(final SharedPreferences prefs,

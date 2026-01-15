@@ -1,0 +1,67 @@
+# Cursor Rules for Project Gameface
+
+## Scope
+- Root rules cover both Android projects: `Android/` (HeadBoard app) and `openboard/` (IME).
+- Windows is deprecated. Ignore any `Windows/` content if present.
+- Current inter-app communication: BROADCAST intents. AIDL bound service is planned but not authoritative yet.
+
+## How to think about this repo
+- Two Android apps that cooperate:
+  - HeadBoard accessibility app in `Android/`: tracks face, moves a system cursor, injects gestures.
+  - OpenBoard IME in `openboard/`: keyboard UI and input; collaborates with HeadBoard for cursor/keyboard UX.
+- Keep them buildable and installable independently; integration is at runtime.
+
+## When exploring code
+- Prefer high-level semantic searches first; then narrow to subpackages.
+- Prioritize these hotspots:
+  - `Android/app/src/main/java/com/google/projectgameface/CursorAccessibilityService.java`
+  - `Android/app/src/main/java/com/google/projectgameface/*.java|kt`
+  - `openboard/app/src/main/java/org/dslul/openboard/inputmethod/latin/LatinIME.*`
+  - `openboard/app/src/main/java/org/dslul/openboard/**/MainKeyboardView.*`
+  - Broadcast wiring: `IMEEventReceiver`, `PointerTracker`, manifests.
+
+## Communication policy (now vs later)
+- NOW (authoritative): Use broadcasts between apps.
+  - Actions seen: `com.headswype.ACTION_SWIPE_START`, `com.headswype.ACTION_LONGPRESS_ANIMATION`, `com.headswype.ACTION_SEND_EVENT`.
+  - Permissions: `com.headboard.permission.SEND_EVENT`, `com.headboard.permission.UPDATE_CURSOR`.
+- LATER: AIDL bound service may replace or supplement broadcasts.
+  - Do not remove broadcast paths until AIDL is fully adopted and tested on device.
+
+## Editing rules
+- Don’t migrate to AIDL by default; keep broadcast compatibility.
+- Keep accessibility service stable; avoid refactors that risk permissions/exports.
+- Respect min/target SDKs from each module’s `build.gradle`.
+- Preserve existing logging style and tags.
+- No unrelated formatting or large renames in the same edit.
+
+## Build and run (reference)
+- HeadBoard (Android/):
+  - `./gradlew :Android:app:assembleDebug`
+  - APK: `Android/app/build/outputs/apk/debug/app-debug.apk`
+- OpenBoard (openboard/):
+  - `./gradlew :openboard:app:assembleDebug`
+  - APK: `openboard/app/build/outputs/apk/debug/app-debug.apk`
+- Install order doesn’t matter, but both must be installed and enabled.
+
+## Manifests and permissions
+- HeadBoard declares `BIND_ACCESSIBILITY_SERVICE` and receives broadcasts; exports are intentional.
+- OpenBoard declares IME service and a receiver guarded by `com.headboard.permission.SEND_EVENT`.
+- Be careful changing `android:exported`, `sharedUserId`, or custom permissions.
+
+## Testing checklist before proposing changes
+- Both apps install and launch on a physical device (camera needed).
+- Accessibility service turns on; cursor overlay appears.
+- Broadcast flows still work (keyboard swipe/long-press animations and events reach HeadBoard).
+- IME operates normally for text entry.
+
+## Where to add new things
+- HeadBoard-only logic: under `Android/app/src/main/java/com/google/projectgameface/`.
+- IME-only logic: under `openboard/app/src/main/java/org/dslul/openboard/`.
+- Shared contracts (future AIDL): mirror `.aidl` definitions in both modules under `src/main/aidl`.
+
+## Notes files
+- Root `NOTES.md`: cross-project overview, build/run, current broadcasts, future AIDL plan.
+- `Android/NOTES.md`: service details, broadcast receivers, UI, camera/MediaPipe specifics.
+- `openboard/NOTES.md`: IME specifics, pointer/gesture handling, broadcast emissions.
+
+

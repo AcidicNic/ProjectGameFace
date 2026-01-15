@@ -41,18 +41,21 @@ object Config {
     const val DEFAULT_DIRECT_MAPPING = true
 
     /* Cursor Smoothing */
-    const val DEFAULT_RAW_SMOOTHING = 7
+    const val DEFAULT_RAW_SMOOTHING = 14
     const val DEFAULT_EXPONENTIAL_SMOOTHING = false
     const val MIN_SMOOTHING_FACTOR = 0.01f // 0 freezes the cursor
     const val MAX_SMOOTHING_FACTOR = 0.4f // 0.25 is a reasonable upper limit for responsiveness
 
     /* Cursor Settings */
     const val DEFAULT_UI_FEEDBACK_DELAY = 3 // (D1A)
-    const val DEFAULT_QUICK_TAP_THRESHOLD = 2000 // (ms) blue sweep time (long tap timeout period)
-    const val DEFAULT_LONG_TAP_THRESHOLD = 2500 // (ms) yellow sweep time
-    const val DEFAULT_PATH_CURSOR: Int = 9
+    const val DEFAULT_ACTION_STATE_CHANGE_DELAY = 2000 // (ms) UI action state change
+    const val DEFAULT_LONG_TAP_THRESHOLD = 2500 // (ms) /* deprecated */
+    const val QUICK_TAP_DURATION = 250 // (ms) duration for taps dispatched via gesture descriptions
+    const val DEFAULT_PATH_CURSOR: Int = 4
+    const val DEFAULT_PATH_CURSOR_MIN: Int = 5
     const val HOVER_ZONE_RADIUS: Int = 150 // pixels
     const val D1A_DURATION: Int = 500 // (ms) rolling avg window
     const val SHOW_KEY_POPUP: Boolean = true
     const val HIGHLIGHT_KEY_ON_TOUCH: Boolean = true
+    const val DEFAULT_ENABLE_PATH_CURSOR: Boolean = true
 }

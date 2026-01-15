@@ -45,7 +45,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
 class FaceLandmarkerHelper extends HandlerThread {
     public static final String TAG = "FaceLandmarkerHelper";
 
-    // number of allowed multiple detection works at the sametime.
+    // number of allowed multiple detection works at the same time.
     private static final int N_WORKS_LIMIT = 1;
 
     // Indicates if have new face landmarks detected.
@@ -163,11 +163,32 @@ class FaceLandmarkerHelper extends HandlerThread {
 
         // Set general FaceLandmarker options.
         Log.i(TAG, "Init MediaPipe");
-        BaseOptions.Builder baseOptionBuilder = BaseOptions.builder();
-        baseOptionBuilder.setDelegate(Delegate.GPU);
-        baseOptionBuilder.setModelAssetPath("face_landmarker.task");
 
+        // Try GPU first, fallback to CPU if it fails
+        boolean initialized = tryInitializeWithDelegate(Delegate.GPU);
+        if (!initialized) {
+            Log.w(TAG, "GPU delegate failed, attempting CPU delegate");
+            initialized = tryInitializeWithDelegate(Delegate.CPU);
+        }
+
+        if (!initialized) {
+            Log.e(TAG, "Failed to initialize FaceLandmarker with both GPU and CPU delegates");
+        }
+    }
+
+    /**
+     * Attempts to initialize FaceLandmarker with the specified delegate.
+     * @param delegate The delegate to use (GPU or CPU)
+     * @return true if initialization succeeded, false otherwise
+     */
+    private boolean tryInitializeWithDelegate(Delegate delegate) {
         try {
+            BaseOptions.Builder baseOptionBuilder = BaseOptions.builder();
+            if (delegate != null) {
+                baseOptionBuilder.setDelegate(delegate);
+            }
+            baseOptionBuilder.setModelAssetPath("face_landmarker.task");
+
             BaseOptions baseOptions = baseOptionBuilder.build();
             // Create an option builder with base options and specific
             // options only use for Face Landmarker.
@@ -185,11 +206,16 @@ class FaceLandmarkerHelper extends HandlerThread {
 
             options = optionsBuilder.build();
             faceLandmarker = FaceLandmarker.createFromOptions(this.context, options);
+            
+            Log.i(TAG, "Successfully initialized FaceLandmarker with " + delegate.name() + " delegate");
+            return true;
 
         } catch (IllegalStateException e) {
-            Log.e(TAG, "MediaPipe failed to load the task with error: " + e.getMessage());
+            Log.e(TAG, "MediaPipe failed to load the task with " + delegate.name() + " delegate: " + e.getMessage());
+            return false;
         } catch (RuntimeException e) {
-            Log.e(TAG, "Face Landmarker failed to load model with error: " + e.getMessage());
+            Log.e(TAG, "Face Landmarker failed to load model with " + delegate.name() + " delegate: " + e.getMessage());
+            return false;
         }
     }
 

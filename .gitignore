@@ -22,3 +22,5 @@ gameface-realease/
 
 # VS Code
 .vscode/
+Android/app/src/main/java/com/google/projectgameface/HeadBoard.code-workspace
+*.code-workspace

@@ -8,7 +8,6 @@ import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.WindowManager;
-import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
@@ -60,8 +59,7 @@ public class KeyboardManager {
      * This method is called when an accessibility event occurs.
      * @param event The accessibility event to check.
      */
-    public void checkForKeyboardBounds(AccessibilityEvent event) {
-        if (cursorController.isEventActive()) return;
+    public void checkForKeyboardBounds() {
 
         boolean keyboardFound = false;
         boolean navBarFound = false;
@@ -90,13 +88,15 @@ public class KeyboardManager {
 //                }
 
                 if (tempBounds.top > screenSize.y / 2) {
+                    Log.d(TAG, "[checkForKeyboardBounds()] Found keyboard window: " + window);
                     keyboardFound = true;
                     window.getBoundsInScreen(keyboardBounds);
                 }
 
 //                root.recycle();
             } else if (window.getType() == AccessibilityWindowInfo.TYPE_SYSTEM && window.getTitle() != null &&
-                       window.getTitle().equals("Navigation bar")) {
+                window.getTitle().equals("Navigation bar")) {
+                Log.d(TAG, "[checkForKeyboardBounds()] Found nav bar window: " + window);
                 navBarFound = true;
                 window.getBoundsInScreen(navBarBounds);
             }
@@ -112,7 +112,7 @@ public class KeyboardManager {
             cursorController.setNavBarBounds(navBarBounds);
         } else if (cursorController.getNavBarBounds().isEmpty()) {
             // clear the nav bar bounds if it was not found
-//            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
+            Log.d(TAG, "[checkForKeyboardBounds()] clear nav bar");
             cursorController.clearNavBarBounds();
         }
 
@@ -120,10 +120,12 @@ public class KeyboardManager {
             Log.d(TAG, "[checkForKeyboardBounds()] set kbd: " + keyboardBounds);
             cursorController.setKeyboardBounds(keyboardBounds);
             checkForKeyboardType();
-        } else if (!cursorController.getNavBarBounds().isEmpty()) {
-            // clear the kbd bounds
-//            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
+        } else {
+            // clear the kbd bounds when keyboard is not open
+            Log.d(TAG, "[checkForKeyboardBounds()] clear kbd");
             cursorController.clearKeyboardBounds();
+            // Send broadcast to JustType to clear highlights when keyboard closes
+            sendClearHighlightsToJustType();
         }
     }
 
@@ -273,14 +275,13 @@ public class KeyboardManager {
      */
     public void sendMotionEventToIME(int x, int y, int action) {
 //        Log.d(TAG, "[openboard] Sending MotionEvent to IME - (" + x + ", " + y + ") action: " + action);
-        Intent intent = new Intent("com.headswype.ACTION_SEND_EVENT");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_MOTION_EVENT");
         intent.putExtra("x", (float) x);
         intent.putExtra("y", (float) y);
         intent.putExtra("action", action);
 //        intent.putExtra("downTime", event.getDownTime());
 //        intent.putExtra("eventTime", event.getEventTime());
-        sendBroadcastToIME(intent);
+        sendBroadcastToOpenBoardIME(intent);
     }
 
     /**
@@ -292,12 +293,11 @@ public class KeyboardManager {
     public void sendKeyEventToIME(int keyCode, boolean isDown, boolean isLongPress) {
         Log.d(TAG, "[openboard] Sending keyEvent to IME - keyCode: " + keyCode + ", isDown: " + isDown +
             ", isLongPress: " + isLongPress);
-        Intent intent = new Intent("com.headswype.ACTION_SEND_KEY_EVENT");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_KEY_EVENT");
         intent.putExtra("keyCode", keyCode);
         intent.putExtra("isDown", isDown);
         intent.putExtra("isLongPress", isLongPress);
-        sendBroadcastToIME(intent);
+        sendBroadcastToOpenBoardIME(intent);
     }
 
     /**
@@ -306,10 +306,9 @@ public class KeyboardManager {
      */
     public void sendGestureTrailColorToIME(String color) {
         Log.d(TAG, "[openboard] Sending gesture trail color to IME - " + color);
-        Intent intent = new Intent("com.headswype.ACTION_CHANGE_TRAIL_COLOR");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_CHANGE_TRAIL_COLOR");
         intent.putExtra("color", color);
-        sendBroadcastToIME(intent);
+        sendBroadcastToOpenBoardIME(intent);
     }
 
     /**
@@ -318,41 +317,30 @@ public class KeyboardManager {
      */
     public void sendLongPressDelayToIME(int delay) {
         Log.d(TAG, "[openboard] Sending long press delay to IME - " + delay + "ms");
-        Intent intent = new Intent("com.headswype.ACTION_SET_LONG_PRESS_DELAY");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_SET_LONG_PRESS_DELAY");
         intent.putExtra("delay", delay);
-        sendBroadcastToIME(intent);
+        sendBroadcastToOpenBoardIME(intent);
     }
 
     public void getKeyInfoFromIME(int x, int y) {
         Log.d(TAG, "[openboard] Get Key Info from IME - (" + x + ", " + y + ")");
-        Intent intent = new Intent("com.headswype.ACTION_GET_KEY_INFO");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
-        intent.putExtra("x", x);
-        intent.putExtra("y", y);
-        sendBroadcastToIME(intent);
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_GET_KEY_BOUNDS");
+        intent.putExtra("x", (float) x);
+        intent.putExtra("y", (float) y);
+        sendBroadcastToOpenBoardIME(intent);
     }
 
     private void showOrHideKeyPopupIME(int x, int y, boolean showKeyPreview, boolean withAnimation, boolean isLongPress) {
         int adjustedX = x - keyboardBounds.left;
         int adjustedY = y - keyboardBounds.top;
 
-        Intent intent = new Intent("com.headswype.ACTION_SHOW_OR_HIDE_KEY_POPUP");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_SHOW_OR_HIDE_KEY_POPUP");
         intent.putExtra("x", adjustedX);
         intent.putExtra("y", adjustedY);
         intent.putExtra("showKeyPreview", showKeyPreview);
         intent.putExtra("withAnimation", withAnimation);
         intent.putExtra("isLongPress", isLongPress);
-        sendBroadcastToIME(intent);
-    }
-
-    private void sendBroadcastToIME(Intent intent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
-            context.sendOrderedBroadcast(intent, "com.headswype.permission.SEND_EVENT");
-        } else {
-            context.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
-        }
+        sendBroadcastToOpenBoardIME(intent);
     }
 
     public void showKeyPopupIME(int x, int y, boolean withAnimation) {
@@ -400,10 +388,67 @@ public class KeyboardManager {
     // TODO: send highlight request to IME
     public void highlightKeyAt(int x, int y) {
         Log.d(TAG, "[openboard] Highlight key at - (" + x + ", " + y + ")");
-        Intent intent = new Intent("com.headswype.ACTION_HIGHLIGHT_KEY");
-        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        Intent intent = new Intent("org.dslul.openboard.inputmethod.latin.ACTION_HIGHLIGHT_KEY");
         intent.putExtra("x", (float) x);
         intent.putExtra("y", (float) y);
-        sendBroadcastToIME(intent);
+        sendBroadcastToOpenBoardIME(intent);
+    }
+
+    /**
+     * Send clear highlights broadcast to JustType IME.
+     * This is called when the keyboard closes or when the cursor leaves the keyboard region.
+     */
+    public void sendClearHighlightsToJustType() {
+        try {
+            String currentKeyboardStr = Settings.Secure.getString(
+                context.getContentResolver(),
+                Settings.Secure.DEFAULT_INPUT_METHOD);
+            if (currentKeyboardStr != null && currentKeyboardStr.contains("justtype")) {
+                Log.d(TAG, "[sendClearHighlightsToJustType] Sending clear highlights broadcast to JustType");
+                Intent intent = new Intent("com.justtype.nativeapp.CLEAR_HIGHLIGHTS");
+                sendBroadcastToJustType(intent);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending clear highlights to JustType: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Send broadcast intent with normalized pitch/yaw values to JustType native app IME.
+     * @param normalizedValues Array containing [x, y] normalized values (-1.0 to 1.0)
+     */
+    public void sendJoystickInputToJustType(float[] normalizedValues) {
+        if (normalizedValues == null || normalizedValues.length < 2) {
+            return;
+        }
+        try {
+            Intent intent = new Intent("com.justtype.nativeapp.EXTERNAL_JOYSTICK_INPUT");
+            intent.putExtra("x", normalizedValues[0]); // yaw maps to x
+            intent.putExtra("y", normalizedValues[1]); // pitch maps to y
+            sendBroadcastToJustType(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending joystick input to JustType: " + e.getMessage());
+        }
+    }
+
+    private void sendBroadcastToOpenBoardIME(Intent intent) {
+        intent.setPackage("org.dslul.openboard.inputmethod.latin");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
+            context.sendOrderedBroadcast(intent, null);
+        } else {
+            context.sendBroadcast(intent);
+        }
+    }
+
+    /**
+     * Send broadcast to JustType IME using optimized ordered broadcast with permission.
+     */
+    private void sendBroadcastToJustType(Intent intent) {
+        intent.setPackage("com.justtype.nativeapp");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* API 34 */) {
+            context.sendOrderedBroadcast(intent, null);
+        } else {
+            context.sendBroadcast(intent);
+        }
     }
 }

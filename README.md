@@ -23,3 +23,19 @@ MediaPipe Face Landmark Detection API [Task Guide](https://developers.google.com
 * Predicted face landmarks do not provide facial recognition or identification and do not store any unique face representation.
 
 
+---
+
+if having trouble building openboard on a machine with Apple Silicon. (error is something about the NDK version (v21) not recognizing arm64 host machine)
+
+modify the following file:
+- `/Users/<your_username>/Library/Android/sdk/ndk/21.3.6528147/ndk-build`
+	- - OR -
+- `</path/to/your/android/sdk>/ndk/21.3.6528147/ndk-build`
+
+so that it looks like this:
+
+```
+#!/bin/sh
+DIR="$(cd "$(dirname "$0")" && pwd)"
+arch -x86_64 /bin/bash $DIR/build/ndk-build "$@"
+```

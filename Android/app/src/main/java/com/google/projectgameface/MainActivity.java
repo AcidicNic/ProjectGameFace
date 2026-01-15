@@ -16,6 +16,8 @@
 
 package com.google.projectgameface;
 
+import static android.accessibilityservice.GestureDescription.getMaxGestureDuration;
+import static android.accessibilityservice.GestureDescription.getMaxStrokeCount;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
@@ -38,11 +40,11 @@ import android.view.WindowManager.LayoutParams;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.EditText;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -87,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.w("DEBUG", "MAX STROKE COUNT: " + getMaxStrokeCount());
+        Log.w("DEBUG", "MAX GESTURE DURATION: " + getMaxGestureDuration());
         // Handle the splash screen transition.
         SplashScreen splashScreen = SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
@@ -220,11 +224,11 @@ public class MainActivity extends AppCompatActivity {
             // Assign some default binding so user can navigate around.
             Log.i(TAG, "First launch, assign default binding");
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_ONE,
-                    BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 0);
+                    BlendshapeEventTriggerConfig.EventType.CONTINUOUS_TOUCH, 7);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_TWO,
-                    BlendshapeEventTriggerConfig.EventType.CURSOR_TAP, 0);
+                    BlendshapeEventTriggerConfig.EventType.CURSOR_TAP, 7);
             BlendshapeEventTriggerConfig.writeBindingConfig(this, BlendshapeEventTriggerConfig.Blendshape.SWITCH_THREE,
-                    BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 0);
+                    BlendshapeEventTriggerConfig.EventType.TOGGLE_TOUCH, 7);
             String profileName = ProfileManager.getCurrentProfile(this);
             preferences = getSharedPreferences(profileName, Context.MODE_PRIVATE);
             preferences.edit().putBoolean(KEY_FIRST_RUN, false).apply();
@@ -425,8 +429,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Send broadcast to wake up service.
         Intent intent = new Intent("CHANGE_SERVICE_STATE");
-        intent.putExtra("state", CursorAccessibilityService.ServiceState.ENABLE.ordinal());
+        int stateOrdinal = CursorAccessibilityService.ServiceState.ENABLE.ordinal();
+        intent.putExtra("state", stateOrdinal);
+        Log.i(TAG, "Sending CHANGE_SERVICE_STATE broadcast with state: " + stateOrdinal);
         sendBroadcast(intent);
+        Log.i(TAG, "CHANGE_SERVICE_STATE broadcast sent");
 
         Intent intentFlyOut = new Intent("FLY_OUT_FLOAT_WINDOW");
         sendBroadcast(intentFlyOut);

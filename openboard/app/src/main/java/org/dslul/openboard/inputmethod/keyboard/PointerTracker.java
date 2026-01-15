@@ -43,6 +43,7 @@ import org.dslul.openboard.inputmethod.latin.common.CoordinateUtils;
 import org.dslul.openboard.inputmethod.latin.common.InputPointers;
 import org.dslul.openboard.inputmethod.latin.define.DebugFlags;
 import org.dslul.openboard.inputmethod.latin.settings.Settings;
+import org.dslul.openboard.inputmethod.latin.settings.SettingsValues;
 import org.dslul.openboard.inputmethod.latin.utils.ResourceUtils;
 
 import java.util.ArrayList;
@@ -526,9 +527,9 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         sTimerProxy.cancelLongPressTimersOf(this);
 
         // batch input started, so send swipe start broadcast to headboard
-        Intent intent = new Intent("com.headswype.ACTION_SWIPE_START");
+        Intent intent = new Intent("com.google.projectgameface.ACTION_IME_SWIPE_START");
         intent.setPackage("com.google.projectgameface");
-        sListener.sendBroadcast(intent, "com.headswype.permission.SEND_EVENT");
+        sListener.sendBroadcast(intent, "com.google.projectgameface.permission.RECEIVE_IME_EVENT");
         Log.d(TAG, "Sent broadcast to headboard with intent: " + intent);
     }
 
@@ -1194,10 +1195,12 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
     }
 
     private int getLongPressTimeout(final int code) {
+        final SettingsValues settings = Settings.getInstance().getCurrent();
         if (code == Constants.CODE_SHIFT) {
-            return sParams.mLongPressShiftLockTimeout;
+            // Use preference value (which falls back to XML default if not set)
+            return settings.mKeyLongpressShiftLockTimeout;
         }
-        final int longpressTimeout = Settings.getInstance().getCurrent().mKeyLongpressTimeout;
+        final int longpressTimeout = settings.mKeyLongpressTimeout;
         if (mIsInSlidingKeyInput) {
             // We use longer timeout for sliding finger input started from the modifier key.
             return longpressTimeout * MULTIPLIER_FOR_LONG_PRESS_TIMEOUT_IN_SLIDING_INPUT;
@@ -1216,7 +1219,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         callListenerOnRelease(key, code, false /* withSliding */);
     }
 
-    private boolean disableKeyRepeat = true;
+    private boolean disableKeyRepeat = true; // this breaks it?
 
     private void startRepeatKey(final Key key) {
         if (sInGesture) return;
@@ -1245,8 +1248,14 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
     }
 
     private void startKeyRepeatTimer(final int repeatCount) {
-        final int delay =
-                (repeatCount == 1) ? sParams.mKeyRepeatStartTimeout : sParams.mKeyRepeatInterval;
+        final SettingsValues settings = Settings.getInstance().getCurrent();
+        final int delay;
+        if (repeatCount == 1) {
+            // Use preference value (which falls back to XML default if not set)
+            delay = settings.mKeyRepeatStartTimeout;
+        } else {
+            delay = sParams.mKeyRepeatInterval;
+        }
         sTimerProxy.startKeyRepeatTimerOf(this, repeatCount, delay);
     }
 

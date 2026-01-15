@@ -16,10 +16,8 @@
 
 package com.google.projectgameface;
 
-
 import android.accessibilityservice.AccessibilityService;
 import android.util.Log;
-import android.view.KeyEvent;
 
 import com.google.projectgameface.utils.CursorUtils;
 
@@ -48,6 +46,8 @@ public class DispatchEventHelper {
 
     switch (event.eventType) {
       case CONTINUOUS_TOUCH:
+//        Log.d("dispatchEvent", "new gesture description continuous touch");
+//        parentService.gestureDescription(event.isStartingEvent);
         Log.d("dispatchEvent", "continuous touch");
         parentService.handleSwipeEvent(event.isStartingEvent);
         break;
@@ -75,14 +75,14 @@ public class DispatchEventHelper {
       case BEGIN_TOUCH:
         Log.d("dispatchEvent", "start touch");
         if (event.isStartingEvent) {
-          parentService.startTouch();
+          parentService.handleSwipeEvent(true);
         }
         break;
 
       case END_TOUCH:
         Log.d("dispatchEvent", "end touch");
         if (event.isStartingEvent) {
-          parentService.stopTouch();
+          parentService.handleSwipeEvent(false);
         }
         break;
 

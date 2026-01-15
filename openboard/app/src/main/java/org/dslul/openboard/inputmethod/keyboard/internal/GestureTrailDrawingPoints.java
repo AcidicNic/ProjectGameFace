@@ -69,6 +69,19 @@ final class GestureTrailDrawingPoints {
                 ? DOWN_EVENT_MARKER - xCoordOrMark : xCoordOrMark;
     }
 
+    public void clearTrail() {
+        synchronized (mEventTimes) {
+            mEventTimes.setLength(0);
+            mXCoordinates.setLength(0);
+            mYCoordinates.setLength(0);
+            mPointTypes.setLength(0);
+            mTrailStartIndex = 0;
+            mLastInterpolatedDrawIndex = 0;
+            mCurrentStrokeId = -1;
+            mCurrentTimeBase = 0;
+        }
+    }
+
     public void addStroke(final GestureStrokeDrawingPoints stroke, final long downTime) {
         synchronized (mEventTimes) {
             addStrokeLocked(stroke, downTime);

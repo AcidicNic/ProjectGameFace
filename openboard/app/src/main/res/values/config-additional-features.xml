@@ -20,5 +20,5 @@
 
 <resources>
     <!-- Whether phrase gestures are enabled by default -->
-    <bool name="config_default_phrase_gesture_enabled">false</bool>
+    <bool name="config_default_phrase_gesture_enabled">true</bool>
 </resources>

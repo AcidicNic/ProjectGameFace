@@ -42,14 +42,15 @@ class CursorMovementConfig {
     public enum CursorMovementConfigType {
         UP_SPEED, DOWN_SPEED, RIGHT_SPEED, LEFT_SPEED, SMOOTH_POINTER, SMOOTH_BLENDSHAPES, HOLD_TIME_MS,
         HOLD_RADIUS, EDGE_HOLD_DURATION, DRAG_TOGGLE_DURATION, HEAD_COORD_SCALE_FACTOR_X,
-        HEAD_COORD_SCALE_FACTOR_Y, AVG_SMOOTHING, PATH_CURSOR, QUICK_TAP_THRESHOLD, LONG_TAP_THRESHOLD, UI_FEEDBACK_DELAY,
+        HEAD_COORD_SCALE_FACTOR_Y, AVG_SMOOTHING, PATH_CURSOR, ACTION_STATE_CHANGE_DELAY, LONG_TAP_THRESHOLD,
+        UI_FEEDBACK_DELAY, PATH_CURSOR_MIN,
 
         LATEST_AVG_WPM, AVG_WPM, AVG_WORDS_PER_PHRASE, AVG_SWIPE_DURATION, AVG_PHRASE_LENGTH,
     }
 
     public enum CursorMovementBooleanConfigType {
         REALTIME_SWIPE, DURATION_POP_OUT, DIRECT_MAPPING, NOSE_TIP, PITCH_YAW, DEBUG_SWIPE,
-        EXPONENTIAL_SMOOTHING,
+        EXPONENTIAL_SMOOTHING, ENABLE_PATH_CURSOR
     }
 
     private final BroadcastReceiver profileChangeReceiver = new BroadcastReceiver() {
@@ -92,6 +93,7 @@ class CursorMovementConfig {
         public static final boolean DURATION_POP_OUT = Config.DEFAULT_DURATION_POP_OUT;
         public static final boolean DIRECT_MAPPING = Config.DEFAULT_DIRECT_MAPPING;
         public static final boolean EXPONENTIAL_SMOOTHING = Config.DEFAULT_EXPONENTIAL_SMOOTHING;
+        public static final boolean ENABLE_PATH_CURSOR = Config.DEFAULT_ENABLE_PATH_CURSOR;
         public static final int EDGE_HOLD_DURATION = Config.DEFAULT_EDGE_HOLD_DURATION;
         public static final int DRAG_TOGGLE_DURATION = Config.DEFAULT_DRAG_TOGGLE_DURATION;
         public static final float HEAD_COORD_SCALE_FACTOR_X = Config.DEFAULT_HEAD_COORD_SCALE_FACTOR_X;
@@ -99,10 +101,11 @@ class CursorMovementConfig {
         public static final int AVG_SMOOTHING = Config.DEFAULT_RAW_SMOOTHING;
         public static final boolean PITCH_YAW = Config.DEFAULT_PITCH_YAW;
         public static final boolean NOSE_TIP = Config.DEFAULT_NOSE_TIP;
-        public static final int QUICK_TAP_THRESHOLD = Config.DEFAULT_QUICK_TAP_THRESHOLD;
+        public static final int ACTION_STATE_CHANGE_DELAY = Config.DEFAULT_ACTION_STATE_CHANGE_DELAY;
         public static final int LONG_TAP_THRESHOLD = Config.DEFAULT_LONG_TAP_THRESHOLD;
         public static final int UI_FEEDBACK_DELAY = Config.DEFAULT_UI_FEEDBACK_DELAY;
         public static final int PATH_CURSOR = Config.DEFAULT_PATH_CURSOR;
+        public static final int PATH_CURSOR_MIN = Config.DEFAULT_PATH_CURSOR_MIN;
 
         public static final float LATEST_AVG_WPM = 0.0f;
         public static final float AVG_WPM = 0.0f;
@@ -166,10 +169,11 @@ class CursorMovementConfig {
         rawValueMap.put(CursorMovementConfigType.EDGE_HOLD_DURATION, InitialRawValue.EDGE_HOLD_DURATION);
         rawValueMap.put(CursorMovementConfigType.DRAG_TOGGLE_DURATION, InitialRawValue.DRAG_TOGGLE_DURATION);
         rawValueMap.put(CursorMovementConfigType.AVG_SMOOTHING, InitialRawValue.AVG_SMOOTHING);
-        rawValueMap.put(CursorMovementConfigType.QUICK_TAP_THRESHOLD, InitialRawValue.QUICK_TAP_THRESHOLD);
+        rawValueMap.put(CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY, InitialRawValue.ACTION_STATE_CHANGE_DELAY);
         rawValueMap.put(CursorMovementConfigType.LONG_TAP_THRESHOLD, InitialRawValue.LONG_TAP_THRESHOLD);
         rawValueMap.put(CursorMovementConfigType.UI_FEEDBACK_DELAY, InitialRawValue.UI_FEEDBACK_DELAY);
         rawValueMap.put(CursorMovementConfigType.PATH_CURSOR, InitialRawValue.PATH_CURSOR);
+        rawValueMap.put(CursorMovementConfigType.PATH_CURSOR_MIN, InitialRawValue.PATH_CURSOR_MIN);
 
         // Initialize default float values.
         rawFloatValueMap = new HashMap<>();
@@ -192,6 +196,7 @@ class CursorMovementConfig {
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.NOSE_TIP, InitialRawValue.NOSE_TIP);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.DEBUG_SWIPE, InitialRawValue.DEBUG_SWIPE);
         rawBooleanValueMap.put(CursorMovementBooleanConfigType.EXPONENTIAL_SMOOTHING, InitialRawValue.EXPONENTIAL_SMOOTHING);
+        rawBooleanValueMap.put(CursorMovementBooleanConfigType.ENABLE_PATH_CURSOR, InitialRawValue.ENABLE_PATH_CURSOR);
 
 
         // Register the receiver
@@ -390,8 +395,8 @@ class CursorMovementConfig {
             int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.DRAG_TOGGLE_DURATION);
             setRawValueFromUi(configName, configValueInUi);
             Log.i(TAG, "Set raw value to: " + configValueInUi);
-        } else if (targetConfig == CursorMovementConfigType.QUICK_TAP_THRESHOLD) {
-            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.QUICK_TAP_THRESHOLD);
+        } else if (targetConfig == CursorMovementConfigType.ACTION_STATE_CHANGE_DELAY) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.ACTION_STATE_CHANGE_DELAY);
             setRawValueFromUi(configName, configValueInUi);
             Log.i(TAG, "Set raw value to: " + configValueInUi);
         } else if (targetConfig == CursorMovementConfigType.LONG_TAP_THRESHOLD) {
@@ -404,6 +409,10 @@ class CursorMovementConfig {
             Log.i(TAG, "Set raw value to: " + configValueInUi);
         } else if (targetConfig == CursorMovementConfigType.PATH_CURSOR) {
             int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.PATH_CURSOR);
+            setRawValueFromUi(configName, configValueInUi);
+            Log.i(TAG, "Set raw value to: " + configValueInUi);
+        } else if (targetConfig == CursorMovementConfigType.PATH_CURSOR_MIN) {
+            int configValueInUi = sharedPreferences.getInt(configName, InitialRawValue.PATH_CURSOR_MIN);
             setRawValueFromUi(configName, configValueInUi);
             Log.i(TAG, "Set raw value to: " + configValueInUi);
         } else {
@@ -459,6 +468,9 @@ class CursorMovementConfig {
                 break;
             case EXPONENTIAL_SMOOTHING:
                 defaultValue = InitialRawValue.EXPONENTIAL_SMOOTHING;
+                break;
+            case ENABLE_PATH_CURSOR:
+                defaultValue = InitialRawValue.ENABLE_PATH_CURSOR;
                 break;
             default:
                 defaultValue = InitialRawValue.DEFAULT_ENABLE_FEATURE;
