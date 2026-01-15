@@ -602,15 +602,17 @@ public class CursorController {
 
                 // Pop out to the next region based on the edge touched
                 if (isTouchingTopEdge && previousRegion.equals("KBD")) {
-                    // Pop out to the top region
-                    setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
+//                    // Pop out to the top region
+//                    setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
+                    return; // Disable popping to TOP region for now
                 } else if (isTouchingBottomEdge && previousRegion.equals("KBD")) {
                     // Pop out to the bottom region
-                    setActiveCursorRegion("NAV", new Rect(
-                        0,
-                        activeCursorRegion.bottom + 1, // navBarBounds == null ? screenHeight : navBarBounds.top - 1,
-                        screenWidth,
-                        screenHeight));
+//                    setActiveCursorRegion("NAV", new Rect(
+//                        0,
+//                        activeCursorRegion.bottom + 1, // navBarBounds == null ? screenHeight : navBarBounds.top - 1,
+//                        screenWidth,
+//                        screenHeight));
+                    return; // Disable popping to NAV region from KBD for now
                 } else if ((isTouchingTopEdge && previousRegion.equals("NAV")) // touching the top edge of NAV
                         || (isTouchingBottomEdge && previousRegion.equals("TOP"))) { // touching the bottom edge of TOP
                     // Pop back into the keyboard region
@@ -655,6 +657,14 @@ public class CursorController {
         activeCursorRegionStr = name;
         activeCursorRegion = new Rect(region);
         serviceUiManager.updateActiveCursorRegion(region);
+    }
+
+    /**
+     * Public method to set the active cursor region.
+     * Used by CursorAccessibilityService for pop-out behavior.
+     */
+    public void setActiveCursorRegionPublic(String name, Rect region) {
+        setActiveCursorRegion(name, region);
     }
 
     public boolean isEventActive() {

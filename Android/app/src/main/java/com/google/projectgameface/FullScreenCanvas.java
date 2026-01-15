@@ -136,7 +136,11 @@ public class FullScreenCanvas extends View {
     public void setDragLineStart(float x, float y) {
         dragStartX = x;
         dragStartY = y;
+        // Initialize dragEnd to the same position as start to prevent jump from previous drag
+        dragEndX = x;
+        dragEndY = y;
         isShowingDrag = true;
+        invalidate();
     }
 
     public void updateDragLine(float x, float y) {

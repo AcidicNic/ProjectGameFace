@@ -123,6 +123,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private BroadcastReceiver enableScorePreviewReceiver;
     private BroadcastReceiver profileChangeReceiver;
     private BroadcastReceiver resetDebuggingStatsReceiver;
+    private BroadcastReceiver justTypeHeadTrackingReceiver;
     private long startUptime;
     private long startTime;
     private long endUptime;
@@ -396,6 +397,24 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_SWIPE_START);
         kbdFilter.addAction(KeyboardEventReceiver.ACTION_LONGPRESS_ANIMATION);
 
+        // JustType head tracking state receiver
+        justTypeHeadTrackingReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if ("com.justtype.nativeapp.ACTION_HEAD_TRACKING_ENABLED".equals(action)) {
+                    handleJustTypeHeadTrackingEnabled();
+                } else if ("com.justtype.nativeapp.ACTION_HEAD_TRACKING_DISABLED".equals(action)) {
+                    handleJustTypeHeadTrackingDisabled();
+                } else if ("com.justtype.nativeapp.ACTION_HEAD_TRACKING_POP_OUT".equals(action)) {
+                    handleJustTypePopOut();
+                }
+            }
+        };
+        IntentFilter justTypeFilter = new IntentFilter();
+        justTypeFilter.addAction("com.justtype.nativeapp.ACTION_HEAD_TRACKING_ENABLED");
+        justTypeFilter.addAction("com.justtype.nativeapp.ACTION_HEAD_TRACKING_DISABLED");
+        justTypeFilter.addAction("com.justtype.nativeapp.ACTION_HEAD_TRACKING_POP_OUT");
 
         ContextCompat.registerReceiver(this, changeServiceStateReceiver, new IntentFilter("CHANGE_SERVICE_STATE"),
             ContextCompat.RECEIVER_EXPORTED);
@@ -416,6 +435,8 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         ContextCompat.registerReceiver(this, resetDebuggingStatsReceiver, new IntentFilter("RESET_DEBUGGING_STATS"),
             ContextCompat.RECEIVER_EXPORTED);
         ContextCompat.registerReceiver(this, keyboardEventReceiver, kbdFilter,
+            ContextCompat.RECEIVER_EXPORTED);
+        ContextCompat.registerReceiver(this, justTypeHeadTrackingReceiver, justTypeFilter,
             ContextCompat.RECEIVER_EXPORTED);
     }
 
@@ -505,12 +526,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         sendBroadcastScore();
                     }
                 case ENABLE:
-                    // Drag drag line if in drag mode.
-                    if (cursorController.isDragging) {
-                        serviceUiManager.updateDragLine(
-                            cursorController.getPathCursorPositionXY());
-                    }
-
                     // Use for smoothing.
                     int gapFrames = round(max((facelandmarkerHelper.gapTimeMs / UI_UPDATE), 1.0f));
 
@@ -535,6 +550,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                         }
                     }
 
+                    // Drag drag line if in drag mode.
+                    if (cursorController.isDragging) {
+                        serviceUiManager.updateDragLine(
+                            cursorController.getPathCursorPositionXY());
+                    }
+
                     if (checkKeyboardBoundsAgain && !cursorController.isEventActive()) {
                         Log.d(TAG, "Re-checking keyboard bounds after event ended.");
                         keyboardManager.checkForKeyboardBounds();
@@ -542,9 +563,10 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                     }
 
                     // Check if we should enter joystick mode for JustType native app IME
-                    boolean shouldEnterJoystickMode = isJustTypeNativeAppIME() &&
-                        "KBD".equals(cursorController.getActiveCursorRegionStr()) &&
-                        keyboardManager.isKeyboardOpen();
+                    // Only enter joystick mode when JustType explicitly enables head tracking (broadcast-driven)
+                    boolean shouldEnterJoystickMode = justTypeHeadTrackingActive &&
+                        isJustTypeNativeAppIME() && keyboardManager.isKeyboardOpen() &&
+                        cursorController.getActiveCursorRegionStr().equals("KBD");
 
                     if (shouldEnterJoystickMode) {
                         // Enter joystick mode
@@ -920,6 +942,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         try { unregisterReceiver(profileChangeReceiver); } catch (Exception e) {}
         try { unregisterReceiver(resetDebuggingStatsReceiver); } catch (Exception e) {}
         try { unregisterReceiver(keyboardEventReceiver); } catch (Exception e) {}
+        try { unregisterReceiver(justTypeHeadTrackingReceiver); } catch (Exception e) {}
 
         super.onDestroy();
     }
@@ -1191,13 +1214,15 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         }
         if (!cursorController.isDragging) {
             Log.d("dispatchDragOrHold", "new drag action");
+            if (cursorPosition == null || cursorPosition.length < 2) {
+                Log.e("dispatchDragOrHold", "Invalid cursor position for beginDragOrHold");
+                cursorPosition = cursorController.getPathCursorPositionXY();
+            }
 
             cursorController.prepareDragStart(cursorPosition[0], cursorPosition[1]);
-
+            serviceUiManager.setDragLineStart(cursorPosition[0], cursorPosition[1]);
             serviceUiManager.fullScreenCanvas.setHoldRadius(
                 cursorController.cursorMovementConfig.get(CursorMovementConfig.CursorMovementConfigType.HOLD_RADIUS));
-
-            serviceUiManager.setDragLineStart(cursorPosition[0], cursorPosition[1]);
         }
     }
 
@@ -1227,7 +1252,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
                             CursorMovementConfig.CursorMovementConfigType.HOLD_TIME_MS)),
                 /* callback= */ null,
                 /* handler= */ null);
-
         }
         // Trigger normal DRAG action.
         else {
@@ -1860,7 +1884,12 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      */
     private void injectMotionEvent(MotionEvent event) {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) { // Android 12 (API 31)
-            if (cursorController.isDragging) cancelDragOrHold();
+            if (cursorController.isDragging) {
+                mainHandler.post(() -> {;
+                    cancelDragOrHold();
+                });
+            }
+
 //            Log.d(TAG, "[666] Sending MotionEvent to IME");
 //            Log.d(TAG, "MotionEvent sent: (" + event.getX() + ", " + event.getY() + ", action=" + event.getAction() + ")");
             sendMotionEventToIME((int) event.getX(), (int) event.getY(), event.getAction());
@@ -1882,7 +1911,6 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      * @param action The action of the touch event (e.g., MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP).
      */
     private void sendMotionEventToIME(int x, int y, int action) {
-        cancelDragOrHold();
         keyboardManager.sendMotionEventToIME(x, y, action);
     }
 
@@ -1996,6 +2024,51 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         } catch (Exception e) {
             Log.e(TAG, "Error checking IME package name: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Handle JustType head tracking enabled broadcast.
+     * Hide cursor and enter joystick mode.
+     */
+    private void handleJustTypeHeadTrackingEnabled() {
+        Log.d(TAG, "JustType head tracking enabled - hiding cursor");
+        justTypeHeadTrackingActive = true;
+        serviceUiManager.hideCursor();
+        if (isPathCursorActive) {
+            serviceUiManager.hidePathCursor();
+            cursorController.setIsPathCursorVisible(false);
+        }
+        // Keep sending normalized coordinates while active
+    }
+
+    /**
+     * Handle JustType head tracking disabled broadcast.
+     * Show cursor and exit joystick mode.
+     */
+    private void handleJustTypeHeadTrackingDisabled() {
+        Log.d(TAG, "JustType head tracking disabled - showing cursor");
+        justTypeHeadTrackingActive = false;
+        isJustTypeJoystickMode = false;
+        serviceUiManager.showCursor();
+    }
+
+    /**
+     * Handle JustType pop-out broadcast.
+     * Show cursor in text field region above keyboard.
+     */
+    private void handleJustTypePopOut() {
+        Log.d(TAG, "JustType pop-out triggered - showing cursor in text field");
+        justTypeHeadTrackingActive = false;
+        isJustTypeJoystickMode = false;
+
+        // Show cursor
+        serviceUiManager.showCursor();
+
+        // Update active region to text field (cursor will auto-move to new region on next frame)
+        Rect kbdBounds = keyboardManager.getKeyboardBounds();
+        if (kbdBounds != null && !kbdBounds.isEmpty() && kbdBounds.top > 0) {
+            cursorController.setActiveCursorRegionPublic("TOP", new Rect(0, 0, screenSize.x, kbdBounds.top - 1));
         }
     }
 
@@ -2416,6 +2489,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
     private boolean isPathCursorActive = false;
 
     private boolean isJustTypeJoystickMode = false;
+    
+    /** Broadcast-driven state: true when JustType explicitly enables head tracking mode */
+    private boolean justTypeHeadTrackingActive = false;
 
     /**
      * Handles swipe actions based on version 3.0 specs
