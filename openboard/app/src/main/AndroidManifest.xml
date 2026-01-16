@@ -150,20 +150,6 @@
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name="org.dslul.openboard.IMEEventReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_MOTION_EVENT" />
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_RECEIVE_KEY_EVENT" />
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_SET_LONG_PRESS_DELAY" />
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_CHANGE_TRAIL_COLOR" />
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_GET_KEY_BOUNDS" />
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_SHOW_OR_HIDE_KEY_POPUP" />
-                <action android:name="org.dslul.openboard.inputmethod.latin.ACTION_HIGHLIGHT_KEY" />
-            </intent-filter>
-        </receiver>
-
         <!-- Content providers -->
         <provider android:name="org.dslul.openboard.inputmethod.dictionarypack.DictionaryProvider"
                 android:grantUriPermissions="true"

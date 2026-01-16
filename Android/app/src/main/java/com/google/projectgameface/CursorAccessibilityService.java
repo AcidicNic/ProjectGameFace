@@ -82,7 +82,8 @@ import java.util.concurrent.Executors;
  */
 @SuppressLint("UnprotectedReceiver")
 // All of the broadcasts can only be sent by system.
-public class CursorAccessibilityService extends AccessibilityService implements LifecycleOwner {
+public class CursorAccessibilityService extends AccessibilityService implements LifecycleOwner,
+        CursorController.JustTypeEngagementListener {
     private static final String TAG = "CursorAccessibilityService";
 
     /**
@@ -469,6 +470,7 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         cursorController = new CursorController(this, screenSize.x, screenSize.y);
         serviceUiManager = new ServiceUiManager(this, windowManager, cursorController);
         cursorController.setServiceUiManager(serviceUiManager);
+        cursorController.setJustTypeEngagementListener(this);
         keyboardManager = new KeyboardManager(this, cursorController, serviceUiManager);
         cursorController.setKeyboardManager(keyboardManager);
         continuousGestureController = new ContinuousGestureController(this, mainHandler);
@@ -2029,16 +2031,13 @@ public class CursorAccessibilityService extends AccessibilityService implements 
 
     /**
      * Handle JustType head tracking enabled broadcast.
-     * Hide cursor and enter joystick mode.
+     * Arms head tracking mode - cursor will hide when it enters keyboard region.
      */
     private void handleJustTypeHeadTrackingEnabled() {
-        Log.d(TAG, "JustType head tracking enabled - hiding cursor");
+        Log.d(TAG, "JustType head tracking enabled - arming (cursor will hide on keyboard entry)");
         justTypeHeadTrackingActive = true;
-        serviceUiManager.hideCursor();
-        if (isPathCursorActive) {
-            serviceUiManager.hidePathCursor();
-            cursorController.setIsPathCursorVisible(false);
-        }
+        // Arm head tracking - cursor will hide when entering keyboard region via engagement callback
+        cursorController.setJustTypeHeadTrackingArmed(true);
         // Keep sending normalized coordinates while active
     }
 
@@ -2047,29 +2046,50 @@ public class CursorAccessibilityService extends AccessibilityService implements 
      * Show cursor and exit joystick mode.
      */
     private void handleJustTypeHeadTrackingDisabled() {
-        Log.d(TAG, "JustType head tracking disabled - showing cursor");
+        Log.d(TAG, "JustType head tracking disabled - disarming and showing cursor");
         justTypeHeadTrackingActive = false;
+        // Disarm will trigger disengage callback if engaged, which shows cursor
+        cursorController.setJustTypeHeadTrackingArmed(false);
         isJustTypeJoystickMode = false;
+        // Ensure cursor is visible (even if wasn't engaged)
         serviceUiManager.showCursor();
     }
 
     /**
      * Handle JustType pop-out broadcast.
      * Show cursor in text field region above keyboard.
+     * Head tracking remains armed so re-entering keyboard will re-engage.
      */
     private void handleJustTypePopOut() {
-        Log.d(TAG, "JustType pop-out triggered - showing cursor in text field");
-        justTypeHeadTrackingActive = false;
+        Log.d(TAG, "JustType pop-out triggered - showing cursor in text field (head tracking stays armed)");
         isJustTypeJoystickMode = false;
 
-        // Show cursor
+        // Show cursor (will also be shown by onJustTypeDisengaged callback)
         serviceUiManager.showCursor();
 
-        // Update active region to text field (cursor will auto-move to new region on next frame)
+        // Update active region to text field - this will trigger disengagement via setActiveCursorRegion
+        // but keeps justTypeHeadTrackingArmed true so re-entering keyboard will re-engage
         Rect kbdBounds = keyboardManager.getKeyboardBounds();
         if (kbdBounds != null && !kbdBounds.isEmpty() && kbdBounds.top > 0) {
             cursorController.setActiveCursorRegionPublic("TOP", new Rect(0, 0, screenSize.x, kbdBounds.top - 1));
         }
+    }
+
+    // JustTypeEngagementListener implementation
+    @Override
+    public void onJustTypeEngaged() {
+        Log.d(TAG, "JustType engaged - cursor entered keyboard region, hiding cursor");
+        serviceUiManager.hideCursor();
+        if (isPathCursorActive) {
+            serviceUiManager.hidePathCursor();
+            cursorController.setIsPathCursorVisible(false);
+        }
+    }
+
+    @Override
+    public void onJustTypeDisengaged() {
+        Log.d(TAG, "JustType disengaged - cursor left keyboard region, showing cursor");
+        serviceUiManager.showCursor();
     }
 
     float maxXValue = 0.0f; // max yaw
@@ -2101,9 +2121,9 @@ public class CursorAccessibilityService extends AccessibilityService implements 
         if (pitchYaw[0] < minYValue) {
             minYValue = pitchYaw[0];
         }
-        Log.d(TAG, "Raw Pitch/Yaw - " +
-            "\n\tYaw/X:   " + pitchYaw[1] + " (min: " + minXValue + ", max: " + maxXValue + "), " +
-            "\n\tPitch/Y: " + pitchYaw[0] + " (min: " + minYValue + ", max: " + maxYValue + ")");
+//        Log.d(TAG, "Raw Pitch/Yaw - " +
+//            "\n\tYaw/X:   " + pitchYaw[1] + " (min: " + minXValue + ", max: " + maxXValue + "), " +
+//            "\n\tPitch/Y: " + pitchYaw[0] + " (min: " + minYValue + ", max: " + maxYValue + ")");
 
         float yaw = pitchYaw[1];
         float pitch = pitchYaw[0];

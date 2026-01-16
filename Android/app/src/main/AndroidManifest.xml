@@ -137,16 +137,6 @@
                 android:resource="@xml/mouse_accessibility_service_config" />
         </service>
 
-        <receiver
-            android:name=".KeyboardEventReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.projectgameface.ACTION_IME_SWIPE_START" />
-                <action android:name="com.google.projectgameface.ACTION_IME_LONGPRESS_ANIMATION" />
-                <action android:name="com.google.projectgameface.ACTION_IME_STATE_CHANGED" />
-            </intent-filter>
-        </receiver>
-
     </application>
 
 </manifest>

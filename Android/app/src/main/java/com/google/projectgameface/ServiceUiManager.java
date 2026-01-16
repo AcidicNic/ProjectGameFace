@@ -653,16 +653,15 @@ public class ServiceUiManager {
      * Change cursor image on screen.
      */
     public void updateCursorImagePositionOnScreen(int[] cursorPosition) {
-
         // Center the view's top-left corner on the cursor position
         cursorLayoutParams.x = cursorPosition[0] - cursorView.getWidth() / 2;
         cursorLayoutParams.y = cursorPosition[1] - cursorView.getHeight() / 2;
 
         try {
             windowManager.updateViewLayout(cursorView, cursorLayoutParams);
-             cursorView.requestLayout();
+            cursorView.requestLayout();
         } catch (RuntimeException e) {
-            Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
+//            Log.w(TAG, "updateCursorImagePositionOnScreen: " + e.getMessage());
         }
     }
 
@@ -670,16 +669,15 @@ public class ServiceUiManager {
      * Change cursor image on screen.
      */
     public void updatePathCursorImagePositionOnScreen(int[] cursorPosition) {
-
         // Center the view's top-left corner on the cursor position
         pathCursorLayoutParams.x = cursorPosition[0] - pathCursorView.getWidth() / 2;
         pathCursorLayoutParams.y = cursorPosition[1] - pathCursorView.getHeight() / 2;
 
         try {
             windowManager.updateViewLayout(pathCursorView, pathCursorLayoutParams);
-            // cursorView.requestLayout();
+             pathCursorView.requestLayout();
         } catch (RuntimeException e) {
-            Log.w(TAG, "updatePathCursorImagePositionOnScreen: " + e.getMessage());
+//            Log.w(TAG, "updatePathCursorImagePositionOnScreen: " + e.getMessage());
         }
     }
 

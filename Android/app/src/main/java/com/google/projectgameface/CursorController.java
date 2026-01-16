@@ -103,6 +103,20 @@ public class CursorController {
     public boolean checkForSwipingFromRightKbd = false;
     public boolean startedSwipeFromRightKbd = false;
     private boolean isPathCursorVisible = false;
+    /** True when JustType head tracking feature is enabled (armed, waiting for keyboard entry). */
+    private boolean justTypeHeadTrackingArmed = false;
+    /** True when cursor is in keyboard region while JustType head tracking is armed. */
+    private boolean justTypeHeadTrackingEngaged = false;
+    private JustTypeEngagementListener justTypeEngagementListener;
+
+    /**
+     * Listener interface for JustType head tracking engagement state changes.
+     * Called when cursor enters/exits keyboard region while head tracking is armed.
+     */
+    public interface JustTypeEngagementListener {
+        void onJustTypeEngaged();
+        void onJustTypeDisengaged();
+    }
 
     /**
      * Calculate cursor movement and keeping track of face action events.
@@ -601,18 +615,27 @@ public class CursorController {
                 String previousRegion = activeCursorRegionStr;
 
                 // Pop out to the next region based on the edge touched
+                // Block pop-out only when JustType head tracking is engaged (cursor in keyboard AND armed)
+                boolean blockKeyboardPopOut = isJustTypeHeadTrackingEngaged();
+
                 if (isTouchingTopEdge && previousRegion.equals("KBD")) {
-//                    // Pop out to the top region
-//                    setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
-                    return; // Disable popping to TOP region for now
+                    if (blockKeyboardPopOut) {
+                        Log.d(TAG, "Skipping pop-out from keyboard while JustType head tracking is engaged.");
+                        return;
+                    }
+                    // Pop out to the top region
+                    setActiveCursorRegion("TOP", new Rect(0, 0, screenWidth, keyboardBounds.top - 1));
                 } else if (isTouchingBottomEdge && previousRegion.equals("KBD")) {
+                    if (blockKeyboardPopOut) {
+                        Log.d(TAG, "Skipping pop-out from keyboard while JustType head tracking is engaged.");
+                        return;
+                    }
                     // Pop out to the bottom region
-//                    setActiveCursorRegion("NAV", new Rect(
-//                        0,
-//                        activeCursorRegion.bottom + 1, // navBarBounds == null ? screenHeight : navBarBounds.top - 1,
-//                        screenWidth,
-//                        screenHeight));
-                    return; // Disable popping to NAV region from KBD for now
+                    setActiveCursorRegion("NAV", new Rect(
+                        0,
+                        activeCursorRegion.bottom + 1, // navBarBounds == null ? screenHeight : navBarBounds.top - 1,
+                        screenWidth,
+                        screenHeight));
                 } else if ((isTouchingTopEdge && previousRegion.equals("NAV")) // touching the top edge of NAV
                         || (isTouchingBottomEdge && previousRegion.equals("TOP"))) { // touching the bottom edge of TOP
                     // Pop back into the keyboard region
@@ -638,10 +661,22 @@ public class CursorController {
     }
 
     private void setActiveCursorRegion(String name, Rect region) {
+        String previousRegion = activeCursorRegionStr;
+        boolean wasInKeyboard = "KBD".equals(previousRegion);
+        boolean willBeInKeyboard = "KBD".equals(name) && region != null && !region.isEmpty();
+
         if (region == null || region.isEmpty()) {
             // If cursor was in keyboard region and now leaving, send clear highlights broadcast
-            if ("KBD".equals(activeCursorRegionStr) && mKeyboardManager != null) {
+            if (wasInKeyboard && mKeyboardManager != null) {
                 mKeyboardManager.sendClearHighlightsToJustType();
+            }
+            // Handle JustType engagement: disengage when leaving keyboard
+            if (wasInKeyboard && justTypeHeadTrackingEngaged) {
+                Log.d(TAG, "Leaving keyboard region - disengaging JustType head tracking");
+                justTypeHeadTrackingEngaged = false;
+                if (justTypeEngagementListener != null) {
+                    justTypeEngagementListener.onJustTypeDisengaged();
+                }
             }
             activeCursorRegionStr = null;
             activeCursorRegion = null;
@@ -650,8 +685,25 @@ public class CursorController {
         }
 
         // If cursor was in keyboard region ("KBD") and is now moving to a different region, send clear highlights broadcast
-        if ("KBD".equals(activeCursorRegionStr) && !"KBD".equals(name) && mKeyboardManager != null) {
+        if (wasInKeyboard && !willBeInKeyboard && mKeyboardManager != null) {
             mKeyboardManager.sendClearHighlightsToJustType();
+        }
+
+        // Handle JustType engagement transitions
+        if (wasInKeyboard && !willBeInKeyboard && justTypeHeadTrackingEngaged) {
+            // Leaving keyboard while engaged -> disengage
+            Log.d(TAG, "Leaving keyboard region - disengaging JustType head tracking");
+            justTypeHeadTrackingEngaged = false;
+            if (justTypeEngagementListener != null) {
+                justTypeEngagementListener.onJustTypeDisengaged();
+            }
+        } else if (!wasInKeyboard && willBeInKeyboard && justTypeHeadTrackingArmed && !justTypeHeadTrackingEngaged) {
+            // Entering keyboard while armed but not engaged -> engage
+            Log.d(TAG, "Entering keyboard region - engaging JustType head tracking");
+            justTypeHeadTrackingEngaged = true;
+            if (justTypeEngagementListener != null) {
+                justTypeEngagementListener.onJustTypeEngaged();
+            }
         }
 
         activeCursorRegionStr = name;
@@ -864,6 +916,44 @@ public class CursorController {
 
     public void setKeyboardManager(KeyboardManager keyboardManager) {
         mKeyboardManager = keyboardManager;
+    }
+
+    /**
+     * Set whether JustType head tracking is armed (enabled but possibly not yet engaged).
+     * When armed and cursor enters keyboard region, engagement begins.
+     */
+    public void setJustTypeHeadTrackingArmed(boolean isArmed) {
+        justTypeHeadTrackingArmed = isArmed;
+        // If disarming, also disengage
+        if (!isArmed && justTypeHeadTrackingEngaged) {
+            justTypeHeadTrackingEngaged = false;
+            if (justTypeEngagementListener != null) {
+                justTypeEngagementListener.onJustTypeDisengaged();
+            }
+        }
+        // If arming while already in keyboard region, engage immediately
+        if (isArmed && "KBD".equals(activeCursorRegionStr) && !justTypeHeadTrackingEngaged) {
+            justTypeHeadTrackingEngaged = true;
+            if (justTypeEngagementListener != null) {
+                justTypeEngagementListener.onJustTypeEngaged();
+            }
+        }
+    }
+
+    public boolean isJustTypeHeadTrackingArmed() {
+        return justTypeHeadTrackingArmed;
+    }
+
+    /**
+     * Check if JustType head tracking is engaged (armed AND cursor is in keyboard region).
+     * Pop-out blocking and cursor hiding should use this, not just armed state.
+     */
+    public boolean isJustTypeHeadTrackingEngaged() {
+        return justTypeHeadTrackingEngaged;
+    }
+
+    public void setJustTypeEngagementListener(JustTypeEngagementListener listener) {
+        justTypeEngagementListener = listener;
     }
     
     /**
